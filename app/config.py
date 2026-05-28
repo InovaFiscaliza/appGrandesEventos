@@ -1,13 +1,30 @@
-"""
-Constantes e configurações globais da aplicação.
+# ================= AJUSTES RÁPIDOS (estilo) =================
+BTN_HEIGHT = "3.8em"
+BTN_GAP = "0px"
+# ============================================================
 
-Ao migrar de abordagem.py, mover para cá:
-  - BTN_HEIGHT, BTN_GAP  → estilo visual dos botões
-  - ABAS_SISTEMA         → nomes das abas reservadas do sistema na planilha
-  - TITULO_PRINCIPAL     → título exibido no cabeçalho
-  - OBRIG                → markup de campo obrigatório
-  - IDENT_OPCOES         → opções de identificação de emissão
-  - FAIXA_OPCOES         → opções de faixa de frequência
-"""
+ABAS_SISTEMA = ["PAINEL", "Abordagem", "Tabela UTE", "Escala", "LISTAS"]
 
-# TODO: migrar constantes de abordagem.py para cá e importar onde necessário
+TITULO_PRINCIPAL = "AppEventos"
+OBRIG = ":red[**\\***]"
+
+IDENT_OPCOES = [
+    "Sinal de dados",
+    "Comunicação relacionada ao evento",
+    "Comunicação não relacionada ao evento",
+    "Espúrio ou Produto de Intermodulação",
+    "Ruído",
+    "Não identificado",
+]
+
+FAIXA_OPCOES = [
+    "FM",
+    "SMA",
+    "SMM",
+    "SLP",
+    "TV",
+    "SMP",
+    "GNSS",
+    "Satélite",
+    "Radiação Restrita",
+]

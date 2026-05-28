@@ -33,20 +33,23 @@ Quando a migração estiver concluída, descomentar o bloco abaixo e
 remover abordagem.py como entry point.
 """
 
-# import streamlit as st
-# from app.services.google_sheets import obter_cliente_gspread
-# from app.router import rotear
-#
-# st.set_page_config(
-#     page_title="AppEventos",
-#     page_icon="anatel.png",
-#     layout="centered",
-#     initial_sidebar_state="collapsed",
-# )
-#
-# try:
-#     client = obter_cliente_gspread()
-#     rotear(client)
-# except Exception as e:
-#     st.error("Erro fatal na aplicação.")
-#     st.exception(e)
+import streamlit as st
+from app.components.header import apply_app_css
+from app.services.google_sheets import obter_cliente_gspread
+from app.router import rotear
+
+st.set_page_config(
+    page_title="AppEventos",
+    page_icon="anatel.png",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
+
+apply_app_css()
+
+try:
+    client = obter_cliente_gspread()
+    rotear(client)
+except Exception as e:
+    st.error("Erro fatal na aplicação.")
+    st.exception(e)

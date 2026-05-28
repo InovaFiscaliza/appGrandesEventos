@@ -21,7 +21,7 @@ st.set_page_config(
     page_title="AppEventos",
     page_icon="anatel.png",
     layout="centered",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="collapsed",o qye
 )
 
 # --- CONSTANTES ---

@@ -1,26 +1,33 @@
-"""
-Roteador central da aplicação.
+import streamlit as st
 
-Centraliza o mapeamento view → função de tela, eliminando o bloco if/elif
-atualmente no final de abordagem.py.
+from app.views.abordagem_view import tela_consultar, tela_inserir
+from app.views.bsr_erb import tela_bsr_erb
+from app.views.busca import tela_busca
+from app.views.menu_principal import tela_menu_principal
+from app.views.selecao_evento import tela_selecao_evento
+from app.views.tabela_ute import tela_tabela_ute
 
-Ao migrar, este módulo substituirá o bloco '# === MAIN ===' de abordagem.py:
 
-    from app.views.selecao_evento import tela_selecao_evento
-    from app.views.menu_principal import tela_menu_principal
-    from app.views.abordagem_view import tela_consultar, tela_inserir
-    from app.views.bsr_erb import tela_bsr_erb
-    from app.views.busca import tela_busca
-    from app.views.tabela_ute import tela_tabela_ute
+def rotear(client) -> None:
+    if "view" not in st.session_state:
+        st.session_state.view = "selecao"
+    if "spreadsheet_id" not in st.session_state:
+        st.session_state.spreadsheet_id = None
 
-Mapeamento de rotas (session_state["view"] → função):
-  "selecao"    → tela_selecao_evento
-  "main_menu"  → tela_menu_principal
-  "consultar"  → tela_consultar
-  "inserir"    → tela_inserir
-  "bsr_erb"    → tela_bsr_erb
-  "busca"      → tela_busca
-  "tabela_ute" → tela_tabela_ute
-"""
+    if st.session_state.view == "selecao" or not st.session_state.spreadsheet_id:
+        tela_selecao_evento(client)
+        return
 
-# TODO: migrar lógica de roteamento de abordagem.py para cá
+    sp_id = st.session_state.spreadsheet_id
+    rotas = {
+        "main_menu": lambda: tela_menu_principal(client, sp_id),
+        "consultar": lambda: tela_consultar(client, sp_id),
+        "inserir": lambda: tela_inserir(client, sp_id),
+        "bsr_erb": lambda: tela_bsr_erb(client, sp_id),
+        "busca": lambda: tela_busca(client, sp_id),
+        "tabela_ute": lambda: tela_tabela_ute(client, sp_id),
+    }
+    handler = rotas.get(
+        st.session_state.view, lambda: tela_menu_principal(client, sp_id)
+    )
+    handler()
