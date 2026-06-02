@@ -1,6 +1,15 @@
+import base64
 import re
 import unicodedata
-from typing import List
+from pathlib import Path
+from typing import List, Optional
+
+
+def _img_b64(path: str) -> Optional[str]:
+    p = Path(path)
+    if not p.exists():
+        return None
+    return base64.b64encode(p.read_bytes()).decode("utf-8")
 
 
 def _normalize_text(s: str) -> str:

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+{% if flash_warning %}<div class="flash flash-warning">{{ flash_warning }}</div>{% endif %}
+
+<form method="post" action="/busca">
+    <div class="form-group">
+        <label>Buscar texto (mín 3 chars):</label>
+        <input type="text" name="termo" value="{{ termo or '' }}" placeholder="Digite para buscar...">
+    </div>
+    <div class="form-group">
+        <label>Abas:</label>
+        <select name="abas" multiple>
+            {% for aba in abas_opcoes %}
+            <option value="{{ aba }}" {% if aba in abas_sel %}selected{% endif %}>{{ aba }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-submit" style="margin-bottom:0.75rem">🔎 Consultar</button>
+</form>
+
+{% if resultados is not none %}
+    {% if resultados | length == 0 %}
+    <div class="flash flash-info">Nenhum resultado encontrado.</div>
+    {% else %}
+    <div class="flash flash-success">Resultados encontrados: {{ resultados | length }}</div>
+    {% for row in resultados %}
+    <details>
+        <summary>{{ row.titulo }}</summary>
+        <div class="details-body">
+            <div class="readonly-grid">
+                {% for label, val in row.campos %}
+                <div class="readonly-field">
+                    <small>{{ label }}</small>
+                    <span>{{ val }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            <p class="source-caption">Fonte: {{ row.fonte }} | Aba: {{ row.aba_origem }}</p>
+        </div>
+    </details>
+    {% endfor %}
+    {% endif %}
+{% endif %}
+
+<div class="btn-col">
+    <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
+</div>
+{% endblock %}

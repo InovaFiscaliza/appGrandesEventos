@@ -1,0 +1,16 @@
+<div class="header">
+    <div style="text-align:right">
+        {% if img_b64_esq %}<img class="header-img" src="data:image/png;base64,{{ img_b64_esq }}" alt="Anatel">{% endif %}
+    </div>
+    <div class="header-title">{{ titulo }}</div>
+    <div style="text-align:left">
+        {% if img_b64_dir %}<img class="header-img" src="data:image/png;base64,{{ img_b64_dir }}" alt="Anatel Serviços">{% endif %}
+    </div>
+</div>
+{% if evento_nome %}
+<div class="header-event">Evento: {{ evento_nome }}</div>
+<div style="text-align:center;margin-top:2px">
+    <a href="/logout" class="btn-trocar">Trocar Evento 🔄</a>
+</div>
+{% endif %}
+<hr>

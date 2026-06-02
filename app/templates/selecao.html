@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="selecao-logo">
+    {% if img_b64 %}<img src="data:image/png;base64,{{ img_b64 }}" alt="Anatel">{% endif %}
+</div>
+<h3 class="selecao-title">{{ titulo }}</h3>
+<p class="selecao-sub">Selecione o evento para carregar a base de dados:</p>
+
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+{% if not eventos %}
+<div class="flash flash-error">Nenhuma planilha de "Monitoração" encontrada.</div>
+{% else %}
+<form method="post" action="/">
+    <div class="form-group">
+        <select name="evento_key" onchange="this.form.submit()">
+            <option value="">Selecione...</option>
+            {% for nome, ev_id in eventos.items() %}
+            <option value="{{ nome }}|||{{ ev_id }}">{{ nome }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

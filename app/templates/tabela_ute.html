@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+<h4 style="text-align:center; margin-bottom:0.25rem">Atos de UTE - {{ evento_nome }}</h4>
+<p class="table-hint">(gire o celular ⟳)</p>
+
+{% if rows %}
+<form method="get" action="/ute" style="margin-bottom:0.75rem">
+    <div class="form-cols">
+        <div class="form-group">
+            <label>Ordenar por:</label>
+            <select name="sort">
+                {% for col in sort_cols %}
+                <option value="{{ col }}" {% if sort == col %}selected{% endif %}>{{ col }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Direção:</label>
+            <select name="dir">
+                <option value="asc" {% if dir == "asc" %}selected{% endif %}>Crescente</option>
+                <option value="desc" {% if dir == "desc" %}selected{% endif %}>Decrescente</option>
+            </select>
+        </div>
+    </div>
+    <button type="submit" class="btn" style="max-width:200px;margin-bottom:0.5rem">Ordenar</button>
+</form>
+
+<table class="ute-table">
+    <thead>
+        <tr>
+            <th>País/Entidade</th>
+            <th>Local</th>
+            <th>Frequência (MHz)</th>
+            <th>Processo SEI</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row['País/Entidade'] }}</td>
+            <td>{{ row['Local'] }}</td>
+            <td>{{ row['Frequência (MHz)'] }}</td>
+            <td class="copyable-cell" onclick="copyText(this)">{{ row['Processo SEI'] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="flash flash-info">Sem dados de UTE.</div>
+{% endif %}
+
+<div class="btn-col">
+    <a href="https://sei.anatel.gov.br" target="_blank" class="btn">SEI Interno</a>
+    <a href="https://sei.anatel.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=0" target="_blank" class="btn">SEI Público</a>
+    <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
+</div>
+
+<script>
+function copyText(el) {
+    const text = el.textContent.trim();
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = el.textContent;
+        el.textContent = 'Copiado!';
+        setTimeout(() => { el.textContent = orig; }, 1500);
+    }).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        const orig = el.textContent;
+        el.textContent = 'Copiado!';
+        setTimeout(() => { el.textContent = orig; }, 1500);
+    });
+}
+</script>
+{% endblock %}

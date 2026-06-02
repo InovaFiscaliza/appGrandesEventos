@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+<div class="form-card">
+    <form method="post" action="/inserir" id="form-inserir">
+        <div class="form-cols">
+            <div class="form-group">
+                <label>Data <span class="required">*</span></label>
+                <input type="date" name="dia" value="{{ dia or '' }}" required>
+            </div>
+            <div class="form-group">
+                <label>Hora <span class="required">*</span></label>
+                <input type="time" name="hora" value="{{ hora or '' }}" required>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Fiscal <span class="required">*</span></label>
+            <input type="text" name="fiscal" value="{{ fiscal or '' }}">
+        </div>
+        <div class="form-group">
+            <label>Local/Região</label>
+            <input type="text" name="local" value="{{ local or '' }}">
+        </div>
+        <div class="form-cols">
+            <div class="form-group">
+                <label>Frequência (MHz) <span class="required">*</span></label>
+                <input type="number" name="freq" id="freq" value="{{ freq or '' }}" step="0.001" min="0" placeholder="0.000">
+            </div>
+            <div class="form-group">
+                <label>Largura (kHz)</label>
+                <input type="number" name="larg" value="{{ larg or '' }}" step="0.1" min="0" placeholder="0.0">
+            </div>
+        </div>
+        <div id="freq-warning" class="freq-warning"></div>
+        <div class="form-group">
+            <label>Faixa relacionada <span class="required">*</span></label>
+            <select name="faixa">
+                <option value="">Selecione...</option>
+                {% for op in faixa_opcoes %}
+                <option value="{{ op }}" {% if op == faixa %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Identificação <span class="required">*</span></label>
+            <select name="ident">
+                <option value="">Selecione...</option>
+                {% for op in ident_opcoes %}
+                <option value="{{ op }}" {% if op == ident %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Interferente? <span class="required">*</span></label>
+            <select name="interferente">
+                <option value="">Selecione...</option>
+                {% for op in ["Sim", "Não", "Indefinido"] %}
+                <option value="{{ op }}" {% if op == interferente %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label><input type="checkbox" name="ute" value="1" {% if ute %}checked{% endif %}> UTE?</label>
+        </div>
+        <div class="form-group">
+            <label>Processo SEI ou Ato UTE</label>
+            <input type="text" name="proc" value="{{ proc or '' }}">
+        </div>
+        <div class="form-group">
+            <label>Entidade Resp./Contato/Observações <span class="required">*</span></label>
+            <textarea name="obs" rows="3">{{ obs or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Status desta emissão <span class="required">*</span></label>
+            <select name="situacao">
+                <option value="">Selecione o status</option>
+                {% for op in ["Pendente", "Concluído"] %}
+                <option value="{{ op }}" {% if op == situacao %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-submit">Registrar Emissão</button>
+    </form>
+</div>
+
+<div class="btn-col">
+    <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
+</div>
+
+<script>
+document.getElementById('freq').addEventListener('change', async function() {
+    const val = parseFloat(this.value);
+    const warn = document.getElementById('freq-warning');
+    if (val > 0) {
+        try {
+            const resp = await fetch('/check-freq?freq=' + val);
+            const data = await resp.json();
+            if (data.conflito) {
+                warn.textContent = '⚠️ AVISO (apenas): Essa frequência consta na Planilha - Aba: ' + data.conflito;
+                warn.style.display = 'block';
+            } else {
+                warn.style.display = 'none';
+            }
+        } catch(e) { warn.style.display = 'none'; }
+    } else {
+        warn.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

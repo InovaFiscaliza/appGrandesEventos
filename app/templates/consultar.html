@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+<div class="info-green">Consulte as emissões pendentes de identificação.</div>
+
+{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+{% if not pendencias %}
+<div class="flash flash-success">✔️ Nenhuma pendência encontrada.</div>
+{% else %}
+<div class="form-group">
+    <label>Selecione a emissão:</label>
+    <select id="sel-pendencia" onchange="if(this.value) window.location.href='/consultar?key='+encodeURIComponent(this.value)">
+        <option value="">Escolha uma pendência...</option>
+        {% for row in pendencias %}
+        <option value="{{ row.row_key }}" {% if row.row_key == selected_key %}selected{% endif %}>
+            {{ row.label }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+
+{% if selected_row %}
+<h4 style="margin:0.75rem 0 0.5rem">Editar ocorrência</h4>
+<div class="form-card">
+    <form method="post" action="/consultar/salvar">
+        <input type="hidden" name="row_key" value="{{ selected_key }}">
+        <input type="hidden" name="fonte" value="{{ selected_row['Fonte'] }}">
+        <input type="hidden" name="id_val" value="{{ selected_row['ID'] }}">
+        <input type="hidden" name="estacao_raw" value="{{ selected_row['EstacaoRaw'] }}">
+
+        <div class="form-cols">
+            <div class="form-group">
+                <label>ID</label>
+                <input type="text" value="{{ selected_row['ID'] }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Estação utilizada</label>
+                <input type="text" value="{{ selected_row['Local'] }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Fiscal</label>
+                <input type="text" value="{{ selected_row.get('Fiscal', '') }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Data da identificação</label>
+                <input type="text" value="{{ selected_row.get('Data', '') }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>HH:mm</label>
+                <input type="text" value="{{ selected_row.get('HH:mm', '') }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Frequência (MHz)</label>
+                <input type="text" value="{{ selected_row.get('Frequência (MHz)', '') }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Largura (kHz)</label>
+                <input type="text" value="{{ selected_row.get('Largura (kHz)', '') }}" disabled>
+            </div>
+            <div class="form-group">
+                <label>Faixa de Frequência Envolvida</label>
+                <input type="text" value="{{ selected_row.get('Faixa de Frequência Envolvida', '') }}" disabled>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Identificação <span class="required">*</span></label>
+            <select name="ident_edit">
+                {% for op in ident_opcoes %}
+                <option value="{{ op }}" {% if op == selected_row.get('Identificação', '') %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Autorizado? <span class="required">*</span></label>
+            <select name="autz_edit">
+                {% for op in ["Sim", "Não", "Não licenciável"] %}
+                <option value="{{ op }}" {% if op == selected_row.get('Autorizado?', 'Não licenciável') %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label><input type="checkbox" name="ute_check" value="1" {% if selected_row.get('UTE?', '').lower() in ['sim', 'true', '1', 'ok'] %}checked{% endif %}> UTE?</label>
+        </div>
+        <div class="form-group">
+            <label>Processo SEI UTE (ou Ato UTE)</label>
+            <input type="text" name="proc_edit" value="{{ selected_row.get('Processo SEI UTE', '') }}">
+        </div>
+        <div class="form-group">
+            <label>Ocorrência (observações)</label>
+            <textarea name="obs_edit" rows="3">{{ selected_row.get('Ocorrência (observações)', '') }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Alguém mais ciente?</label>
+            <input type="text" name="cient_edit" value="{{ selected_row.get('Alguém mais ciente?', '') }}">
+        </div>
+        <div class="form-group">
+            <label>Interferente? <span class="required">*</span></label>
+            <select name="interf_edit">
+                {% for op in ["Sim", "Não", "Indefinido"] %}
+                <option value="{{ op }}" {% if op == selected_row.get('Interferente?', 'Indefinido') %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Situação <span class="required">*</span></label>
+            <select name="situ_edit">
+                {% for op in ["Pendente", "Concluído"] %}
+                <option value="{{ op }}" {% if op == selected_row.get('Situação', 'Pendente') %}selected{% endif %}>{{ op }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-submit">Salvar alterações</button>
+    </form>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="btn-col">
+    <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
+</div>
+{% endblock %}

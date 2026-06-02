@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+<div class="btn-col">
+    <a href="/inserir" class="btn btn-red">📋 INSERIR emissão verificada em campo</a>
+    <a href="/consultar" class="btn btn-red">📝 TRATAR emissões pendentes ({{ total }})</a>
+    <a href="/bsr-erb" class="btn btn-red">📵 REGISTRAR Jammer ou ERB Fake</a>
+    <a href="/busca" class="btn btn-red">🔎 PESQUISAR emissões cadastradas</a>
+    <a href="/ute" class="btn">🗒️ CONSULTAR Atos de UTE</a>
+    <a href="{{ link_mapa }}" target="_blank" class="btn btn-green">🗺️ Mapa da Região/Evento</a>
+    <a href="https://translate.google.com/?sl=auto&tl=pt&op=translate" target="_blank" class="btn btn-green">🌍 Tradutor de Texto/Voz</a>
+</div>
+{% endblock %}

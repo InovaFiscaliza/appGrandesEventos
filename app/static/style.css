@@ -1,0 +1,209 @@
+/* ======== AppEventos — CSS Global ======== */
+:root {
+    --blue-dark: #14337b;
+    --blue-light: #4464A7;
+    --red-dark: #c62828;
+    --red-light: #e53935;
+    --green-dark: #2e7d32;
+    --green-light: #4caf50;
+    --bg: #F1F8E9;
+    --btn-height: 3.2rem;
+    --border: 3.4px solid #54515c;
+    --radius: 8px;
+    --shadow: 2px 2px 5px rgba(0,0,0,.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--bg);
+    color: #000;
+    min-height: 100vh;
+}
+.container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 10px 1rem 2rem;
+}
+
+/* ---- Header ---- */
+.header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 2px;
+}
+.header-img { height: 55px; object-fit: contain; }
+.header-title {
+    text-align: center;
+    color: #1A311F;
+    font-weight: 800;
+    font-size: 1.7rem;
+    line-height: 1.1;
+    font-family: sans-serif;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(0,0,0,.28);
+    white-space: normal;
+}
+.header-event {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #2E7D32;
+    font-weight: 600;
+    margin-top: 2px;
+    font-family: sans-serif;
+}
+.btn-trocar {
+    display: block;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: #2E7D32;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 8px;
+    text-decoration: none;
+}
+.btn-trocar:hover { text-decoration: underline; }
+hr { border: none; border-top: 1px solid #ccc; margin: 4px 0; }
+
+/* ---- Buttons ---- */
+.btn-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+.btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: var(--btn-height);
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--radius);
+    border: var(--border);
+    color: #fff !important;
+    background: linear-gradient(to bottom, var(--blue-dark), var(--blue-light));
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+}
+.btn:hover, button.btn:hover {
+    background: linear-gradient(to bottom, #9ccc65, #AED581) !important;
+    border-color: #7cb342 !important;
+    color: #fff !important;
+}
+button.btn { font-family: inherit; }
+.btn-red { background: linear-gradient(to bottom, var(--red-dark), var(--red-light)); border-color: #a92222; }
+.btn-green { background: linear-gradient(to bottom, var(--green-dark), var(--green-light)); border-color: #1b5e20; }
+.btn-submit {
+    background: linear-gradient(to bottom, var(--green-dark), var(--green-light));
+    border-color: #1b5e20;
+    width: 100%;
+}
+.btn-back { max-width: 220px; margin: 0.75rem auto 0; }
+
+/* ---- Flash Messages ---- */
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+}
+.flash-success { background: linear-gradient(to bottom, #1b5e20, #2e7d32); color: #fff; }
+.flash-error { background: #d32f2f; color: #fff; }
+.flash-warning { background: linear-gradient(to bottom, #f0ad4e, #ec971f); color: #333; border: 1px solid #d58512; }
+.flash-info { background: #1565c0; color: #fff; }
+.info-green { background: linear-gradient(to bottom, #1b5e20, #2e7d32); color: #fff; font-weight: 700; text-align: center; padding: .8rem 1rem; border-radius: 8px; margin: .25rem 0 1rem; }
+.confirm-warning { background: linear-gradient(to bottom, #f0ad4e, #ec971f); color: #333; font-weight: 600; text-align: center; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #d58512; }
+
+/* ---- Forms ---- */
+.form-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.form-group { margin-bottom: 0.75rem; }
+.form-group label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; color: #000; }
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.95rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    color: #000;
+}
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled { background: #f5f5f5; color: #555; }
+.form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.form-group input[type=checkbox] { width: auto; }
+.required { color: red; font-weight: bold; }
+.radio-group label { display: inline; font-weight: normal; margin-right: 1rem; }
+.radio-group input[type=radio] { width: auto; margin-right: 0.25rem; }
+
+/* ---- Freq warning ---- */
+.freq-warning {
+    background-color: #d32f2f;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+    margin: 10px 0;
+    border: 2px solid #b71c1c;
+    display: none;
+}
+
+/* ---- UTE Table ---- */
+.ute-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 0.85rem; }
+.ute-table th, .ute-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
+.ute-table th { background-color: #f2f2f2; color: #333; }
+.copyable-cell { cursor: pointer; color: #14337b; font-weight: bold; }
+.copyable-cell:hover { text-decoration: underline; background-color: #f0f0f0; }
+.table-hint { text-align: center; font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
+
+/* ---- Search results ---- */
+details { border: 1px solid #ddd; border-radius: 4px; margin-bottom: 0.5rem; }
+details summary { padding: 0.5rem 0.75rem; cursor: pointer; font-weight: 600; background: #e8f5e9; border-radius: 4px; user-select: none; }
+details[open] summary { border-bottom: 1px solid #ddd; border-radius: 4px 4px 0 0; }
+details > .details-body { padding: 0.75rem; }
+
+/* ---- Readonly fields ---- */
+.readonly-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+.readonly-field { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 0.3rem 0.5rem; }
+.readonly-field small { font-size: 0.75rem; color: #666; display: block; }
+.readonly-field span { font-size: 0.9rem; color: #000; }
+.readonly-full { grid-column: 1 / -1; }
+.source-caption { font-size: 0.8rem; color: #666; margin-top: 0.5rem; text-align: center; }
+
+/* ---- Selection screen ---- */
+.selecao-logo { display: flex; justify-content: center; margin: 1.5rem 0 1rem; }
+.selecao-logo img { width: 170px; }
+.selecao-title { text-align: center; color: #14337b; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.selecao-sub { text-align: center; color: #333; margin-bottom: 1rem; }
+
+/* ---- Multiselect ---- */
+select[multiple] { min-height: 100px; }
+
+/* ---- Responsive ---- */
+@media (max-width: 480px) {
+    .header-img { height: 38px; }
+    .header-title { font-size: 1.3rem; }
+    .header { gap: 5px; }
+    .form-cols { grid-template-columns: 1fr; }
+    .readonly-grid { grid-template-columns: 1fr; }
+}

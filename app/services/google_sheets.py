@@ -2,7 +2,9 @@ import unicodedata
 
 import gspread
 import pandas as pd
-import streamlit as st
+import logging
+import tomllib
+from pathlib import Path
 from google.oauth2.service_account import Credentials
 
 from app.config import ABAS_SISTEMA
@@ -16,22 +18,29 @@ from app.utils.formatters import (
 )
 from typing import Dict, List
 
+_gspread_client = None
 
-@st.cache_resource(ttl=3600, show_spinner=False)
+
 def obter_cliente_gspread():
-    try:
-        info = st.secrets["gcp_service_account"]
-        creds = Credentials.from_service_account_info(
-            info,
-            scopes=[
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive",
-            ],
-        )
-        return gspread.authorize(creds)
-    except Exception as e:
-        st.error(f"Erro na autenticação: {e}")
-        return None
+    global _gspread_client
+    if _gspread_client is None:
+        _gspread_client = _criar_cliente_gspread()
+    return _gspread_client
+
+
+def _criar_cliente_gspread():
+    secrets_path = Path(".streamlit/secrets.toml")
+    with open(secrets_path, "rb") as _f:
+        _secrets = tomllib.load(_f)
+    info = _secrets["gcp_service_account"]
+    creds = Credentials.from_service_account_info(
+        info,
+        scopes=[
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ],
+    )
+    return gspread.authorize(creds)
 
 
 def buscar_planilhas(client):
@@ -58,7 +67,7 @@ def buscar_planilhas(client):
                 planilhas[nome_exibicao] = file_id
         return planilhas
     except Exception as e:
-        st.error(f"Erro ao listar arquivos: {e}")
+        logging.error(f"Erro ao listar arquivos: {e}")
         return {}
 
 
@@ -66,7 +75,6 @@ def abrir_planilha_selecionada(_client, spreadsheet_id):
     return _client.open_by_key(spreadsheet_id)
 
 
-@st.cache_data(ttl=150, show_spinner=False)
 def listar_abas_estacoes(_client, spreadsheet_id):
     try:
         planilha = abrir_planilha_selecionada(_client, spreadsheet_id)
@@ -173,7 +181,6 @@ def verificar_frequencia_global(client, spreadsheet_id, freq_digitada):
     return None
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
 def obter_fuso_horario_evento(_client, spreadsheet_id):
     fuso_padrao = "America/Sao_Paulo"
     try:
@@ -199,7 +206,6 @@ def obter_fuso_horario_evento(_client, spreadsheet_id):
     return fuso_padrao
 
 
-@st.cache_data(ttl=150, show_spinner=False)
 def carregar_dados_ute(_client, spreadsheet_id):
     try:
         planilha = abrir_planilha_selecionada(_client, spreadsheet_id)
@@ -225,7 +231,6 @@ def carregar_dados_ute(_client, spreadsheet_id):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=150, show_spinner=False)
 def carregar_pendencias_painel_mapeadas(_client, spreadsheet_id):
     try:
         planilha = abrir_planilha_selecionada(_client, spreadsheet_id)
@@ -297,7 +302,6 @@ def carregar_pendencias_painel_mapeadas(_client, spreadsheet_id):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=150, show_spinner=False)
 def carregar_pendencias_abordagem_pendentes(_client, spreadsheet_id):
     try:
         planilha = abrir_planilha_selecionada(_client, spreadsheet_id)
@@ -345,7 +349,6 @@ def carregar_pendencias_abordagem_pendentes(_client, spreadsheet_id):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=150, show_spinner=False)
 def carregar_pendencias_todas_estacoes(_client, spreadsheet_id):
     try:
         estacoes = listar_abas_estacoes(_client, spreadsheet_id)
@@ -447,7 +450,6 @@ def carregar_pendencias_todas_estacoes(_client, spreadsheet_id):
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=150, show_spinner=False)
 def carregar_todas_frequencias(_client, spreadsheet_id):
     frequencias_map = {}
     try:
@@ -586,7 +588,7 @@ def inserir_emissao_I_W(
         aba.update(f"I{row}:W{row}", [vals], value_input_option="RAW")
         return True
     except Exception as e:
-        st.error(f"Erro inserção: {e}")
+        logging.error(f"Erro inserção: {e}")
         return False
 
 
@@ -610,7 +612,6 @@ def inserir_bsr_erb(_client, spreadsheet_id, tipo, regiao, lat, lon) -> str:
         return f"ERRO: {e}"
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
 def carregar_opcoes_identificacao(_client, spreadsheet_id):
     try:
         planilha = abrir_planilha_selecionada(_client, spreadsheet_id)
