@@ -16,8 +16,8 @@ def tela_bsr_erb(client, spread_id):
             tipo = st.radio(f"Tipo {OBRIG}", ("BSR/Jammer", "ERB Fake"))
             regiao = st.text_input(f"Local {OBRIG}")
             c1, c2 = st.columns(2)
-            lat = c1.text_input("Latitude (-N.NNNN)")
-            lon = c2.text_input("Longitude (-N.NNNN)")
+            lat = c1.text_input("Latitude (-N.NNNNNN)")
+            lon = c2.text_input("Longitude (-N.NNNNNN)")
             submitted = st.form_submit_button("Registrar", use_container_width=True)
             if submitted:
                 if not regiao:
