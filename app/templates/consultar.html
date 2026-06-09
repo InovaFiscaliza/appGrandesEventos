@@ -102,16 +102,20 @@
         <div class="form-group">
             <label>Interferente? <span class="required">*</span></label>
             <select name="interf_edit">
+                {% set interf_v = selected_row.get('Interferente?', '') %}
+                {% set interf_display = interf_v if interf_v in ["Sim", "Não", "Indefinido"] else "Indefinido" %}
                 {% for op in ["Sim", "Não", "Indefinido"] %}
-                <option value="{{ op }}" {% if op == selected_row.get('Interferente?', 'Indefinido') %}selected{% endif %}>{{ op }}</option>
+                <option value="{{ op }}" {% if op == interf_display %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
             <label>Situação <span class="required">*</span></label>
             <select name="situ_edit">
+                {% set situ_v = selected_row.get('Situação', '') %}
+                {% set situ_display = situ_v if situ_v in ["Pendente", "Concluído"] else "Pendente" %}
                 {% for op in ["Pendente", "Concluído"] %}
-                <option value="{{ op }}" {% if op == selected_row.get('Situação', 'Pendente') %}selected{% endif %}>{{ op }}</option>
+                <option value="{{ op }}" {% if op == situ_display %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
