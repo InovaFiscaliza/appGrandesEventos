@@ -19,6 +19,7 @@ async def get_selecao(request: Request):
     eventos = buscar_planilhas(client) if client else {}
 
     return templates.TemplateResponse(
+        request,
         "selecao.html",
         {
             "request": request,

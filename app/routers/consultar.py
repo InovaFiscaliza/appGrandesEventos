@@ -80,6 +80,7 @@ async def get_consultar(request: Request, key: str = ""):
                 selected_row = row.to_dict()
 
     return templates.TemplateResponse(
+        request,
         "consultar.html",
         _ctx(
             request,

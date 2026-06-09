@@ -47,6 +47,7 @@ async def get_ute(request: Request, sort: str = "Frequência (MHz)", dir: str = 
         rows = df.to_dict(orient="records")
 
     return templates.TemplateResponse(
+        request,
         "tabela_ute.html",
         _ctx(
             request,

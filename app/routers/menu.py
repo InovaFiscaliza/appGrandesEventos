@@ -31,6 +31,7 @@ async def get_menu(request: Request):
     total = sum(len(df) for df in [df_painel, df_abord, df_estac] if df is not None)
 
     return templates.TemplateResponse(
+        request,
         "menu.html",
         {
             "request": request,

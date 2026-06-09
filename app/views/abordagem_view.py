@@ -313,7 +313,7 @@ def tela_inserir(client, spread_id):
                     "Interferente?": interferente,
                 }
                 if inserir_emissao_I_W(client, spread_id, dados_submit):
-                    st.session_state.insert_success = "Emissão inserida com sucesso."
+                    st.session_state.insert_success = "Emissão inserida com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Registrar Emissão."
                     st.session_state.aba_conflito = None
                     st.rerun()
 

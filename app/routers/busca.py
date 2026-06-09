@@ -72,6 +72,7 @@ async def get_busca(request: Request):
     abas_opcoes = ["Abordagem"] + abas_est
 
     return templates.TemplateResponse(
+        request,
         "busca.html",
         _ctx(
             request,
@@ -103,6 +104,7 @@ async def post_busca(request: Request):
 
     if len(termo) < 3:
         return templates.TemplateResponse(
+            request,
             "busca.html",
             _ctx(
                 request,
@@ -125,6 +127,7 @@ async def post_busca(request: Request):
     )
 
     return templates.TemplateResponse(
+        request,
         "busca.html",
         _ctx(
             request,

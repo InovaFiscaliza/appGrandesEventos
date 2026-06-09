@@ -26,6 +26,7 @@ async def get_bsr_erb(request: Request):
     if not request.session.get("spreadsheet_id"):
         return RedirectResponse("/", status_code=302)
     return templates.TemplateResponse(
+        request,
         "bsr_erb.html",
         _ctx(
             request,
@@ -59,6 +60,7 @@ async def post_bsr_erb(request: Request):
 
     if error:
         return templates.TemplateResponse(
+            request,
             "bsr_erb.html",
             _ctx(
                 request,
@@ -76,6 +78,7 @@ async def post_bsr_erb(request: Request):
 
     if res.startswith("ERRO"):
         return templates.TemplateResponse(
+            request,
             "bsr_erb.html",
             _ctx(
                 request,

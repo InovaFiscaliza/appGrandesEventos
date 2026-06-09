@@ -43,6 +43,7 @@ async def get_inserir(request: Request):
     agora = datetime.now(ZoneInfo(fuso))
 
     return templates.TemplateResponse(
+        request,
         "inserir.html",
         _ctx(
             request,
@@ -105,6 +106,7 @@ async def post_inserir(request: Request):
 
     if erros:
         return templates.TemplateResponse(
+            request,
             "inserir.html",
             _ctx(
                 request,
@@ -170,6 +172,7 @@ async def post_inserir(request: Request):
         return RedirectResponse("/inserir", status_code=303)
 
     return templates.TemplateResponse(
+        request,
         "inserir.html",
         _ctx(
             request,

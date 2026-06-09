@@ -77,8 +77,10 @@
         <div class="form-group">
             <label>Autorizado? <span class="required">*</span></label>
             <select name="autz_edit">
+                {% set autz_v = selected_row.get('Autorizado?', '') %}
+                {% set autz_display = autz_v if autz_v in ["Sim", "Não", "Não licenciável"] else "Não licenciável" %}
                 {% for op in ["Sim", "Não", "Não licenciável"] %}
-                <option value="{{ op }}" {% if op == selected_row.get('Autorizado?', 'Não licenciável') %}selected{% endif %}>{{ op }}</option>
+                <option value="{{ op }}" {% if op == autz_display %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
