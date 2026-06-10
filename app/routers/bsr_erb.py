@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.google_sheets import inserir_bsr_erb, obter_cliente_gspread
-from app.utils.formatters import _img_b64, _valid_neg_coord
+from app.utils.formatters import _img_b64, _normalize_coord, _valid_coord
 from app.config import TITULO_PRINCIPAL
 
 router = APIRouter()
@@ -52,11 +52,16 @@ async def post_bsr_erb(request: Request):
     lat = form.get("lat", "").strip()
     lon = form.get("lon", "").strip()
 
+    lat = _normalize_coord(lat)
+    lon = _normalize_coord(lon)
+
     error = None
     if not regiao:
         error = "O campo 'Local' é obrigatório."
-    elif not _valid_neg_coord(lat) or not _valid_neg_coord(lon):
-        error = "Coordenadas inválidas. Use o formato -N.NNNNNN."
+    elif not _valid_coord(lat, -90.0, 90.0):
+        error = "Latitude inválida. Deve ser um número entre -90 e 90."
+    elif not _valid_coord(lon, -180.0, 180.0):
+        error = "Longitude inválida. Deve ser um número entre -180 e 180."
 
     if error:
         return templates.TemplateResponse(
@@ -74,7 +79,10 @@ async def post_bsr_erb(request: Request):
         )
 
     client = obter_cliente_gspread()
-    res = inserir_bsr_erb(client, sp_id, tipo, regiao, lat, lon)
+    # Troca ponto por vírgula para compatibilidade com locale pt-BR do Google Sheets
+    lat_sheets = lat.replace(".", ",") if lat else ""
+    lon_sheets = lon.replace(".", ",") if lon else ""
+    res = inserir_bsr_erb(client, sp_id, tipo, regiao, lat_sheets, lon_sheets)
 
     if res.startswith("ERRO"):
         return templates.TemplateResponse(

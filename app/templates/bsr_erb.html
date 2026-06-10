@@ -21,12 +21,18 @@
         </div>
         <div class="form-cols">
             <div class="form-group">
-                <label>Latitude (-N.NNNNNN)</label>
-                <input type="text" name="lat" value="{{ lat or '' }}" placeholder="-23.550520">
+                <label>Latitude (-90 a 90)</label>
+                <input type="text" inputmode="decimal" name="lat" value="{{ lat or '' }}"
+                       placeholder="-23.550520"
+                       pattern="^[+-]?\d+([.,]\d+)?$"
+                       title="Número entre -90 e 90. Use ponto ou vírgula como decimal.">
             </div>
             <div class="form-group">
-                <label>Longitude (-N.NNNNNN)</label>
-                <input type="text" name="lon" value="{{ lon or '' }}" placeholder="-46.633309">
+                <label>Longitude (-180 a 180)</label>
+                <input type="text" inputmode="decimal" name="lon" value="{{ lon or '' }}"
+                       placeholder="-46.633309"
+                       pattern="^[+-]?\d+([.,]\d+)?$"
+                       title="Número entre -180 e 180. Use ponto ou vírgula como decimal.">
             </div>
         </div>
         <button type="submit" class="btn btn-submit">Registrar</button>

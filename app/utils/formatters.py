@@ -30,6 +30,27 @@ def _valid_neg_coord(value: str) -> bool:
     return re.match(r"^-\d+\.\d{6}$", v) is not None
 
 
+def _normalize_coord(value: str) -> str:
+    """Normaliza separador decimal: troca vírgula por ponto."""
+    if value is None:
+        return ""
+    return value.strip().replace(",", ".")
+
+
+def _valid_coord(value: str, min_val: float, max_val: float) -> bool:
+    """Valida se a coordenada é um número float dentro do intervalo [min_val, max_val]."""
+    if value is None:
+        return True
+    v = _normalize_coord(value)
+    if v == "":
+        return True
+    try:
+        f = float(v)
+        return min_val <= f <= max_val
+    except ValueError:
+        return False
+
+
 def _first_col_match(columns, *preds):
     for c in columns:
         s = (c or "").strip().lower()
