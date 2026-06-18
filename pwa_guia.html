@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guia PWA – AppEventos</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      line-height: 1.7;
+    }
+
+    header {
+      background: linear-gradient(135deg, #0078d4, #005a9e);
+      color: white;
+      padding: 40px 24px;
+      text-align: center;
+    }
+    header h1 { font-size: 2rem; margin-bottom: 8px; }
+    header p  { font-size: 1.05rem; opacity: 0.9; }
+
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 0.82rem;
+      margin-top: 12px;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 16px 60px;
+    }
+
+    /* ── SUMÁRIO ── */
+    .toc {
+      background: white;
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin-bottom: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    }
+    .toc h2 { font-size: 1rem; color: #0078d4; margin-bottom: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    .toc ol  { padding-left: 20px; }
+    .toc li  { margin: 6px 0; }
+    .toc a   { color: #0078d4; text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+
+    /* ── SEÇÕES ── */
+    section {
+      background: white;
+      border-radius: 10px;
+      padding: 28px 32px;
+      margin-bottom: 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    }
+    section h2 {
+      font-size: 1.25rem;
+      color: #0078d4;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e8f0fe;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    section h3 {
+      font-size: 1rem;
+      color: #1a1a2e;
+      margin: 20px 0 8px;
+      font-weight: 600;
+    }
+    section p  { margin-bottom: 12px; color: #444; }
+
+    /* ── ÍCONE EMOJI ── */
+    .icon { font-size: 1.3rem; }
+
+    /* ── BLOCOS DE CÓDIGO ── */
+    .code-block {
+      background: #1e1e2e;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+    .code-block .code-header {
+      background: #2d2d3f;
+      color: #8be9fd;
+      font-size: 0.78rem;
+      padding: 8px 16px;
+      font-family: monospace;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .code-block pre {
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    .code-block code { color: #f8f8f2; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+
+    /* cores de syntax */
+    .kw  { color: #ff79c6; }   /* keyword  */
+    .st  { color: #f1fa8c; }   /* string   */
+    .cm  { color: #6272a4; }   /* comment  */
+    .fn  { color: #50fa7b; }   /* function */
+    .nb  { color: #8be9fd; }   /* built-in */
+    .nm  { color: #ffb86c; }   /* name     */
+
+    /* ── TABELA ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #0078d4;
+      color: white;
+      padding: 10px 14px;
+      text-align: left;
+    }
+    td { padding: 9px 14px; border-bottom: 1px solid #e8ecf4; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f7f9ff; }
+
+    /* ── FLUXO ── */
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .flow-step {
+      flex: 1 1 160px;
+      background: #f0f6ff;
+      border: 1px solid #c8deff;
+      border-radius: 8px;
+      padding: 14px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #004a99;
+    }
+    .flow-step .num {
+      display: block;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #0078d4;
+      margin-bottom: 6px;
+    }
+    .arrow {
+      align-self: center;
+      font-size: 1.3rem;
+      color: #0078d4;
+    }
+
+    /* ── NOTA DE ALERTA ── */
+    .alert {
+      background: #fff8e1;
+      border-left: 4px solid #f59e0b;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      color: #7c5e00;
+    }
+    .alert strong { color: #b45309; }
+
+    /* ── CHECKLIST ── */
+    .checklist { list-style: none; padding: 0; }
+    .checklist li { padding: 6px 0; display: flex; align-items: flex-start; gap: 10px; }
+    .checklist li::before { content: '✅'; flex-shrink: 0; }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 0.82rem;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚀 AppEventos como PWA</h1>
+  <p>Transforme o seu app FastAPI em um aplicativo instalável e com suporte offline</p>
+  <span class="badge">Técnica semelhante ao WhatsApp Web</span>
+</header>
+
+<main>
+
+  <!-- SUMÁRIO -->
+  <nav class="toc">
+    <h2>📋 Sumário</h2>
+    <ol>
+      <li><a href="#conceito">O que é uma PWA e como o WhatsApp usa isso</a></li>
+      <li><a href="#arquitetura">Arquitetura da solução</a></li>
+      <li><a href="#manifest">Passo 1 – manifest.json (identidade do app)</a></li>
+      <li><a href="#sw">Passo 2 – Service Worker (motor offline)</a></li>
+      <li><a href="#offline-page">Passo 3 – Página offline</a></li>
+      <li><a href="#base-html">Passo 4 – Atualizar base.html</a></li>
+      <li><a href="#fastapi">Passo 5 – Rota /sw.js no FastAPI</a></li>
+      <li><a href="#resultado">O que o usuário vai experimentar</a></li>
+      <li><a href="#checklist">Checklist de implementação</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1. CONCEITO -->
+  <section id="conceito">
+    <h2><span class="icon">💡</span> O que é uma PWA e como o WhatsApp usa isso</h2>
+    <p>
+      Uma <strong>PWA (Progressive Web App)</strong> é um site que se comporta como um app nativo.
+      O WhatsApp Web usa exatamente essa técnica: ele registra um <strong>Service Worker</strong>
+      no navegador, que funciona como um proxy entre o app e a internet.
+    </p>
+    <p>
+      Quando a conexão cai, o Service Worker intercepta as requisições e serve páginas
+      que estão salvas em cache local — por isso o WhatsApp continua abrindo mesmo offline.
+    </p>
+
+    <div class="flow">
+      <div class="flow-step"><span class="num">1</span>Usuário acessa o app com internet</div>
+      <div class="arrow">→</div>
+      <div class="flow-step"><span class="num">2</span>Service Worker é instalado e faz cache das páginas</div>
+      <div class="arrow">→</div>
+      <div class="flow-step"><span class="num">3</span>Internet cai</div>
+      <div class="arrow">→</div>
+      <div class="flow-step"><span class="num">4</span>SW serve do cache — app continua funcionando</div>
+    </div>
+  </section>
+
+  <!-- 2. ARQUITETURA -->
+  <section id="arquitetura">
+    <h2><span class="icon">🏗️</span> Arquitetura da solução</h2>
+    <p>São 5 arquivos a criar/modificar:</p>
+    <table>
+      <tr>
+        <th>Arquivo</th><th>Localização</th><th>Função</th>
+      </tr>
+      <tr><td><code>manifest.json</code></td><td><code>app/static/</code></td><td>Identidade do app (nome, ícone, cor)</td></tr>
+      <tr><td><code>sw.js</code></td><td><code>app/static/</code></td><td>Service Worker – motor do offline</td></tr>
+      <tr><td><code>offline.html</code></td><td><code>app/static/</code></td><td>Página exibida sem internet</td></tr>
+      <tr><td><code>base.html</code></td><td><code>app/templates/</code></td><td>Registrar o SW e linkar o manifest</td></tr>
+      <tr><td><code>main.py</code></td><td>raiz</td><td>Rota <code>/sw.js</code> na raiz</td></tr>
+    </table>
+  </section>
+
+  <!-- 3. MANIFEST -->
+  <section id="manifest">
+    <h2><span class="icon">📄</span> Passo 1 – <code>app/static/manifest.json</code></h2>
+    <p>
+      O <strong>manifest.json</strong> é a "carteira de identidade" do app. Ele diz ao navegador
+      como o app deve se chamar, qual ícone usar e como abrir.
+    </p>
+    <div class="code-block">
+      <div class="code-header">📁 app/static/manifest.json</div>
+      <pre><code>{
+  <span class="st">"name"</span>: <span class="st">"AppEventos"</span>,
+  <span class="st">"short_name"</span>: <span class="st">"Eventos"</span>,
+  <span class="st">"start_url"</span>: <span class="st">"/"</span>,
+  <span class="st">"display"</span>: <span class="st">"standalone"</span>,
+  <span class="st">"background_color"</span>: <span class="st">"#ffffff"</span>,
+  <span class="st">"theme_color"</span>: <span class="st">"#0078d4"</span>,
+  <span class="st">"icons"</span>: [
+    { <span class="st">"src"</span>: <span class="st">"/static/icon-192.png"</span>, <span class="st">"sizes"</span>: <span class="st">"192x192"</span>, <span class="st">"type"</span>: <span class="st">"image/png"</span> },
+    { <span class="st">"src"</span>: <span class="st">"/static/icon-512.png"</span>, <span class="st">"sizes"</span>: <span class="st">"512x512"</span>, <span class="st">"type"</span>: <span class="st">"image/png"</span> }
+  ]
+}</code></pre>
+    </div>
+
+    <h3>O que cada campo faz</h3>
+    <table>
+      <tr><th>Campo</th><th>Onde aparece</th></tr>
+      <tr><td><code>name</code></td><td>Diálogo "Adicionar à tela inicial"</td></tr>
+      <tr><td><code>short_name</code></td><td>Embaixo do ícone na tela do celular</td></tr>
+      <tr><td><code>display: standalone</code></td><td>Esconde a barra do navegador — parece app nativo</td></tr>
+      <tr><td><code>theme_color</code></td><td>Cor da barra de status do Android</td></tr>
+      <tr><td><code>icons</code></td><td>Ícone na tela inicial e na splash screen</td></tr>
+    </table>
+  </section>
+
+  <!-- 4. SERVICE WORKER -->
+  <section id="sw">
+    <h2><span class="icon">⚙️</span> Passo 2 – <code>app/static/sw.js</code></h2>
+    <p>
+      O Service Worker é um script JavaScript que roda <strong>em segundo plano no navegador</strong>,
+      interceptando todas as requisições de rede. Usa a estratégia
+      <strong>Network First com fallback para cache</strong> — igual ao WhatsApp.
+    </p>
+    <div class="code-block">
+      <div class="code-header">📁 app/static/sw.js</div>
+      <pre><code><span class="kw">const</span> <span class="nm">CACHE</span> = <span class="st">"appEventos-v1"</span>;
+<span class="kw">const</span> <span class="nm">SHELL</span> = [
+  <span class="st">"/static/style.css"</span>,
+  <span class="st">"/static/offline.html"</span>,
+];
+
+<span class="cm">// Instalação: pré-carrega os assets essenciais</span>
+<span class="nb">self</span>.<span class="fn">addEventListener</span>(<span class="st">"install"</span>, <span class="nm">e</span> => {
+  <span class="nm">e</span>.<span class="fn">waitUntil</span>(
+    <span class="fn">caches</span>.<span class="fn">open</span>(<span class="nm">CACHE</span>).<span class="fn">then</span>(<span class="nm">c</span> => <span class="nm">c</span>.<span class="fn">addAll</span>(<span class="nm">SHELL</span>))
+  );
+  <span class="nb">self</span>.<span class="fn">skipWaiting</span>();
+});
+
+<span class="cm">// Ativação: remove caches de versões antigas</span>
+<span class="nb">self</span>.<span class="fn">addEventListener</span>(<span class="st">"activate"</span>, <span class="nm">e</span> => {
+  <span class="nm">e</span>.<span class="fn">waitUntil</span>(
+    <span class="fn">caches</span>.<span class="fn">keys</span>().<span class="fn">then</span>(<span class="nm">keys</span> =>
+      <span class="nb">Promise</span>.<span class="fn">all</span>(<span class="nm">keys</span>.<span class="fn">filter</span>(<span class="nm">k</span> => <span class="nm">k</span> !== <span class="nm">CACHE</span>).<span class="fn">map</span>(<span class="nm">k</span> => <span class="fn">caches</span>.<span class="fn">delete</span>(<span class="nm">k</span>)))
+    )
+  );
+  <span class="nb">self</span>.<span class="fn">clients</span>.<span class="fn">claim</span>();
+});
+
+<span class="cm">// Fetch: tenta a rede primeiro, cai para cache se offline</span>
+<span class="nb">self</span>.<span class="fn">addEventListener</span>(<span class="st">"fetch"</span>, <span class="nm">e</span> => {
+  <span class="kw">if</span> (<span class="nm">e</span>.<span class="nm">request</span>.<span class="nm">method</span> !== <span class="st">"GET"</span>) <span class="kw">return</span>;
+
+  <span class="nm">e</span>.<span class="fn">respondWith</span>(
+    <span class="fn">fetch</span>(<span class="nm">e</span>.<span class="nm">request</span>)
+      .<span class="fn">then</span>(<span class="nm">res</span> => {
+        <span class="kw">const</span> <span class="nm">clone</span> = <span class="nm">res</span>.<span class="fn">clone</span>();
+        <span class="fn">caches</span>.<span class="fn">open</span>(<span class="nm">CACHE</span>).<span class="fn">then</span>(<span class="nm">c</span> => <span class="nm">c</span>.<span class="fn">put</span>(<span class="nm">e</span>.<span class="nm">request</span>, <span class="nm">clone</span>));
+        <span class="kw">return</span> <span class="nm">res</span>;
+      })
+      .<span class="fn">catch</span>(() =>
+        <span class="fn">caches</span>.<span class="fn">match</span>(<span class="nm">e</span>.<span class="nm">request</span>).<span class="fn">then</span>(<span class="nm">cached</span> =>
+          <span class="nm">cached</span> || <span class="fn">caches</span>.<span class="fn">match</span>(<span class="st">"/static/offline.html"</span>)
+        )
+      )
+  );
+});</code></pre>
+    </div>
+
+    <h3>Estratégia Network First</h3>
+    <div class="flow">
+      <div class="flow-step"><span class="num">1</span>Tenta buscar da rede (Google Sheets, etc.)</div>
+      <div class="arrow">→</div>
+      <div class="flow-step"><span class="num">2</span>Se ok: salva no cache e retorna</div>
+      <div class="arrow">→</div>
+      <div class="flow-step"><span class="num">3</span>Se falhou: busca do cache local</div>
+      <div class="arrow">→</div>
+      <div class="flow-step"><span class="num">4</span>Se não tem cache: mostra offline.html</div>
+    </div>
+  </section>
+
+  <!-- 5. OFFLINE PAGE -->
+  <section id="offline-page">
+    <h2><span class="icon">📵</span> Passo 3 – <code>app/static/offline.html</code></h2>
+    <p>Página exibida quando o usuário tenta acessar algo sem internet e sem cache.</p>
+    <div class="code-block">
+      <div class="code-header">📁 app/static/offline.html</div>
+      <pre><code><span class="kw">&lt;!DOCTYPE html&gt;</span>
+<span class="nm">&lt;html</span> <span class="st">lang="pt-BR"</span><span class="nm">&gt;</span>
+<span class="nm">&lt;head&gt;</span>
+  <span class="nm">&lt;meta</span> <span class="st">charset="UTF-8"</span><span class="nm">&gt;</span>
+  <span class="nm">&lt;meta</span> <span class="st">name="viewport"</span> <span class="st">content="width=device-width, initial-scale=1.0"</span><span class="nm">&gt;</span>
+  <span class="nm">&lt;title&gt;</span>Sem conexão<span class="nm">&lt;/title&gt;</span>
+  <span class="nm">&lt;link</span> <span class="st">rel="stylesheet"</span> <span class="st">href="/static/style.css"</span><span class="nm">&gt;</span>
+<span class="nm">&lt;/head&gt;</span>
+<span class="nm">&lt;body&gt;</span>
+  <span class="nm">&lt;div</span> <span class="st">class="container"</span><span class="nm">&gt;</span>
+    <span class="nm">&lt;h2&gt;</span>📵 Você está offline<span class="nm">&lt;/h2&gt;</span>
+    <span class="nm">&lt;p&gt;</span>Verifique sua conexão e tente novamente.<span class="nm">&lt;/p&gt;</span>
+    <span class="nm">&lt;button</span> <span class="st">onclick="location.reload()"</span><span class="nm">&gt;</span>Tentar novamente<span class="nm">&lt;/button&gt;</span>
+  <span class="nm">&lt;/div&gt;</span>
+<span class="nm">&lt;/body&gt;</span>
+<span class="nm">&lt;/html&gt;</span></code></pre>
+    </div>
+  </section>
+
+  <!-- 6. BASE HTML -->
+  <section id="base-html">
+    <h2><span class="icon">🖼️</span> Passo 4 – Atualizar <code>app/templates/base.html</code></h2>
+    <p>Adicionar o link para o manifest e o script de registro do Service Worker.</p>
+    <div class="code-block">
+      <div class="code-header">📁 app/templates/base.html</div>
+      <pre><code><span class="kw">&lt;!DOCTYPE html&gt;</span>
+<span class="nm">&lt;html</span> <span class="st">lang="pt-BR"</span><span class="nm">&gt;</span>
+<span class="nm">&lt;head&gt;</span>
+    <span class="nm">&lt;meta</span> <span class="st">charset="UTF-8"</span><span class="nm">&gt;</span>
+    <span class="nm">&lt;meta</span> <span class="st">name="viewport"</span> <span class="st">content="width=device-width, initial-scale=1.0"</span><span class="nm">&gt;</span>
+    <span class="nm">&lt;title&gt;</span>AppEventos<span class="nm">&lt;/title&gt;</span>
+    <span class="nm">&lt;link</span> <span class="st">rel="stylesheet"</span> <span class="st">href="/static/style.css"</span><span class="nm">&gt;</span>
+
+    <span class="cm">&lt;!-- PWA: identidade do app --&gt;</span>
+    <span class="nm">&lt;link</span> <span class="st">rel="manifest"</span> <span class="st">href="/static/manifest.json"</span><span class="nm">&gt;</span>
+    <span class="nm">&lt;meta</span> <span class="st">name="theme-color"</span> <span class="st">content="#0078d4"</span><span class="nm">&gt;</span>
+<span class="nm">&lt;/head&gt;</span>
+<span class="nm">&lt;body&gt;</span>
+<span class="nm">&lt;div</span> <span class="st">class="container"</span><span class="nm">&gt;</span>
+<span class="kw">{% block content %}{% endblock %}</span>
+<span class="nm">&lt;/div&gt;</span>
+
+<span class="cm">&lt;!-- PWA: registrar o Service Worker --&gt;</span>
+<span class="nm">&lt;script&gt;</span>
+  <span class="kw">if</span> (<span class="st">'serviceWorker'</span> <span class="kw">in</span> navigator) {
+    navigator.serviceWorker.<span class="fn">register</span>(<span class="st">'/sw.js'</span>)
+      .<span class="fn">then</span>(<span class="nm">r</span> => console.<span class="fn">log</span>(<span class="st">'SW registrado:'</span>, <span class="nm">r</span>.scope))
+      .<span class="fn">catch</span>(<span class="nm">e</span> => console.<span class="fn">error</span>(<span class="st">'SW falhou:'</span>, <span class="nm">e</span>));
+  }
+<span class="nm">&lt;/script&gt;</span>
+<span class="nm">&lt;/body&gt;</span>
+<span class="nm">&lt;/html&gt;</span></code></pre>
+    </div>
+  </section>
+
+  <!-- 7. FASTAPI -->
+  <section id="fastapi">
+    <h2><span class="icon">🐍</span> Passo 5 – Rota <code>/sw.js</code> em <code>main.py</code></h2>
+    <p>
+      O Service Worker <strong>deve ser servido da raiz</strong> (<code>/sw.js</code>), não de
+      <code>/static/sw.js</code>. Adicione esta rota no <code>main.py</code>:
+    </p>
+    <div class="code-block">
+      <div class="code-header">📁 main.py — adicionar após app.mount("/static", ...)</div>
+      <pre><code><span class="kw">from</span> fastapi.responses <span class="kw">import</span> FileResponse
+
+<span class="nm">@app</span>.<span class="fn">get</span>(<span class="st">"/sw.js"</span>, include_in_schema=<span class="kw">False</span>)
+<span class="kw">async def</span> <span class="fn">service_worker</span>():
+    <span class="kw">return</span> <span class="fn">FileResponse</span>(<span class="st">"app/static/sw.js"</span>, media_type=<span class="st">"application/javascript"</span>)</code></pre>
+    </div>
+    <div class="alert">
+      <strong>⚠️ Por que na raiz?</strong> O Service Worker só tem controle sobre URLs dentro do
+      seu escopo. Um SW em <code>/static/sw.js</code> só controlaria páginas dentro de
+      <code>/static/</code>. Na raiz (<code>/sw.js</code>), ele controla todo o app.
+    </div>
+  </section>
+
+  <!-- 8. RESULTADO -->
+  <section id="resultado">
+    <h2><span class="icon">📱</span> O que o usuário vai experimentar</h2>
+    <table>
+      <tr><th>Situação</th><th>Comportamento</th></tr>
+      <tr><td>Primeira visita com internet</td><td>App é instalado no cache automaticamente</td></tr>
+      <tr><td>Celular/computador — "Adicionar à tela inicial"</td><td>Ícone aparece, abre sem barra do navegador</td></tr>
+      <tr><td>Internet cai durante uso</td><td>Páginas visitadas continuam abertas do cache</td></tr>
+      <tr><td>Tenta abrir página nunca visitada offline</td><td>Mostra a página "Você está offline"</td></tr>
+      <tr><td>Internet volta</td><td>Dados frescos do Google Sheets carregam normalmente</td></tr>
+    </table>
+
+    <div class="alert">
+      <strong>⚠️ Limitação dos dados:</strong> Os dados do Google Sheets só ficam disponíveis
+      offline se a página foi visitada com internet previamente. Para dados sempre disponíveis
+      offline, seria necessário adicionar <strong>IndexedDB</strong> para persistência local
+      no navegador — uma etapa futura opcional.
+    </div>
+  </section>
+
+  <!-- 9. CHECKLIST -->
+  <section id="checklist">
+    <h2><span class="icon">✅</span> Checklist de implementação</h2>
+    <ul class="checklist">
+      <li>Criar <code>app/static/manifest.json</code> com nome, cores e ícones</li>
+      <li>Criar <code>app/static/sw.js</code> com lógica Network First</li>
+      <li>Criar <code>app/static/offline.html</code> com mensagem de sem conexão</li>
+      <li>Adicionar ícones <code>icon-192.png</code> e <code>icon-512.png</code> em <code>app/static/</code></li>
+      <li>Atualizar <code>app/templates/base.html</code> com link manifest e script de registro</li>
+      <li>Adicionar rota <code>/sw.js</code> em <code>main.py</code></li>
+      <li>Testar no Chrome DevTools → aba <em>Application → Service Workers</em></li>
+      <li>Simular offline em DevTools → aba <em>Network → Offline</em></li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  AppEventos · Guia de implementação PWA · FastAPI + Service Worker
+</footer>
+
+</body>
+</html>
