@@ -10,6 +10,7 @@ Executar com:
 import secrets
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -22,6 +23,13 @@ app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
 
 # Arquivos estáticos (CSS, imagens)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+# Service Worker deve ser servido da raiz para ter escopo sobre todo o app
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    return FileResponse("app/static/sw.js", media_type="application/javascript")
+
 
 # Routers
 app.include_router(selecao.router)

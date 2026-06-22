@@ -135,10 +135,17 @@ async def post_consultar_salvar(request: Request):
     }
 
     client = obter_cliente_gspread()
-    if fonte in ("PAINEL", "ESTACAO"):
+    if fonte == "PAINEL":
+        # Dados da aba PAINEL → atualiza diretamente na aba "PAINEL"
+        res = atualizar_campos_na_aba_mae(client, sp_id, "PAINEL", id_val, pac)
+    elif fonte == "ESTACAO":
+        # Dados de aba de estação → estacao_raw é o nome da aba
         res = atualizar_campos_na_aba_mae(client, sp_id, estacao_raw, id_val, pac)
     else:
         res = atualizar_campos_abordagem_por_id(client, sp_id, id_val, pac)
 
-    request.session["flash_success"] = res
+    if res.startswith("ERRO") or res.startswith("Erro"):
+        request.session["flash_error"] = res
+    else:
+        request.session["flash_success"] = res
     return RedirectResponse("/consultar", status_code=303)

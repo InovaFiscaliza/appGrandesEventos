@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sem conexão – AppEventos</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .offline-box {
+      max-width: 400px;
+      margin: 80px auto;
+      text-align: center;
+      padding: 32px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.1);
+    }
+    .offline-box h2 { color: #0078d4; margin-bottom: 12px; }
+    .offline-box p  { color: #555; margin-bottom: 24px; }
+    .offline-box button {
+      background: #0078d4;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .offline-box button:hover { background: #005a9e; }
+  </style>
+</head>
+<body>
+  <div class="offline-box">
+    <h2>📵 Você está offline</h2>
+    <p>Verifique sua conexão com a internet e tente novamente.</p>
+    <button onclick="location.reload()">Tentar novamente</button>
+  </div>
+</body>
+</html>

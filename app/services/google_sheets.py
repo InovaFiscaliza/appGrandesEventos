@@ -493,9 +493,17 @@ def atualizar_campos_na_aba_mae(
         except Exception:
             return f"ERRO: Aba '{estacao_raw}' não encontrada na planilha."
         header = aba.row_values(1)
-        cell = aba.find(str(id_ocorrencia), in_column=1)
+        # Encontra a coluna do ID dinamicamente (não assume coluna 1)
+        id_col = None
+        for idx, name in enumerate(header, start=1):
+            if (name or "").strip().lower() == "id":
+                id_col = idx
+                break
+        if id_col is None:
+            id_col = 1  # fallback para coluna 1
+        cell = aba.find(str(id_ocorrencia), in_column=id_col)
         if not cell:
-            return f"ERRO: ID {id_ocorrencia} não encontrado."
+            return f"ERRO: ID {id_ocorrencia} não encontrado na aba '{estacao_raw}'."
 
         def find_col(*checks):
             for idx, name in enumerate(header, start=1):
