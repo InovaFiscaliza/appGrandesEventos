@@ -2,7 +2,7 @@ from urllib.parse import quote
 
 import pandas as pd
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.google_sheets import (
@@ -149,3 +149,42 @@ async def post_consultar_salvar(request: Request):
     else:
         request.session["flash_success"] = res
     return RedirectResponse("/consultar", status_code=303)
+
+
+@router.get("/api/pendencias")
+async def api_pendencias(request: Request):
+    """Retorna pendências como JSON para uso offline (IndexedDB)."""
+    sp_id = request.session.get("spreadsheet_id")
+    if not sp_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    client = obter_cliente_gspread()
+    df = _load_pendencias(client, sp_id)
+    if df.empty:
+        return JSONResponse([])
+    records = []
+    for _, row in df.iterrows():
+        records.append(
+            {
+                "row_key": _make_row_key(row),
+                "label": _make_label(row),
+                "fonte": str(row.get("Fonte", "")),
+                "id": str(row.get("ID", "")),
+                "local": str(row.get("Local", "")),
+                "fiscal": str(row.get("Fiscal", "")),
+                "data": str(row.get("Data", "")),
+                "hora": str(row.get("HH:mm", "")),
+                "freq": str(row.get("Frequência (MHz)", "")),
+                "largura": str(row.get("Largura (kHz)", "")),
+                "faixa": str(row.get("Faixa de Frequência Envolvida", "")),
+                "identificacao": str(row.get("Identificação", "")),
+                "autorizado": str(row.get("Autorizado?", "")),
+                "ute": str(row.get("UTE?", "")),
+                "processo_sei": str(row.get("Processo SEI UTE", "")),
+                "ocorrencia": str(row.get("Ocorrência (observações)", "")),
+                "ciente": str(row.get("Alguém mais ciente?", "")),
+                "interferente": str(row.get("Interferente?", "")),
+                "situacao": str(row.get("Situação", "")),
+                "estacao_raw": str(row.get("EstacaoRaw", "")),
+            }
+        )
+    return JSONResponse(records)

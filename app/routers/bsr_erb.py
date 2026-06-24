@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.google_sheets import inserir_bsr_erb, obter_cliente_gspread
@@ -101,3 +101,35 @@ async def post_bsr_erb(request: Request):
 
     request.session["flash_success"] = res
     return RedirectResponse("/bsr-erb", status_code=303)
+
+
+@router.post("/api/bsr-erb")
+async def api_bsr_erb(request: Request):
+    """Recebe JSON da fila offline (IndexedDB/sync.js) e insere na planilha."""
+    sp_id = request.session.get("spreadsheet_id")
+    if not sp_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    try:
+        dados = await request.json()
+    except Exception:
+        return JSONResponse({"erro": "JSON inválido"}, status_code=400)
+
+    tipo = dados.get("tipo", "BSR/Jammer")
+    regiao = dados.get("regiao", "").strip()
+    lat = _normalize_coord(dados.get("lat", ""))
+    lon = _normalize_coord(dados.get("lon", ""))
+
+    if not regiao:
+        return JSONResponse({"erro": "Campo 'Local' obrigatório"}, status_code=400)
+    if not _valid_coord(lat, -90.0, 90.0):
+        return JSONResponse({"erro": "Latitude inválida"}, status_code=400)
+    if not _valid_coord(lon, -180.0, 180.0):
+        return JSONResponse({"erro": "Longitude inválida"}, status_code=400)
+
+    client = obter_cliente_gspread()
+    lat_sheets = lat.replace(".", ",") if lat else ""
+    lon_sheets = lon.replace(".", ",") if lon else ""
+    res = inserir_bsr_erb(client, sp_id, tipo, regiao, lat_sheets, lon_sheets)
+    if res.startswith("ERRO"):
+        return JSONResponse({"erro": res}, status_code=500)
+    return JSONResponse({"ok": True, "msg": res})

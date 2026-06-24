@@ -7,6 +7,9 @@
 
 <div class="form-card">
     <form method="post" action="/inserir" id="form-inserir">
+        <div id="offline-aviso-inserir" class="flash flash-error" style="display:none">
+          ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
+        </div>
         <div class="form-cols">
             <div class="form-group">
                 <label>Data <span class="required">*</span></label>
@@ -91,11 +94,24 @@
     <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
 </div>
 
+<script src="/static/db.js"></script>
+<script src="/static/sync.js"></script>
 <script>
+// Aviso offline ao carregar
+if (!navigator.onLine) {
+  document.getElementById('offline-aviso-inserir').style.display = 'block';
+}
+window.addEventListener('offline', () => {
+  document.getElementById('offline-aviso-inserir').style.display = 'block';
+});
+window.addEventListener('online', () => {
+  document.getElementById('offline-aviso-inserir').style.display = 'none';
+});
+
 document.getElementById('freq').addEventListener('change', async function() {
     const val = parseFloat(this.value);
     const warn = document.getElementById('freq-warning');
-    if (val > 0) {
+    if (val > 0 && navigator.onLine) {
         try {
             const resp = await fetch('/check-freq?freq=' + val);
             const data = await resp.json();
@@ -109,6 +125,42 @@ document.getElementById('freq').addEventListener('change', async function() {
     } else {
         warn.style.display = 'none';
     }
+});
+
+document.getElementById('form-inserir').addEventListener('submit', async function(e) {
+  if (navigator.onLine) return; // deixa o POST normal acontecer
+  e.preventDefault();
+
+  const fd = new FormData(this);
+  const dados = {
+    'Dia':                          fd.get('dia')          || '',
+    'Hora':                         fd.get('hora')         || '',
+    'Fiscal':                       fd.get('fiscal')       || '',
+    'Local/Região':                  fd.get('local')        || '',
+    'Frequência em MHz':             fd.get('freq')         || '',
+    'Largura em kHz':                fd.get('larg')         || '',
+    'Faixa de Frequência':           fd.get('faixa')        || '',
+    'Identificação':                 fd.get('ident')        || '',
+    'Autorizado? (Q)':               '',
+    'UTE?':                          fd.get('ute') ? '1' : '',
+    'Processo SEI ou Ato UTE':       fd.get('proc')         || '',
+    'Observações/Detalhes/Contatos': fd.get('obs')          || '',
+    'Responsável pela emissão':      '',
+    'Interferente?':                 fd.get('interferente') || '',
+    'Situação':                      fd.get('situacao')     || 'Pendente',
+  };
+
+  try {
+    await enfileirar('fila_envio', dados);
+    // Feedback visual sem flash server-side
+    const div = document.createElement('div');
+    div.className = 'flash flash-success';
+    div.textContent = '📥 Salvo localmente. Será enviado ao reconectar.';
+    this.parentElement.insertBefore(div, this);
+    this.reset();
+  } catch(err) {
+    alert('Erro ao salvar localmente: ' + err);
+  }
 });
 </script>
 {% endblock %}

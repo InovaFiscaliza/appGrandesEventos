@@ -7,7 +7,10 @@
 
 <div class="form-card">
     <h5 style="margin-bottom:0.75rem">Registrar Jammer ou ERB Fake</h5>
-    <form method="post" action="/bsr-erb">
+    <div id="offline-aviso-bsr" class="flash flash-error" style="display:none">
+      ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
+    </div>
+    <form method="post" action="/bsr-erb" id="form-bsr-erb">
         <div class="form-group">
             <label>Tipo <span class="required">*</span></label>
             <div class="radio-group">
@@ -42,4 +45,44 @@
 <div class="btn-col">
     <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
 </div>
+
+<script src="/static/db.js"></script>
+<script src="/static/sync.js"></script>
+<script>
+if (!navigator.onLine) {
+  document.getElementById('offline-aviso-bsr').style.display = 'block';
+}
+window.addEventListener('offline', () => {
+  document.getElementById('offline-aviso-bsr').style.display = 'block';
+});
+window.addEventListener('online', () => {
+  document.getElementById('offline-aviso-bsr').style.display = 'none';
+});
+
+document.getElementById('form-bsr-erb').addEventListener('submit', async function(e) {
+  if (navigator.onLine) return; // deixa o POST normal acontecer
+  e.preventDefault();
+
+  const fd = new FormData(this);
+  const dados = {
+    tipo:   fd.get('tipo')   || 'BSR/Jammer',
+    regiao: fd.get('regiao') || '',
+    lat:    fd.get('lat')    || '',
+    lon:    fd.get('lon')    || '',
+  };
+
+  if (!dados.regiao) { alert("O campo 'Local' é obrigatório."); return; }
+
+  try {
+    await enfileirar('fila_bsr_erb', dados);
+    const div = document.createElement('div');
+    div.className = 'flash flash-success';
+    div.textContent = '📥 Salvo localmente. Será enviado ao reconectar.';
+    this.parentElement.insertBefore(div, this);
+    this.reset();
+  } catch(err) {
+    alert('Erro ao salvar localmente: ' + err);
+  }
+});
+</script>
 {% endblock %}

@@ -2,7 +2,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.google_sheets import (
@@ -204,3 +204,21 @@ async def check_freq(request: Request, freq: float = 0.0):
     client = obter_cliente_gspread()
     conflito = verificar_frequencia_global(client, sp_id, freq)
     return {"conflito": conflito}
+
+
+@router.post("/api/inserir")
+async def api_inserir(request: Request):
+    """Recebe JSON da fila offline (IndexedDB/sync.js) e insere na planilha."""
+    sp_id = request.session.get("spreadsheet_id")
+    if not sp_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    try:
+        dados = await request.json()
+    except Exception:
+        return JSONResponse({"erro": "JSON inválido"}, status_code=400)
+
+    client = obter_cliente_gspread()
+    ok = inserir_emissao_I_W(client, sp_id, dados)
+    if ok:
+        return JSONResponse({"ok": True})
+    return JSONResponse({"erro": "Falha ao inserir na planilha"}, status_code=500)

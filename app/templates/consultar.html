@@ -7,125 +7,174 @@
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
-{% if not pendencias %}
-<div class="flash flash-success">✔️ Nenhuma pendência encontrada.</div>
-{% else %}
-<div class="form-group">
+<div id="offline-aviso" class="flash flash-error" style="display:none">
+  ⚠️ Você está offline — exibindo dados do último acesso.
+</div>
+
+<div class="form-group" id="bloco-select" style="display:none">
     <label>Selecione a emissão:</label>
-    <select id="sel-pendencia" onchange="if(this.value) window.location.href='/consultar?key='+encodeURIComponent(this.value)">
+    <select id="sel-pendencia">
         <option value="">Escolha uma pendência...</option>
-        {% for row in pendencias %}
-        <option value="{{ row.row_key }}" {% if row.row_key == selected_key %}selected{% endif %}>
-            {{ row.label }}
-        </option>
-        {% endfor %}
     </select>
 </div>
 
-{% if selected_row %}
+<div id="bloco-form" style="display:none">
 <h4 style="margin:0.75rem 0 0.5rem">Editar ocorrência</h4>
 <div class="form-card">
-    <form method="post" action="/consultar/salvar">
-        <input type="hidden" name="row_key" value="{{ selected_key }}">
-        <input type="hidden" name="fonte" value="{{ selected_row['Fonte'] }}">
-        <input type="hidden" name="id_val" value="{{ selected_row['ID'] }}">
-        <input type="hidden" name="estacao_raw" value="{{ selected_row['EstacaoRaw'] }}">
+    <form method="post" action="/consultar/salvar" id="form-consultar">
+        <input type="hidden" name="row_key" id="f-row_key">
+        <input type="hidden" name="fonte" id="f-fonte">
+        <input type="hidden" name="id_val" id="f-id_val">
+        <input type="hidden" name="estacao_raw" id="f-estacao_raw">
 
         <div class="form-cols">
-            <div class="form-group">
-                <label>ID</label>
-                <input type="text" value="{{ selected_row['ID'] }}" disabled>
-            </div>
-            <div class="form-group">
-                <label>Estação utilizada</label>
-                <input type="text" value="{{ selected_row['Local'] }}" disabled>
-            </div>
-            <div class="form-group">
-                <label>Fiscal</label>
-                <input type="text" value="{{ selected_row.get('Fiscal', '') }}" disabled>
-            </div>
-            <div class="form-group">
-                <label>Data da identificação</label>
-                <input type="text" value="{{ selected_row.get('Data', '') }}" disabled>
-            </div>
-            <div class="form-group">
-                <label>HH:mm</label>
-                <input type="text" value="{{ selected_row.get('HH:mm', '') }}" disabled>
-            </div>
-            <div class="form-group">
-                <label>Frequência (MHz)</label>
-                <input type="text" value="{{ selected_row.get('Frequência (MHz)', '') }}" disabled>
-            </div>
-            <div class="form-group">
-                <label>Largura (kHz)</label>
-                <input type="text" value="{{ selected_row.get('Largura (kHz)', '') }}" disabled>
-            </div>
-            <div class="form-group">
-                <label>Faixa de Frequência Envolvida</label>
-                <input type="text" value="{{ selected_row.get('Faixa de Frequência Envolvida', '') }}" disabled>
-            </div>
+            <div class="form-group"><label>ID</label><input type="text" id="f-id" disabled></div>
+            <div class="form-group"><label>Estação utilizada</label><input type="text" id="f-local" disabled></div>
+            <div class="form-group"><label>Fiscal</label><input type="text" id="f-fiscal" disabled></div>
+            <div class="form-group"><label>Data da identificação</label><input type="text" id="f-data" disabled></div>
+            <div class="form-group"><label>HH:mm</label><input type="text" id="f-hora" disabled></div>
+            <div class="form-group"><label>Frequência (MHz)</label><input type="text" id="f-freq" disabled></div>
+            <div class="form-group"><label>Largura (kHz)</label><input type="text" id="f-largura" disabled></div>
+            <div class="form-group"><label>Faixa de Frequência Envolvida</label><input type="text" id="f-faixa" disabled></div>
         </div>
 
         <div class="form-group">
             <label>Identificação <span class="required">*</span></label>
-            <select name="ident_edit">
+            <select name="ident_edit" id="f-ident">
                 {% for op in ident_opcoes %}
-                <option value="{{ op }}" {% if op == selected_row.get('Identificação', '') %}selected{% endif %}>{{ op }}</option>
+                <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
             <label>Autorizado? <span class="required">*</span></label>
-            <select name="autz_edit">
-                {% set autz_v = selected_row.get('Autorizado?', '') %}
-                {% set autz_display = autz_v if autz_v in ["Sim", "Não", "Não licenciável"] else "Não licenciável" %}
+            <select name="autz_edit" id="f-autz">
                 {% for op in ["Sim", "Não", "Não licenciável"] %}
-                <option value="{{ op }}" {% if op == autz_display %}selected{% endif %}>{{ op }}</option>
+                <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
-            <label><input type="checkbox" name="ute_check" value="1" {% if selected_row.get('UTE?', '').lower() in ['sim', 'true', '1', 'ok'] %}checked{% endif %}> UTE?</label>
+            <label><input type="checkbox" name="ute_check" id="f-ute" value="1"> UTE?</label>
         </div>
         <div class="form-group">
             <label>Processo SEI UTE (ou Ato UTE)</label>
-            <input type="text" name="proc_edit" value="{{ selected_row.get('Processo SEI UTE', '') }}">
+            <input type="text" name="proc_edit" id="f-proc">
         </div>
         <div class="form-group">
             <label>Ocorrência (observações)</label>
-            <textarea name="obs_edit" rows="3">{{ selected_row.get('Ocorrência (observações)', '') }}</textarea>
+            <textarea name="obs_edit" id="f-obs" rows="3"></textarea>
         </div>
         <div class="form-group">
             <label>Alguém mais ciente?</label>
-            <input type="text" name="cient_edit" value="{{ selected_row.get('Alguém mais ciente?', '') }}">
+            <input type="text" name="cient_edit" id="f-cient">
         </div>
         <div class="form-group">
             <label>Interferente? <span class="required">*</span></label>
-            <select name="interf_edit">
-                {% set interf_v = selected_row.get('Interferente?', '') %}
-                {% set interf_display = interf_v if interf_v in ["Sim", "Não", "Indefinido"] else "Indefinido" %}
+            <select name="interf_edit" id="f-interf">
                 {% for op in ["Sim", "Não", "Indefinido"] %}
-                <option value="{{ op }}" {% if op == interf_display %}selected{% endif %}>{{ op }}</option>
+                <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
         <div class="form-group">
             <label>Situação <span class="required">*</span></label>
-            <select name="situ_edit">
-                {% set situ_v = selected_row.get('Situação', '') %}
-                {% set situ_display = situ_v if situ_v in ["Pendente", "Concluído"] else "Pendente" %}
+            <select name="situ_edit" id="f-situ">
                 {% for op in ["Pendente", "Concluído"] %}
-                <option value="{{ op }}" {% if op == situ_display %}selected{% endif %}>{{ op }}</option>
+                <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
         <button type="submit" class="btn btn-submit">Salvar alterações</button>
     </form>
 </div>
-{% endif %}
-{% endif %}
+</div>
+
+<div id="msg-vazio" class="flash flash-success" style="display:none">✔️ Nenhuma pendência encontrada.</div>
 
 <div class="btn-col">
     <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
 </div>
+
+<script src="/static/db.js"></script>
+<script src="/static/sync.js"></script>
+<script>
+const STORE = 'pendencias';
+let pendencias = [];
+
+function setSelect(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  for (const opt of el.options) {
+    if (opt.value === val) { opt.selected = true; return; }
+  }
+}
+
+function preencherForm(row) {
+  document.getElementById('f-row_key').value   = row.row_key   || '';
+  document.getElementById('f-fonte').value     = row.fonte      || '';
+  document.getElementById('f-id_val').value    = row.id         || '';
+  document.getElementById('f-estacao_raw').value = row.estacao_raw || '';
+  document.getElementById('f-id').value        = row.id         || '';
+  document.getElementById('f-local').value     = row.local      || '';
+  document.getElementById('f-fiscal').value    = row.fiscal     || '';
+  document.getElementById('f-data').value      = row.data       || '';
+  document.getElementById('f-hora').value      = row.hora       || '';
+  document.getElementById('f-freq').value      = row.freq       || '';
+  document.getElementById('f-largura').value   = row.largura    || '';
+  document.getElementById('f-faixa').value     = row.faixa      || '';
+  document.getElementById('f-proc').value      = row.processo_sei || '';
+  document.getElementById('f-obs').value       = row.ocorrencia || '';
+  document.getElementById('f-cient').value     = row.ciente     || '';
+  document.getElementById('f-ute').checked     = ['sim','true','1','ok'].includes((row.ute||'').toLowerCase());
+  setSelect('f-ident',  row.identificacao || '');
+  setSelect('f-autz',   row.autorizado    || 'Não licenciável');
+  setSelect('f-interf', row.interferente  || 'Indefinido');
+  setSelect('f-situ',   row.situacao      || 'Pendente');
+  document.getElementById('bloco-form').style.display = 'block';
+}
+
+function popularSelect(lista) {
+  const sel = document.getElementById('sel-pendencia');
+  sel.innerHTML = '<option value="">Escolha uma pendência...</option>';
+  lista.forEach(row => {
+    const opt = document.createElement('option');
+    opt.value = row.row_key;
+    opt.textContent = row.label;
+    sel.appendChild(opt);
+  });
+  document.getElementById('bloco-select').style.display = lista.length ? 'block' : 'none';
+  document.getElementById('msg-vazio').style.display    = lista.length ? 'none'  : 'block';
+}
+
+document.getElementById('sel-pendencia').addEventListener('change', function() {
+  const row = pendencias.find(r => r.row_key === this.value);
+  if (row) preencherForm(row);
+  else document.getElementById('bloco-form').style.display = 'none';
+});
+
+async function carregarPendencias() {
+  if (navigator.onLine) {
+    try {
+      const resp = await fetch('/api/pendencias');
+      if (resp.status === 401) { window.location.href = '/'; return; }
+      const dados = await resp.json();
+      pendencias = dados;
+      await salvarTodos(STORE, dados);
+      document.getElementById('offline-aviso').style.display = 'none';
+    } catch(e) {
+      console.warn('Falha ao buscar online, usando cache:', e);
+      pendencias = await lerTodos(STORE);
+      document.getElementById('offline-aviso').style.display = 'block';
+    }
+  } else {
+    pendencias = await lerTodos(STORE);
+    document.getElementById('offline-aviso').style.display = 'block';
+  }
+  popularSelect(pendencias);
+}
+
+carregarPendencias();
+</script>
 {% endblock %}
+

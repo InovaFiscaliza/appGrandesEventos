@@ -1,6 +1,6 @@
 const DB_NAME = 'appEventos';
-const DB_VER  = 1;
-const STORES  = ['pendencias', 'fila_envio', 'frequencias'];
+const DB_VER  = 2;
+const STORES  = ['pendencias', 'fila_envio', 'frequencias', 'fila_bsr_erb'];
 
 // Abre (ou cria) o banco de dados
 function abrirDB() {
@@ -42,11 +42,11 @@ async function lerTodos(storeName) {
 }
 
 // Adiciona um registro à fila de envio offline
-async function enfileirar(payload) {
+async function enfileirar(storeName, payload) {
   const db = await abrirDB();
   return new Promise((resolve, reject) => {
-    const req = db.transaction('fila_envio', 'readwrite')
-                  .objectStore('fila_envio')
+    const req = db.transaction(storeName, 'readwrite')
+                  .objectStore(storeName)
                   .add({ ...payload, timestamp: Date.now() });
     req.onsuccess = () => resolve();
     req.onerror   = e  => reject(e.target.error);
@@ -54,8 +54,8 @@ async function enfileirar(payload) {
 }
 
 // Remove da fila após envio bem-sucedido
-async function removerDaFila(id) {
+async function removerDaFila(storeName, id) {
   const db = await abrirDB();
-  db.transaction('fila_envio', 'readwrite')
-    .objectStore('fila_envio').delete(id);
+  db.transaction(storeName, 'readwrite')
+    .objectStore(storeName).delete(id);
 }
