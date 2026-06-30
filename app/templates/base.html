@@ -12,8 +12,19 @@
 </head>
 <body>
 <div class="container">
+
+<!-- Banner de aviso offline (exibido em todas as telas) -->
+<div id="offline-banner" class="offline-banner">⚠️ Você está offline — os dados podem não estar atualizados.</div>
+
 {% block content %}{% endblock %}
 </div>
+
+<!-- Módulo offline centralizado (sempre PRIMEIRO) -->
+<script src="/static/app.js"></script>
+
+<!-- Compatibilidade: db.js e sync.js (código legado) -->
+<script src="/static/db.js"></script>
+<script src="/static/sync.js"></script>
 
 <!-- PWA: registrar o Service Worker -->
 <script>

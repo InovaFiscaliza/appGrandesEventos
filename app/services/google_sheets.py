@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 from google.oauth2.service_account import Credentials
 
-from app.config import ABAS_SISTEMA
+from app.config import ABAS_SISTEMA, IDENT_OPCOES
 from app.utils.formatters import (
     _col_to_index,
     _first_col_match,
@@ -627,9 +627,9 @@ def carregar_opcoes_identificacao(_client, spreadsheet_id):
         aba_alvo = next((ws for ws in todas if ws.title not in ABAS_SISTEMA), None)
         if aba_alvo:
             return [i[0] for i in aba_alvo.get("AC2:AC7") if i]
-        return ["Opções não encontradas"]
+        return IDENT_OPCOES  # fallback: usa opções fixas do config
     except Exception:
-        return ["Opção genérica (erro leitura)"]
+        return IDENT_OPCOES  # fallback offline: usa opções fixas do config
 
 
 def _buscar_por_texto_livre(

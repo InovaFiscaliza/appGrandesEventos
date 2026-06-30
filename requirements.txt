@@ -1,5 +1,6 @@
-streamlit
-pandas
+fastapi[standard]
 gspread
 google-auth
+itsdangerous
+pandas
 timezonefinder

@@ -13,6 +13,11 @@ from app.services.google_sheets import (
     verificar_frequencia_global,
 )
 from app.utils.formatters import _img_b64
+from app.utils.offline import (
+    extrair_dados_inserir,
+    preparar_offline_ctx,
+    tentar_conexao_ou_offline,
+)
 from app.config import FAIXA_OPCOES, TITULO_PRINCIPAL
 
 router = APIRouter()
@@ -88,7 +93,35 @@ async def post_inserir(request: Request):
     obs = form.get("obs", "").strip()
     situacao = form.get("situacao", "")
 
-    client = obter_cliente_gspread()
+    # --- Tenta conectar; se offline, prepara dados para fila local ---
+    client, offline_ctx = tentar_conexao_ou_offline(obter_cliente_gspread)
+    if client is None:
+        dados_json = extrair_dados_inserir(form)
+        return templates.TemplateResponse(
+            request,
+            "inserir.html",
+            _ctx(
+                request,
+                ident_opcoes=carregar_opcoes_identificacao(None, ""),
+                dia=dia_str,
+                hora=hora_str,
+                fiscal=fiscal,
+                local=local,
+                freq=freq_str,
+                larg=larg_str,
+                faixa=faixa,
+                ident=ident,
+                interferente=interferente,
+                ute=ute,
+                proc=proc,
+                obs=obs,
+                situacao=situacao,
+                flash_error=None,
+                flash_success=None,
+                **preparar_offline_ctx(dados_json),
+            ),
+        )
+
     idents = carregar_opcoes_identificacao(client, sp_id)
 
     erros = []
@@ -162,7 +195,11 @@ async def post_inserir(request: Request):
         "Interferente?": interferente,
     }
 
-    ok = inserir_emissao_I_W(client, sp_id, dados_submit)
+    ok = False
+    try:
+        ok = inserir_emissao_I_W(client, sp_id, dados_submit)
+    except Exception:
+        pass  # Falha ao escrever na planilha (ex: conexão caiu durante)
 
     if ok:
         msg = "Emissão inserida com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Registrar Emissão."
@@ -171,6 +208,8 @@ async def post_inserir(request: Request):
         request.session["flash_success"] = msg
         return RedirectResponse("/inserir", status_code=303)
 
+    # Falhou (offline ou erro) → salva na fila local via frontend
+    dados_json = extrair_dados_inserir(form)
     return templates.TemplateResponse(
         request,
         "inserir.html",
@@ -190,8 +229,9 @@ async def post_inserir(request: Request):
             proc=proc,
             obs=obs,
             situacao=situacao,
-            flash_error="Erro ao inserir emissão. Tente novamente.",
+            flash_error=None,
             flash_success=None,
+            **preparar_offline_ctx(dados_json),
         ),
     )
 
