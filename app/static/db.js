@@ -1,14 +1,10 @@
 /**
- * db.js — Compatibilidade retroativa (DEPRECATED)
+ * db.js — COMPLETAMENTE SUBSTITUÍDO por app.js
  * 
- * As funções agora estão centralizadas em app.js (AppOffline).
- * Mantido apenas para não quebrar código legado.
+ * Este arquivo existe apenas para compatibilidade com o cache do Service Worker.
+ * Toda a lógica offline foi migrada para AppOffline (app.js).
  * 
- * ☞ Use AppOffline.* nos novos desenvolvimentos.
+ * Não declara nada — apenas evita erro 404.
  */
 
-async function abrirDB()           { return AppOffline._abrirDB(); }
-async function salvarTodos(n, i)   { return AppOffline.salvarTodos(n, i); }
-async function lerTodos(n)         { return AppOffline.lerTodos(n); }
-async function enfileirar(n, p)    { return AppOffline.enfileirar(n, p); }
-async function removerDaFila(n, i) { return AppOffline.removerDaFila(n, i); }
+// Nada a fazer aqui. Use AppOffline.* (definido em app.js).
