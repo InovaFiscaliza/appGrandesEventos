@@ -113,12 +113,22 @@
   {% if offline_salvo %}
   {% set store = offline_store|default("fila_envio") %}
   {% set dados_json = offline_dados|tojson %}
-  AppOffline.enfileirar('{{ store }}', {{ dados_json }}).then(() => {
-    AppOfflineUI.mostrarSucesso(
-      document.getElementById('form-inserir'),
-      '📥 Salvo localmente. Será enviado ao reconectar.'
-    );
-  }).catch(err => console.error('Erro ao salvar offline:', err));
+  (function() {
+    function salvarOffline() {
+      AppOffline.enfileirar('{{ store }}', {{ dados_json }}).then(() => {
+        AppOfflineUI.mostrarSucesso(
+          document.getElementById('form-inserir'),
+          '📥 Salvo localmente. Será enviado ao reconectar.'
+        );
+      }).catch(err => console.error('Erro ao salvar offline:', err));
+    }
+    // Aguarda AppOffline ficar disponível (pode estar carregando via cache)
+    if (typeof AppOffline !== 'undefined') {
+      salvarOffline();
+    } else {
+      document.addEventListener('DOMContentLoaded', salvarOffline);
+    }
+  })();
   {% endif %}
 
   // ─── Check frequência (online apenas) ────────────────────────

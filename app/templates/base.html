@@ -9,6 +9,9 @@
     <!-- PWA: identidade do app -->
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#0078d4">
+
+    <!-- Módulo offline carregado ANTES de qualquer script das telas -->
+    <script src="/static/app.js"></script>
 </head>
 <body>
 <div class="container">
@@ -18,9 +21,6 @@
 
 {% block content %}{% endblock %}
 </div>
-
-<!-- Módulo offline centralizado (sempre PRIMEIRO) -->
-<script src="/static/app.js"></script>
 
 <!-- Compatibilidade: db.js e sync.js (código legado) -->
 <script src="/static/db.js"></script>
