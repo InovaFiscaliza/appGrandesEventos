@@ -28,6 +28,8 @@ self.addEventListener("activate", e => {
 // Fetch: tenta a rede primeiro, cai para cache se offline
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
+  // Ignora requests de extensões do Chrome (chrome-extension://)
+  if (e.request.url.startsWith("chrome-extension://")) return;
 
   e.respondWith(
     fetch(e.request)

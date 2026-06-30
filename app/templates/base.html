@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/style.css">
 
     <!-- PWA: identidade do app -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#0078d4">
 
@@ -18,6 +19,16 @@
 
 <!-- Banner de aviso offline (exibido em todas as telas) -->
 <div id="offline-banner" class="offline-banner">⚠️ Você está offline — os dados podem não estar atualizados.</div>
+
+<script>
+  // Verificação offline imediata (sem depender de app.js carregado)
+  (function() {
+    var banner = document.getElementById('offline-banner');
+    if (banner) {
+      banner.classList.toggle('show', !navigator.onLine);
+    }
+  })();
+</script>
 
 {% block content %}{% endblock %}
 </div>

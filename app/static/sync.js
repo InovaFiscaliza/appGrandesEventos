@@ -1,7 +1,8 @@
-// Requer db.js carregado antes deste script
+// sync.js — Usa AppOffline (app.js) para ler/remover da fila
+// Dependência: app.js carregado antes deste script
 
 async function sincronizarFila(storeName, url) {
-  const fila = await lerTodos(storeName);
+  const fila = await AppOffline.lerTodos(storeName);
   if (fila.length === 0) return;
 
   console.log(`[sync] ${storeName}: ${fila.length} item(ns) pendente(s)...`);
@@ -15,7 +16,7 @@ async function sincronizarFila(storeName, url) {
         body:    JSON.stringify(dados),
       });
       if (resp.ok) {
-        await removerDaFila(storeName, item.id);
+        await AppOffline.removerDaFila(storeName, item.id);
         console.log(`[sync] item ${item.id} enviado e removido de '${storeName}'.`);
       } else {
         console.warn(`[sync] servidor recusou item ${item.id}: ${resp.status}`);
