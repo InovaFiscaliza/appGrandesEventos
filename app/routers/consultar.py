@@ -1,5 +1,7 @@
 from urllib.parse import quote
 
+import logging
+
 import pandas as pd
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -14,6 +16,7 @@ from app.services.google_sheets import (
     obter_cliente_gspread,
 )
 from app.utils.formatters import _img_b64
+from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
 from app.config import IDENT_OPCOES, TITULO_PRINCIPAL
 
 router = APIRouter()
@@ -135,14 +138,37 @@ async def post_consultar_salvar(request: Request):
     }
 
     client = obter_cliente_gspread()
-    if fonte == "PAINEL":
-        # Dados da aba PAINEL → atualiza diretamente na aba "PAINEL"
-        res = atualizar_campos_na_aba_mae(client, sp_id, "PAINEL", id_val, pac)
-    elif fonte == "ESTACAO":
-        # Dados de aba de estação → estacao_raw é o nome da aba
-        res = atualizar_campos_na_aba_mae(client, sp_id, estacao_raw, id_val, pac)
-    else:
-        res = atualizar_campos_abordagem_por_id(client, sp_id, id_val, pac)
+    res = ""
+    falhou_conexao = False
+    try:
+        if fonte == "PAINEL":
+            # Dados da aba PAINEL → atualiza diretamente na aba "PAINEL"
+            res = atualizar_campos_na_aba_mae(client, sp_id, "PAINEL", id_val, pac)
+        elif fonte == "ESTACAO":
+            # Dados de aba de estação → estacao_raw é o nome da aba
+            res = atualizar_campos_na_aba_mae(client, sp_id, estacao_raw, id_val, pac)
+        else:
+            res = atualizar_campos_abordagem_por_id(client, sp_id, id_val, pac)
+    except Exception as e:
+        logging.error(f"Falha ao salvar edição (offline?): {e}")
+        falhou_conexao = True
+
+    # Offline / falha de conexão → devolve página com dados para fila local
+    if falhou_conexao:
+        dados_json = extrair_dados_edicao(form)
+        return templates.TemplateResponse(
+            request,
+            "consultar.html",
+            _ctx(
+                request,
+                pendencias=[],
+                selected_key=row_key,
+                selected_row=None,
+                flash_success=None,
+                flash_error=None,
+                **preparar_offline_ctx(dados_json, "fila_edicoes"),
+            ),
+        )
 
     if res.startswith("ERRO") or res.startswith("Erro"):
         request.session["flash_error"] = res
@@ -188,3 +214,41 @@ async def api_pendencias(request: Request):
             }
         )
     return JSONResponse(records)
+
+
+@router.post("/api/consultar-salvar")
+async def api_consultar_salvar(request: Request):
+    """Recebe JSON da fila offline (IndexedDB/sync.js) e salva a edição na planilha."""
+    sp_id = request.session.get("spreadsheet_id")
+    if not sp_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    try:
+        dados = await request.json()
+    except Exception:
+        return JSONResponse({"erro": "JSON inválido"}, status_code=400)
+
+    fonte = dados.get("fonte", "")
+    id_val = dados.get("id_val", "")
+    estacao_raw = dados.get("estacao_raw", "")
+    pac = {
+        "Identificação": dados.get("Identificação", ""),
+        "Autorizado?": dados.get("Autorizado?", ""),
+        "UTE?": dados.get("UTE?", "Não"),
+        "Processo SEI UTE": dados.get("Processo SEI UTE", ""),
+        "Ocorrência (observações)": dados.get("Ocorrência (observações)", ""),
+        "Alguém mais ciente?": dados.get("Alguém mais ciente?", ""),
+        "Interferente?": dados.get("Interferente?", ""),
+        "Situação": dados.get("Situação", ""),
+    }
+
+    client = obter_cliente_gspread()
+    if fonte == "PAINEL":
+        res = atualizar_campos_na_aba_mae(client, sp_id, "PAINEL", id_val, pac)
+    elif fonte == "ESTACAO":
+        res = atualizar_campos_na_aba_mae(client, sp_id, estacao_raw, id_val, pac)
+    else:
+        res = atualizar_campos_abordagem_por_id(client, sp_id, id_val, pac)
+
+    if res.startswith("ERRO") or res.startswith("Erro"):
+        return JSONResponse({"erro": res}, status_code=500)
+    return JSONResponse({"ok": True})

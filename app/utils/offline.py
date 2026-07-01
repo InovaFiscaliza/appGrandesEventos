@@ -85,3 +85,24 @@ def extrair_dados_inserir(form) -> Dict[str, str]:
         "Interferente?": form.get("interferente", ""),
         "Situação": form.get("situacao", "") or "Pendente",
     }
+
+
+def extrair_dados_edicao(form) -> Dict[str, str]:
+    """
+    Extrai os dados do formulário de edição de pendência (consultar) no formato
+    esperado pela fila offline e pela API /api/consultar-salvar.
+    """
+    return {
+        "fonte": form.get("fonte", ""),
+        "id_val": form.get("id_val", ""),
+        "estacao_raw": form.get("estacao_raw", ""),
+        "row_key": form.get("row_key", ""),
+        "Identificação": form.get("ident_edit", ""),
+        "Autorizado?": form.get("autz_edit", ""),
+        "UTE?": "Sim" if form.get("ute_check") else "Não",
+        "Processo SEI UTE": form.get("proc_edit", "").strip(),
+        "Ocorrência (observações)": form.get("obs_edit", "").strip(),
+        "Alguém mais ciente?": form.get("cient_edit", "").strip(),
+        "Interferente?": form.get("interf_edit", ""),
+        "Situação": form.get("situ_edit", ""),
+    }

@@ -40,7 +40,13 @@ def _criar_cliente_gspread():
             "https://www.googleapis.com/auth/drive",
         ],
     )
-    return gspread.authorize(creds)
+    client = gspread.authorize(creds)
+    # Timeout para não travar indefinidamente quando sem internet real
+    try:
+        client.set_timeout(15)
+    except Exception:
+        pass
+    return client
 
 
 def buscar_planilhas(client):

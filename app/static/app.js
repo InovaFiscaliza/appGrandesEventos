@@ -16,8 +16,8 @@ const AppOffline = (() => {
   'use strict';
 
   const DB_NAME = 'appEventos';
-  const DB_VER  = 3;
-  const STORES  = ['fila_envio', 'fila_bsr_erb', 'cache_pendencias', 'cache_frequencias'];
+  const DB_VER  = 4;
+  const STORES  = ['fila_envio', 'fila_bsr_erb', 'fila_edicoes', 'cache_pendencias', 'cache_frequencias'];
 
   // ─── IndexedDB ───────────────────────────────────────────────
 

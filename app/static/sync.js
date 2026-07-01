@@ -30,9 +30,14 @@ async function sincronizarFila(storeName, url) {
 async function sincronizarTudo() {
   await sincronizarFila('fila_envio',  '/api/inserir');
   await sincronizarFila('fila_bsr_erb', '/api/bsr-erb');
+  await sincronizarFila('fila_edicoes', '/api/consultar-salvar');
 }
 
-// Executa ao recuperar conexão
+// Executa ao recuperar conexão (evento nativo do navegador)
 window.addEventListener('online', sincronizarTudo);
+// Executa quando a detecção ativa confirma que voltou a conexão real
+window.addEventListener('app-connectivity', (e) => {
+  if (e.detail && e.detail.offline === false) sincronizarTudo();
+});
 // Executa ao carregar a página (caso já esteja online)
 if (navigator.onLine) sincronizarTudo();

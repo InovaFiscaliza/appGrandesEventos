@@ -152,7 +152,8 @@ document.getElementById('sel-pendencia').addEventListener('change', function() {
 });
 
 async function carregarPendencias() {
-  if (navigator.onLine) {
+  const offline = window.APP_OFFLINE === true || !navigator.onLine;
+  if (!offline) {
     try {
       const resp = await fetch('/api/pendencias');
       if (resp.status === 401) { window.location.href = '/'; return; }
@@ -173,6 +174,58 @@ async function carregarPendencias() {
 }
 
 carregarPendencias();
+
+// ─── Interceptação do submit de edição em modo offline ───────────
+function extrairDadosEdicao() {
+  const g = id => (document.getElementById(id) || {}).value || '';
+  return {
+    fonte:                        g('f-fonte'),
+    id_val:                       g('f-id_val'),
+    estacao_raw:                  g('f-estacao_raw'),
+    row_key:                      g('f-row_key'),
+    'Identificação':              g('f-ident'),
+    'Autorizado?':                g('f-autz'),
+    'UTE?':                       document.getElementById('f-ute').checked ? 'Sim' : 'Não',
+    'Processo SEI UTE':           g('f-proc'),
+    'Ocorrência (observações)':   g('f-obs'),
+    'Alguém mais ciente?':        g('f-cient'),
+    'Interferente?':              g('f-interf'),
+    'Situação':                   g('f-situ'),
+  };
+}
+
+document.getElementById('form-consultar').addEventListener('submit', function(e) {
+  // Offline real (placa desligada): enfileira direto, sem esperar timeout do servidor
+  if (window.APP_OFFLINE === true || !navigator.onLine) {
+    e.preventDefault();
+    const dados = extrairDadosEdicao();
+    AppOffline.enfileirar('fila_edicoes', dados).then(() => {
+      const ref = document.querySelector('.info-green');
+      AppOfflineUI.mostrarSucesso(ref, '📥 Alteração salva localmente. Será enviada ao reconectar.');
+      document.getElementById('bloco-form').style.display = 'none';
+      document.getElementById('sel-pendencia').value = '';
+    }).catch(err => AppOfflineUI.mostrarErro('Erro ao salvar localmente: ' + err));
+  }
+  // Online: deixa o POST normal seguir (servidor tem fallback offline_salvo)
+});
+
+// ─── Fallback offline do servidor (edição salva localmente) ──────
+{% if offline_salvo %}
+{% set dados_json = offline_dados|tojson %}
+(function() {
+  function salvarEdicaoOffline() {
+    AppOffline.enfileirar('fila_edicoes', {{ dados_json }}).then(() => {
+      const ref = document.querySelector('.info-green') || document.querySelector('.container').firstChild;
+      AppOfflineUI.mostrarSucesso(ref, '📥 Alteração salva localmente. Será enviada ao reconectar.');
+    }).catch(err => console.error('Erro ao salvar edição offline:', err));
+  }
+  if (typeof AppOffline !== 'undefined') {
+    salvarEdicaoOffline();
+  } else {
+    document.addEventListener('DOMContentLoaded', salvarEdicaoOffline);
+  }
+})();
+{% endif %}
 </script>
 {% endblock %}
 

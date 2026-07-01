@@ -1,4 +1,4 @@
-const CACHE = "appEventos-v5";
+const CACHE = "appEventos-v7";
 const SHELL = [
   "/static/style.css",
   "/static/app.js",
@@ -13,6 +13,13 @@ self.addEventListener("install", e => {
     caches.open(CACHE).then(c => c.addAll(SHELL))
   );
   self.skipWaiting();
+});
+
+// Permite que a página force a ativação de um SW novo
+self.addEventListener("message", e => {
+  if (e.data && e.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 // Ativação: remove caches de versões antigas
@@ -32,6 +39,12 @@ self.addEventListener("fetch", e => {
   if (e.request.url.startsWith("chrome-extension://")) return;
 
   const url = new URL(e.request.url);
+
+  // Só intercepta requests do próprio domínio. Requests externos (ex.: o ping
+  // de conectividade ao gstatic) passam direto para a rede — assim eles
+  // realmente falham quando está offline, sem cair no fallback do cache.
+  if (url.origin !== self.location.origin) return;
+
   const ehEstatico = url.pathname.startsWith("/static/");
 
   // Assets estáticos (CSS/JS/imagens): cache-first, atualiza em segundo plano
