@@ -96,10 +96,8 @@
     <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
 </div>
 
-<script src="/static/db.js"></script>
-<script src="/static/sync.js"></script>
 <script>
-const STORE = 'pendencias';
+const STORE = 'cache_pendencias';
 let pendencias = [];
 
 function setSelect(id, val) {
@@ -160,15 +158,15 @@ async function carregarPendencias() {
       if (resp.status === 401) { window.location.href = '/'; return; }
       const dados = await resp.json();
       pendencias = dados;
-      await salvarTodos(STORE, dados);
+      await AppOffline.salvarTodos(STORE, dados);
       document.getElementById('offline-aviso').style.display = 'none';
     } catch(e) {
       console.warn('Falha ao buscar online, usando cache:', e);
-      pendencias = await lerTodos(STORE);
+      pendencias = await AppOffline.lerTodos(STORE);
       document.getElementById('offline-aviso').style.display = 'block';
     }
   } else {
-    pendencias = await lerTodos(STORE);
+    pendencias = await AppOffline.lerTodos(STORE);
     document.getElementById('offline-aviso').style.display = 'block';
   }
   popularSelect(pendencias);

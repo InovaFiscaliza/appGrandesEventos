@@ -11,3 +11,6 @@ dependencies = [
     "pandas>=3.0.3",
     "timezonefinder>=8.2.4",
 ]
+
+[project.scripts]
+app = "main:start"

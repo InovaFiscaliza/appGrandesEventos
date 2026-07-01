@@ -298,7 +298,8 @@ def carregar_pendencias_painel_mapeadas(_client, spreadsheet_id):
         ).reset_index(drop=True)
         out["Fonte"] = "PAINEL"
         return out
-    except Exception:
+    except Exception as e:
+        logging.error(f"Erro ao carregar pendências PAINEL: {e}", exc_info=True)
         return pd.DataFrame()
 
 
@@ -345,7 +346,8 @@ def carregar_pendencias_abordagem_pendentes(_client, spreadsheet_id):
         return pend.sort_values(by=["Local", "Data"], kind="stable").reset_index(
             drop=True
         )
-    except Exception:
+    except Exception as e:
+        logging.error(f"Erro ao carregar pendências ABORDAGEM: {e}", exc_info=True)
         return pd.DataFrame()
 
 
@@ -441,12 +443,16 @@ def carregar_pendencias_todas_estacoes(_client, spreadsheet_id):
                     out[dest] = pend[found[key]] if found[key] else ""
                 out["Fonte"] = "ESTACAO"
                 dfs.append(out)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.error(
+                    f"Erro ao processar aba de estação '{nome_aba}': {e}",
+                    exc_info=True,
+                )
         if not dfs:
             return pd.DataFrame()
         return pd.concat(dfs, ignore_index=True)
-    except Exception:
+    except Exception as e:
+        logging.error(f"Erro ao carregar pendências ESTAÇÕES: {e}", exc_info=True)
         return pd.DataFrame()
 
 
