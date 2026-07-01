@@ -42,7 +42,7 @@
             <td>{{ row['País/Entidade'] }}</td>
             <td>{{ row['Local'] }}</td>
             <td>{{ row['Frequência (MHz)'] }}</td>
-            <td class="copyable-cell" onclick="copyText(this)">{{ row['Processo SEI'] }}</td>
+            <td class="copyable-cell">{{ row['Processo SEI'] }}</td>
         </tr>
         {% endfor %}
     </tbody>
@@ -57,24 +57,5 @@
     <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
 </div>
 
-<script>
-function copyText(el) {
-    const text = el.textContent.trim();
-    navigator.clipboard.writeText(text).then(() => {
-        const orig = el.textContent;
-        el.textContent = 'Copiado!';
-        setTimeout(() => { el.textContent = orig; }, 1500);
-    }).catch(() => {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        const orig = el.textContent;
-        el.textContent = 'Copiado!';
-        setTimeout(() => { el.textContent = orig; }, 1500);
-    });
-}
-</script>
+<script src="/static/tabela_ute.js"></script>
 {% endblock %}

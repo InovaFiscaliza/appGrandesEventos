@@ -48,41 +48,5 @@
 
 <script src="/static/db.js"></script>
 <script src="/static/sync.js"></script>
-<script>
-if (!navigator.onLine) {
-  document.getElementById('offline-aviso-bsr').style.display = 'block';
-}
-window.addEventListener('offline', () => {
-  document.getElementById('offline-aviso-bsr').style.display = 'block';
-});
-window.addEventListener('online', () => {
-  document.getElementById('offline-aviso-bsr').style.display = 'none';
-});
-
-document.getElementById('form-bsr-erb').addEventListener('submit', async function(e) {
-  if (navigator.onLine) return; // deixa o POST normal acontecer
-  e.preventDefault();
-
-  const fd = new FormData(this);
-  const dados = {
-    tipo:   fd.get('tipo')   || 'BSR/Jammer',
-    regiao: fd.get('regiao') || '',
-    lat:    fd.get('lat')    || '',
-    lon:    fd.get('lon')    || '',
-  };
-
-  if (!dados.regiao) { alert("O campo 'Local' é obrigatório."); return; }
-
-  try {
-    await enfileirar('fila_bsr_erb', dados);
-    const div = document.createElement('div');
-    div.className = 'flash flash-success';
-    div.textContent = '📥 Salvo localmente. Será enviado ao reconectar.';
-    this.parentElement.insertBefore(div, this);
-    this.reset();
-  } catch(err) {
-    alert('Erro ao salvar localmente: ' + err);
-  }
-});
-</script>
+<script src="/static/bsr_erb.js"></script>
 {% endblock %}

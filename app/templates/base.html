@@ -20,48 +20,7 @@
 <!-- Banner de aviso offline (exibido em todas as telas) -->
 <div id="offline-banner" class="offline-banner">⚠️ Você está offline — os dados podem não estar atualizados.</div>
 
-<script>
-  // Detecção ATIVA de conectividade.
-  // navigator.onLine não é confiável (adaptadores virtuais mantêm 'true'
-  // mesmo com a placa de rede física desligada). Por isso testamos a
-  // conectividade real com um recurso externo periodicamente.
-  (function() {
-    window.APP_OFFLINE = !navigator.onLine;
-
-    function aplicarEstado(offline) {
-      var mudou = window.APP_OFFLINE !== offline;
-      window.APP_OFFLINE = offline;
-      var banner = document.getElementById('offline-banner');
-      if (banner) banner.classList.toggle('show', offline);
-      if (mudou) {
-        // Notifica o resto do app (ex.: sincronizar ao voltar online)
-        window.dispatchEvent(new CustomEvent('app-connectivity', {
-          detail: { offline: offline }
-        }));
-      }
-    }
-
-    function checarConexao() {
-      if (!navigator.onLine) { aplicarEstado(true); return; }
-      var ctrl = new AbortController();
-      var t = setTimeout(function() { ctrl.abort(); }, 4000);
-      fetch('https://www.gstatic.com/generate_204', {
-        mode: 'no-cors', cache: 'no-store', signal: ctrl.signal
-      }).then(function() {
-        clearTimeout(t);
-        aplicarEstado(false);
-      }).catch(function() {
-        clearTimeout(t);
-        aplicarEstado(true);
-      });
-    }
-
-    window.addEventListener('online',  checarConexao);
-    window.addEventListener('offline', checarConexao);
-    setInterval(checarConexao, 5000);
-    checarConexao();
-  })();
-</script>
+<script src="/static/connectivity.js"></script>
 
 {% block content %}{% endblock %}
 </div>
@@ -71,33 +30,6 @@
 <script src="/static/sync.js"></script>
 
 <!-- PWA: registrar o Service Worker (com auto-atualização) -->
-<script>
-  if ('serviceWorker' in navigator) {
-    let recarregando = false;
-    // Quando um novo SW assume o controle, recarrega a página uma vez
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (recarregando) return;
-      recarregando = true;
-      window.location.reload();
-    });
-
-    navigator.serviceWorker.register('/sw.js').then(reg => {
-      console.log('SW registrado:', reg.scope);
-      // Verifica atualização a cada carregamento
-      reg.update();
-      // Se houver um SW novo esperando, ativa imediatamente
-      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-      reg.addEventListener('updatefound', () => {
-        const novo = reg.installing;
-        if (!novo) return;
-        novo.addEventListener('statechange', () => {
-          if (novo.state === 'installed' && navigator.serviceWorker.controller) {
-            novo.postMessage({ type: 'SKIP_WAITING' });
-          }
-        });
-      });
-    }).catch(e => console.error('SW falhou:', e));
-  }
-</script>
+<script src="/static/sw-register.js"></script>
 </body>
 </html>
