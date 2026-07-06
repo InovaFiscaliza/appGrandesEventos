@@ -1,3 +1,7 @@
+# ================= Configuração do Banco de Dados =================
+DATABASE_URL = "postgresql+psycopg://appeventos:appeventos@localhost:5432/appeventos"
+# ================================================================
+
 # ================= AJUSTES RÁPIDOS (estilo) =================
 BTN_HEIGHT = "3.8em"
 BTN_GAP = "0px"
