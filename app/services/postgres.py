@@ -1,0 +1,606 @@
+"""
+Serviço de dados PostgreSQL — substitui google_sheets.py mantendo o mesmo contrato.
+
+Cada função tem o MESMO nome e assinatura (retornos: pd.DataFrame, str, bool, dict)
+que a equivalente em google_sheets.py, para que routers/views não precisem ser alterados.
+
+O parâmetro _client é ignorado (mantido apenas para compatibilidade de assinatura).
+O parâmetro spreadsheet_id é tratado como evento_id (inteiro).
+"""
+
+import logging
+from typing import Dict, List, Optional
+
+import pandas as pd
+from sqlalchemy import text
+
+from app.config import IDENT_OPCOES
+from app.services.db import get_engine
+
+logger = logging.getLogger(__name__)
+
+
+# =========================================================================
+# Utilitários internos
+# =========================================================================
+
+
+def _escape_like(s: str) -> str:
+    """Escapa caracteres especiais LIKE do PostgreSQL."""
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+# =========================================================================
+# Eventos (era buscar_planilhas / listar_abas_estacoes)
+# =========================================================================
+
+
+def buscar_planilhas(_client=None) -> dict:
+    """Retorna {nome_evento: str(evento_id)} — mesmo formato do google_sheets."""
+    try:
+        with get_engine().connect() as conn:
+            rows = conn.execute(
+                text("SELECT nome, id FROM eventos ORDER BY nome")
+            ).all()
+        return {nome: str(ev_id) for nome, ev_id in rows}
+    except Exception as e:
+        logger.error(f"Erro ao buscar eventos: {e}", exc_info=True)
+        return {}
+
+
+def listar_abas_estacoes(_client=None, evento_id=None) -> list:
+    """Retorna lista de nomes de estações de um evento."""
+    if evento_id is None:
+        return []
+    try:
+        with get_engine().connect() as conn:
+            rows = conn.execute(
+                text("SELECT nome FROM estacoes WHERE evento_id = :ev ORDER BY nome"),
+                {"ev": int(evento_id)},
+            ).all()
+        return [r[0] for r in rows]
+    except Exception as e:
+        logger.error(f"Erro ao listar estações: {e}", exc_info=True)
+        return []
+
+
+# =========================================================================
+# Metadados do evento
+# =========================================================================
+
+
+def get_city_map_url(_client=None, evento_id=None) -> str:
+    """Retorna URL do Google Maps com a localização do evento."""
+    if evento_id is None:
+        return "https://www.google.com/maps"
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(
+                text("SELECT latitude, longitude FROM eventos WHERE id = :ev"),
+                {"ev": int(evento_id)},
+            ).first()
+        if row and row[0] and row[1]:
+            lat = str(row[0]).replace(",", ".")
+            lon = str(row[1]).replace(",", ".")
+            return f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+    except Exception:
+        pass
+    return "https://www.google.com/maps"
+
+
+def obter_fuso_horario_evento(_client=None, evento_id=None) -> str:
+    """Retorna o fuso horário do evento (ex: 'America/Sao_Paulo')."""
+    if evento_id is None:
+        return "America/Sao_Paulo"
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(
+                text("SELECT fuso_horario FROM eventos WHERE id = :ev"),
+                {"ev": int(evento_id)},
+            ).first()
+        if row and row[0]:
+            return row[0]
+    except Exception:
+        pass
+    return "America/Sao_Paulo"
+
+
+# =========================================================================
+# Verificação de frequência
+# =========================================================================
+
+
+def verificar_frequencia_existente(
+    _client=None, evento_id=None, freq_digitada=None
+) -> Optional[str]:
+    """Verifica se a frequência já existe (ocorrências ou UTE)."""
+    if not freq_digitada or freq_digitada <= 0 or evento_id is None:
+        return None
+    try:
+        f_val = round(float(freq_digitada), 3)
+        with get_engine().connect() as conn:
+            # Checa ocorrências
+            row = conn.execute(
+                text("""
+                    SELECT COALESCE(e.nome, o.local_regiao)
+                    FROM ocorrencias o
+                    LEFT JOIN estacoes e ON e.id = o.estacao_id
+                    WHERE o.evento_id = :ev AND round(o.frequencia_mhz, 3) = :f
+                    LIMIT 1
+                """),
+                {"ev": int(evento_id), "f": f_val},
+            ).first()
+            if row:
+                return row[0]
+            # Checa UTE
+            row = conn.execute(
+                text("""
+                    SELECT 'Tabela UTE'
+                    FROM tabela_ute
+                    WHERE evento_id = :ev AND round(frequencia_mhz, 3) = :f
+                    LIMIT 1
+                """),
+                {"ev": int(evento_id), "f": f_val},
+            ).first()
+            if row:
+                return row[0]
+    except Exception:
+        pass
+    return None
+
+
+def verificar_frequencia_global(
+    _client=None, evento_id=None, freq_digitada=None
+) -> Optional[str]:
+    """Verifica se a frequência existe em ocorrências ou UTE (com detalhe)."""
+    if not freq_digitada or freq_digitada <= 0 or evento_id is None:
+        return None
+    try:
+        f_val = round(float(freq_digitada), 3)
+        with get_engine().connect() as conn:
+            # Ocorrências
+            row = conn.execute(
+                text("""
+                    SELECT COALESCE(e.nome, o.local_regiao)
+                    FROM ocorrencias o
+                    LEFT JOIN estacoes e ON e.id = o.estacao_id
+                    WHERE o.evento_id = :ev AND round(o.frequencia_mhz, 3) = :f
+                    LIMIT 1
+                """),
+                {"ev": int(evento_id), "f": f_val},
+            ).first()
+            if row:
+                return row[0]
+            # UTE com nome da entidade
+            row = conn.execute(
+                text("""
+                    SELECT 'UTE [Entidade: ' || COALESCE(pais_entidade, 'Não identificada') || ']'
+                    FROM tabela_ute
+                    WHERE evento_id = :ev AND round(frequencia_mhz, 3) = :f
+                    LIMIT 1
+                """),
+                {"ev": int(evento_id), "f": f_val},
+            ).first()
+            if row:
+                return row[0]
+    except Exception:
+        pass
+    return None
+
+
+# =========================================================================
+# Pendências (carregar_pendencias_*)
+# =========================================================================
+
+
+def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.DataFrame:
+    """Retorna pendências de todas as ocorrências (equivalente ao PAINEL)."""
+    if evento_id is None:
+        return pd.DataFrame()
+    try:
+        sql = text("""
+            SELECT
+                COALESCE(e.nome, o.local_regiao) AS "Local",
+                COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
+                o.id::text AS "ID",
+                o.fiscal AS "Fiscal",
+                o.data::text AS "Data",
+                o.hora::text AS "HH:mm",
+                o.frequencia_mhz::text AS "Frequência (MHz)",
+                o.largura_khz::text AS "Largura (kHz)",
+                o.faixa AS "Faixa de Frequência Envolvida",
+                o.identificacao AS "Identificação",
+                o.autorizado AS "Autorizado?",
+                CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
+                o.processo_sei_ute AS "Processo SEI UTE",
+                o.observacoes AS "Ocorrência (observações)",
+                o.alguem_ciente AS "Alguém mais ciente?",
+                o.interferente AS "Interferente?",
+                o.situacao AS "Situação",
+                o.fonte AS "Fonte"
+            FROM ocorrencias o
+            LEFT JOIN estacoes e ON e.id = o.estacao_id
+            WHERE o.evento_id = :ev
+              AND lower(trim(o.situacao)) = 'pendente'
+            ORDER BY "Local", "Data"
+        """)
+        return pd.read_sql(sql, get_engine(), params={"ev": int(evento_id)})
+    except Exception as e:
+        logger.error(f"Erro carregar_pendencias_painel_mapeadas: {e}", exc_info=True)
+        return pd.DataFrame()
+
+
+def carregar_pendencias_abordagem_pendentes(
+    _client=None, evento_id=None
+) -> pd.DataFrame:
+    """Retorna pendências com fonte = 'ABORDAGEM'."""
+    if evento_id is None:
+        return pd.DataFrame()
+    try:
+        sql = text("""
+            SELECT
+                o.id::text AS "ID",
+                COALESCE(o.local_regiao, 'Abordagem') AS "Local",
+                o.fiscal AS "Fiscal",
+                o.data::text AS "Data",
+                o.hora::text AS "HH:mm",
+                o.frequencia_mhz::text AS "Frequência (MHz)",
+                o.largura_khz::text AS "Largura (kHz)",
+                o.faixa AS "Faixa de Frequência Envolvida",
+                o.identificacao AS "Identificação",
+                o.autorizado AS "Autorizado?",
+                CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
+                o.processo_sei_ute AS "Processo SEI UTE",
+                o.observacoes AS "Ocorrência (observações)",
+                o.alguem_ciente AS "Alguém mais ciente?",
+                o.interferente AS "Interferente?",
+                o.situacao AS "Situação",
+                'ABORDAGEM' AS "EstacaoRaw",
+                'ABORDAGEM' AS "Fonte"
+            FROM ocorrencias o
+            WHERE o.evento_id = :ev
+              AND o.fonte = 'ABORDAGEM'
+              AND lower(trim(o.situacao)) = 'pendente'
+            ORDER BY o.local_regiao, o.data
+        """)
+        return pd.read_sql(sql, get_engine(), params={"ev": int(evento_id)})
+    except Exception as e:
+        logger.error(
+            f"Erro carregar_pendencias_abordagem_pendentes: {e}", exc_info=True
+        )
+        return pd.DataFrame()
+
+
+def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataFrame:
+    """Retorna pendências de todas as estações (fonte = 'ESTACAO')."""
+    if evento_id is None:
+        return pd.DataFrame()
+    try:
+        sql = text("""
+            SELECT
+                COALESCE(e.nome, o.local_regiao) AS "Local",
+                COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
+                o.id::text AS "ID",
+                o.fiscal AS "Fiscal",
+                o.data::text AS "Data",
+                o.hora::text AS "HH:mm",
+                o.frequencia_mhz::text AS "Frequência (MHz)",
+                o.largura_khz::text AS "Largura (kHz)",
+                o.faixa AS "Faixa de Frequência Envolvida",
+                o.identificacao AS "Identificação",
+                o.autorizado AS "Autorizado?",
+                CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
+                o.processo_sei_ute AS "Processo SEI UTE",
+                o.observacoes AS "Ocorrência (observações)",
+                o.alguem_ciente AS "Alguém mais ciente?",
+                o.interferente AS "Interferente?",
+                o.situacao AS "Situação",
+                'ESTACAO' AS "Fonte"
+            FROM ocorrencias o
+            JOIN estacoes e ON e.id = o.estacao_id
+            WHERE o.evento_id = :ev
+              AND lower(trim(o.situacao)) = 'pendente'
+            ORDER BY "Local", "Data"
+        """)
+        return pd.read_sql(sql, get_engine(), params={"ev": int(evento_id)})
+    except Exception as e:
+        logger.error(f"Erro carregar_pendencias_todas_estacoes: {e}", exc_info=True)
+        return pd.DataFrame()
+
+
+def carregar_todas_frequencias(_client=None, evento_id=None) -> dict:
+    """Retorna {frequencia: local} para todas as ocorrências."""
+    if evento_id is None:
+        return {}
+    try:
+        with get_engine().connect() as conn:
+            rows = conn.execute(
+                text("""
+                    SELECT round(o.frequencia_mhz, 3) as freq,
+                           COALESCE(e.nome, o.local_regiao) as local
+                    FROM ocorrencias o
+                    LEFT JOIN estacoes e ON e.id = o.estacao_id
+                    WHERE o.evento_id = :ev AND o.frequencia_mhz IS NOT NULL
+                    ORDER BY freq
+                """),
+                {"ev": int(evento_id)},
+            ).all()
+        return {float(r[0]): r[1] for r in rows if r[0] is not None}
+    except Exception as e:
+        logger.error(f"Erro carregar_todas_frequencias: {e}", exc_info=True)
+        return {}
+
+
+# =========================================================================
+# UTE
+# =========================================================================
+
+
+def carregar_dados_ute(_client=None, evento_id=None) -> pd.DataFrame:
+    """Retorna DataFrame com País/Entidade, Local, Frequência (MHz), Processo SEI."""
+    if evento_id is None:
+        return pd.DataFrame()
+    try:
+        sql = text("""
+            SELECT
+                pais_entidade AS "País/Entidade",
+                local AS "Local",
+                frequencia_mhz::text AS "Frequência (MHz)",
+                processo_sei AS "Processo SEI"
+            FROM tabela_ute
+            WHERE evento_id = :ev
+              AND trim(COALESCE(processo_sei, '')) != ''
+            ORDER BY frequencia_mhz
+        """)
+        return pd.read_sql(sql, get_engine(), params={"ev": int(evento_id)})
+    except Exception as e:
+        logger.error(f"Erro carregar_dados_ute: {e}", exc_info=True)
+        return pd.DataFrame()
+
+
+# =========================================================================
+# Opções de identificação
+# =========================================================================
+
+
+def carregar_opcoes_identificacao(_client=None, evento_id=None) -> list:
+    """Retorna lista de opções de identificação (do banco ou fallback fixo)."""
+    if evento_id is None:
+        return IDENT_OPCOES
+    try:
+        with get_engine().connect() as conn:
+            rows = conn.execute(
+                text("""
+                    SELECT DISTINCT valor FROM opcoes_identificacao
+                    WHERE (evento_id = :ev OR evento_id IS NULL)
+                    ORDER BY valor
+                """),
+                {"ev": int(evento_id)},
+            ).all()
+        if rows:
+            return [r[0] for r in rows]
+    except Exception:
+        pass
+    return IDENT_OPCOES
+
+
+# =========================================================================
+# Inserir ocorrência (era inserir_emissao_I_W)
+# =========================================================================
+
+
+def inserir_emissao_I_W(
+    _client=None, evento_id=None, dados_formulario: dict = None
+) -> bool:
+    """Insere nova ocorrência (emissão) no banco."""
+    if evento_id is None or dados_formulario is None:
+        return False
+    try:
+        dia = dados_formulario.get("Dia")
+        if hasattr(dia, "strftime"):
+            dia = dia.strftime("%Y-%m-%d")
+        hora = dados_formulario.get("Hora")
+        if hasattr(hora, "strftime"):
+            hora = hora.strftime("%H:%M")
+
+        with get_engine().begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO ocorrencias
+                        (evento_id, local_regiao, fiscal, data, hora,
+                         frequencia_mhz, largura_khz, faixa,
+                         identificacao, autorizado, ute,
+                         processo_sei_ute, observacoes,
+                         interferente, situacao, fonte)
+                    VALUES
+                        (:ev, :local, :fiscal, :data, :hora,
+                         :freq, :bw, :faixa,
+                         :ident, :autz, :ute,
+                         :proc, :obs,
+                         :inter, :situ, 'ABORDAGEM')
+                """),
+                {
+                    "ev": int(evento_id),
+                    "local": dados_formulario.get("Local/Região", "Abordagem"),
+                    "fiscal": dados_formulario.get("Fiscal", ""),
+                    "data": dia,
+                    "hora": hora,
+                    "freq": float(dados_formulario.get("Frequência em MHz", 0)),
+                    "bw": float(dados_formulario.get("Largura em kHz", 0)),
+                    "faixa": dados_formulario.get("Faixa de Frequência", ""),
+                    "ident": dados_formulario.get("Identificação", ""),
+                    "autz": dados_formulario.get("Autorizado? (Q)", ""),
+                    "ute": bool(dados_formulario.get("UTE?", False)),
+                    "proc": dados_formulario.get("Processo SEI ou Ato UTE", ""),
+                    "obs": f"{dados_formulario.get('Observações/Detalhes/Contatos', '')} - {dados_formulario.get('Responsável pela emissão', '')}",
+                    "inter": dados_formulario.get("Interferente?", ""),
+                    "situ": dados_formulario.get("Situação", "Pendente"),
+                },
+            )
+        return True
+    except Exception as e:
+        logger.error(f"Erro inserir_emissao_I_W: {e}", exc_info=True)
+        return False
+
+
+# =========================================================================
+# BSR / ERB
+# =========================================================================
+
+
+def inserir_bsr_erb(
+    _client=None, evento_id=None, tipo="", regiao="", lat="", lon=""
+) -> str:
+    """Insere registro de BSR/Jammer ou ERB Fake."""
+    if evento_id is None:
+        return "ERRO: evento_id não informado."
+    try:
+        lat_v = float(lat.replace(",", ".")) if lat else None
+        lon_v = float(lon.replace(",", ".")) if lon else None
+    except (ValueError, AttributeError):
+        lat_v = None
+        lon_v = None
+
+    try:
+        with get_engine().begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO bsr_erb (evento_id, tipo, regiao, latitude, longitude)
+                    VALUES (:ev, :tipo, :regiao, :lat, :lon)
+                """),
+                {
+                    "ev": int(evento_id),
+                    "tipo": tipo,
+                    "regiao": regiao or "",
+                    "lat": lat_v,
+                    "lon": lon_v,
+                },
+            )
+        return f"'{tipo}' incluído com sucesso."
+    except Exception as e:
+        return f"ERRO: {e}"
+
+
+# =========================================================================
+# Atualização de campos (edição de ocorrências)
+# =========================================================================
+
+
+def atualizar_campos_na_aba_mae(
+    _client=None,
+    evento_id=None,
+    estacao_raw="",
+    id_ocorrencia="",
+    novos_valores: dict = None,
+) -> str:
+    """Atualiza campos de uma ocorrência (qualquer fonte)."""
+    if evento_id is None or novos_valores is None:
+        return "ERRO: parâmetros insuficientes."
+    try:
+        with get_engine().begin() as conn:
+            updates = []
+            params = {"ev": int(evento_id), "id": int(id_ocorrencia)}
+
+            field_map = {
+                "Identificação": "identificacao",
+                "Autorizado?": "autorizado",
+                "UTE?": "ute",
+                "Processo SEI UTE": "processo_sei_ute",
+                "Ocorrência (observações)": "observacoes",
+                "Alguém mais ciente?": "alguem_ciente",
+                "Interferente?": "interferente",
+                "Situação": "situacao",
+            }
+
+            for key, col in field_map.items():
+                if key in novos_valores:
+                    val = novos_valores[key]
+                    if key == "UTE?":
+                        val = str(val).lower() in ["sim", "true", "1", "ok"]
+                        updates.append(f"{col} = :v_{col}")
+                        params[f"v_{col}"] = val
+                    else:
+                        updates.append(f"{col} = :v_{col}")
+                        params[f"v_{col}"] = str(val)
+
+            if not updates:
+                return "Nada a atualizar."
+
+            sql = f"""
+                UPDATE ocorrencias
+                SET {', '.join(updates)}
+                WHERE evento_id = :ev AND id = :id
+            """
+            result = conn.execute(text(sql), params)
+            if result.rowcount == 0:
+                return f"ERRO: ID {id_ocorrencia} não encontrado no evento {evento_id}."
+        return f"Atualizado no banco (ID {id_ocorrencia})."
+    except Exception as e:
+        return f"ERRO ao atualizar: {e}"
+
+
+def atualizar_campos_abordagem_por_id(
+    _client=None, evento_id=None, id_h="", novos_valores: dict = None
+) -> str:
+    """Atualiza campos de uma ocorrência da Abordagem (alias para atualizar_campos_na_aba_mae)."""
+    return atualizar_campos_na_aba_mae(
+        _client, evento_id, "Abordagem", id_h, novos_valores
+    )
+
+
+# =========================================================================
+# Busca textual
+# =========================================================================
+
+
+def _buscar_por_texto_livre(
+    _client=None, evento_id=None, termos: str = "", abas: list = None
+) -> pd.DataFrame:
+    """Busca textual em ocorrências usando unaccent + ILIKE."""
+    if evento_id is None or not termos or len(termos.strip()) < 3:
+        return pd.DataFrame()
+    try:
+        termo_clean = _escape_like(termos.strip())
+        sql = text("""
+            SELECT
+                o.id::text AS "ID",
+                COALESCE(e.nome, o.local_regiao) AS "Local",
+                o.fiscal AS "Fiscal",
+                o.data::text AS "Data",
+                o.hora::text AS "HH:mm",
+                o.frequencia_mhz::text AS "Frequência (MHz)",
+                o.largura_khz::text AS "Largura (kHz)",
+                o.faixa AS "Faixa de Frequência Envolvida",
+                o.identificacao AS "Identificação",
+                o.autorizado AS "Autorizado?",
+                CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
+                o.processo_sei_ute AS "Processo SEI UTE",
+                o.observacoes AS "Ocorrência (observações)",
+                o.alguem_ciente AS "Alguém mais ciente?",
+                o.interferente AS "Interferente?",
+                o.situacao AS "Situação",
+                COALESCE(e.nome, o.local_regiao, '') AS "Aba/Origem",
+                'BUSCA' AS "Fonte"
+            FROM ocorrencias o
+            LEFT JOIN estacoes e ON e.id = o.estacao_id
+            WHERE o.evento_id = :ev
+              AND unaccent(lower(
+                    COALESCE(o.local_regiao,'') || ' ' ||
+                    COALESCE(o.fiscal,'') || ' ' ||
+                    COALESCE(o.identificacao,'') || ' ' ||
+                    COALESCE(o.observacoes,'') || ' ' ||
+                    COALESCE(o.faixa,'') || ' ' ||
+                    COALESCE(o.processo_sei_ute,'')
+              )) LIKE unaccent(lower(:q))
+            ORDER BY o.data DESC
+            LIMIT 200
+        """)
+        df = pd.read_sql(
+            sql,
+            get_engine(),
+            params={"ev": int(evento_id), "q": f"%{termo_clean}%"},
+        )
+        return df
+    except Exception as e:
+        logger.error(f"Erro _buscar_por_texto_livre: {e}", exc_info=True)
+        return pd.DataFrame()

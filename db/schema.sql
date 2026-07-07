@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     id                BIGSERIAL PRIMARY KEY,
     evento_id         BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     estacao_id        BIGINT REFERENCES estacoes(id) ON DELETE SET NULL,
+    id_planilha       TEXT,        -- ID original da planilha (ex: "Abo-100", "1-RF02")
     local_regiao      TEXT,
     fiscal            TEXT,
     data              DATE,
@@ -65,6 +66,7 @@ CREATE INDEX IF NOT EXISTS idx_ocorr_busca_trgm      ON ocorrencias USING gin (o
 CREATE TABLE IF NOT EXISTS tabela_ute (
     id              BIGSERIAL PRIMARY KEY,
     evento_id       BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    id_planilha     TEXT,        -- ID original da planilha
     pais_entidade   TEXT,
     local           TEXT,
     frequencia_mhz  NUMERIC(12,3),
