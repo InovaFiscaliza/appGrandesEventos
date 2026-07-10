@@ -72,11 +72,20 @@ def _parse_time(val) -> str | None:
 
 
 def _parse_float(val) -> float | None:
-    """Converte valor numérico (vírgula como separador decimal)."""
+    """Converte valor numérico (vírgula como separador decimal,
+    ponto como separador de milhar ou formatação inválida)."""
     if val is None or str(val).strip() == "":
         return None
     try:
-        return round(float(str(val).replace(",", ".").strip()), 3)
+        v = str(val).replace(" ", "").strip()
+        # Substitui vírgula decimal por ponto
+        v = v.replace(",", ".")
+        # Se houver múltiplos pontos, manter apenas o primeiro
+        # (trata tanto separador de milhar quanto dados mal formatados)
+        if v.count(".") > 1:
+            parts = v.split(".")
+            v = parts[0] + "." + "".join(parts[1:])
+        return round(float(v), 6)
     except (ValueError, TypeError):
         return None
 
