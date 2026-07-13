@@ -1,0 +1,1 @@
+já temos o banco de dados postgres, faça um estudo onde seriam feitas as modificações para a aplicação não acessar amis ao googlesheets e passar a atualizar os dados no postgres salve em html
