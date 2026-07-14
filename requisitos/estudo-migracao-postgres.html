@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estudo de Migração — Google Sheets → PostgreSQL | AppGrandesEventos</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+  :root {
+    --azul: #1a5fb4;
+    --azul-claro: #3584e4;
+    --verde: #26a269;
+    --verde-fundo: #eaf6ed;
+    --amarelo: #e5a50a;
+    --amarelo-fundo: #fff8e1;
+    --vermelho: #c01c28;
+    --cinza-fundo: #f6f8fa;
+    --cinza-borda: #d0d7de;
+    --texto: #1f2328;
+    --texto-suave: #57606a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--texto);
+    margin: 0;
+    background: #fff;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+
+  /* Hero */
+  header.hero {
+    background: linear-gradient(135deg, var(--azul) 0%, #005a9e 100%);
+    color: #fff; padding: 2.5rem 1.5rem; text-align: center;
+  }
+  header.hero h1 { margin: 0 0 .4rem; font-size: 1.9rem; }
+  header.hero p { margin: 0; opacity: .92; font-size: 1.05rem; }
+  header.hero .badge {
+    display: inline-block; margin-top: 1rem; background: rgba(255,255,255,.2);
+    padding: .3rem .9rem; border-radius: 999px; font-size: .82rem;
+  }
+
+  h2 {
+    font-size: 1.45rem; margin-top: 2.8rem; padding-bottom: .4rem;
+    border-bottom: 2px solid var(--cinza-borda);
+  }
+  h3 { font-size: 1.1rem; margin-top: 1.8rem; color: var(--azul); }
+  h4 { font-size: 1rem; margin-top: 1.2rem; color: var(--texto-suave); }
+
+  a { color: var(--azul-claro); }
+
+  blockquote {
+    border-left: 4px solid var(--azul-claro);
+    background: var(--cinza-fundo);
+    margin: 1rem 0; padding: .8rem 1.2rem; border-radius: 0 6px 6px 0;
+    color: var(--texto-suave);
+  }
+  blockquote.aviso { border-left-color: var(--amarelo); background: var(--amarelo-fundo); color: var(--texto); }
+  blockquote.ok { border-left-color: var(--verde); background: var(--verde-fundo); }
+  blockquote.importante {
+    border-left-color: var(--vermelho); background: #fde8e8;
+    font-weight: 500;
+  }
+
+  code:not(pre code) {
+    background: rgba(175,184,193,.25); padding: .15em .4em;
+    border-radius: 5px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+  pre {
+    background: #282c34; border-radius: 8px; padding: 1rem 1.2rem;
+    overflow-x: auto; font-size: .84rem; line-height: 1.45;
+  }
+
+  table {
+    border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .91rem;
+  }
+  th, td { border: 1px solid var(--cinza-borda); padding: .5rem .7rem; text-align: left; }
+  th { background: var(--cinza-fundo); font-weight: 600; }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  ul.checklist { list-style: none; padding-left: 0; }
+  ul.checklist li { padding-left: 1.9rem; position: relative; margin: .35rem 0; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 0; color: var(--azul-claro);
+    font-size: 1.1rem; top: -1px;
+  }
+
+  .toc {
+    background: var(--cinza-fundo); border: 1px solid var(--cinza-borda);
+    border-radius: 8px; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .toc h2 { margin-top: 0; border: none; font-size: 1.1rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; }
+  .toc a { text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  .tag {
+    display: inline-block; font-size: .75rem; font-weight: 600;
+    padding: .15rem .55rem; border-radius: 999px; margin-left: .4rem;
+  }
+  .tag-ok { background: var(--verde-fundo); color: var(--verde); }
+  .tag-alert { background: var(--amarelo-fundo); color: #b8860b; }
+  .tag-danger { background: #fde8e8; color: var(--vermelho); }
+
+  hr { border: none; border-top: 1px solid var(--cinza-borda); margin: 2.5rem 0; }
+  .footer { text-align: center; color: var(--texto-suave); font-size: .84rem; margin-top: 3rem; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Estudo de Migra&ccedil;&atilde;o</h1>
+  <p>Eliminar depend&ecirc;ncia do <strong>Google Sheets</strong> e passar a usar exclusivamente o <strong>PostgreSQL</strong></p>
+  <span class="badge">📄 AppGrandesEventos &bull; 14/07/2026</span>
+</header>
+
+<div class="container">
+
+<!-- ===== SUMÁRIO EXECUTIVO ===== -->
+<blockquote>
+  <strong>Objetivo:</strong> tornar o AppGrandesEventos independente do Google Sheets, utilizando
+  exclusivamente o banco PostgreSQL (j&aacute; migrado e operacional) como &uacute;nica fonte de dados.
+  Abaixo, o mapeamento completo de <strong>todos os arquivos</strong> que precisam ser alterados,
+  com o passo a passo de cada modifica&ccedil;&atilde;o.
+</blockquote>
+
+<nav class="toc">
+  <h2>&Iacute;ndice</h2>
+  <ol>
+    <li><a href="#s1">Vis&atilde;o geral da arquitetura atual</a></li>
+    <li><a href="#s2">Servi&ccedil;os de dados &mdash; o cora&ccedil;&atilde;o da mudan&ccedil;a</a></li>
+    <li><a href="#s3">Routers FastAPI &mdash; 7 arquivos para modificar</a></li>
+    <li><a href="#s4">Utilit&aacute;rios offline &mdash; o que muda</a></li>
+    <li><a href="#s5">Frontend (JS) &mdash; simplificar modo offline</a></li>
+    <li><a href="#s6">Templates HTML</a></li>
+    <li><a href="#s7">Arquivos que podem ser removidos</a></li>
+    <li><a href="#s8">Ordem de implementa&ccedil;&atilde;o recomendada</a></li>
+  </ol>
+</nav>
+
+<!-- ===== 1 ===== -->
+<h2 id="s1">1. Vis&atilde;o geral da arquitetura atual</h2>
+
+<p>Hoje o fluxo de dados &eacute;:</p>
+
+<pre>
+  Navegador (HTML/JS)
+       &darr; HTTP (POST/GET)
+  Router FastAPI (app/routers/*.py)
+       &darr; chama
+  app/services/google_sheets.py  &larr; &Uacute;NICA fonte de dados
+       &darr;
+  Google Sheets (via gspread + API Google)
+</pre>
+
+<p>O que se deseja:</p>
+
+<pre>
+  Navegador (HTML/JS)
+       &darr; HTTP (POST/GET)
+  Router FastAPI (app/routers/*.py)
+       &darr; chama
+  app/services/postgres.py  &larr; &Uacute;NICA fonte de dados
+       &darr;
+  PostgreSQL (local, via SQLAlchemy)
+</pre>
+
+<blockquote class="ok">
+  <strong>Status:</strong> o arquivo <code>app/services/postgres.py</code> j&aacute; existe e cont&eacute;m
+  TODAS as fun&ccedil;&otilde;es necess&aacute;rias com as mesmas assinaturas de
+  <code>google_sheets.py</code>. Basta trocar os imports nos routers.
+</blockquote>
+
+<!-- ===== 2 ===== -->
+<h2 id="s2">2. Servi&ccedil;os de dados</h2>
+
+<h3>2.1. <code>app/services/google_sheets.py</code> <span class="tag tag-danger">N&Atilde;O SER&Aacute; MAIS USADO</span></h3>
+<p>Este arquivo pode ser mantido como legado ou removido ao final. Cont&eacute;m 20 fun&ccedil;&otilde;es p&uacute;blicas.</p>
+
+<h3>2.2. <code>app/services/postgres.py</code> <span class="tag tag-ok">J&Aacute; IMPLEMENTADO</span></h3>
+<p>Cont&eacute;m 18 fun&ccedil;&otilde;es &mdash; todas as equivalentes do Google Sheets est&atilde;o presentes:</p>
+
+<table>
+  <thead>
+    <tr><th>Fun&ccedil;&atilde;o</th><th>google_sheets</th><th>postgres</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>buscar_planilhas</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>listar_abas_estacoes</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>get_city_map_url</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>obter_fuso_horario_evento</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>verificar_frequencia_existente</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>verificar_frequencia_global</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>carregar_pendencias_painel_mapeadas</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>carregar_pendencias_abordagem_pendentes</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>carregar_pendencias_todas_estacoes</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>carregar_todas_frequencias</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>carregar_dados_ute</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>carregar_opcoes_identificacao</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>inserir_emissao_I_W</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>inserir_bsr_erb</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>atualizar_campos_na_aba_mae</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>atualizar_campos_abordagem_por_id</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>_buscar_por_texto_livre</code></td><td>✅</td><td>✅</td></tr>
+    <tr><td><code>obter_cliente_gspread</code></td><td>✅</td><td>❌ <em>N&atilde;o existe</em></td></tr>
+  </tbody>
+</table>
+
+<blockquote class="ok">
+  <strong>N&atilde;o h&aacute; necessidade de alterar <code>postgres.py</code>.</strong>
+  O par&acirc;metro <code>_client</code> &eacute; ignorado (mantido para compatibilidade),
+  e <code>spreadsheet_id</code> &eacute; tratado como <code>evento_id</code>.
+</blockquote>
+
+<!-- ===== 3 ===== -->
+<h2 id="s3">3. Routers FastAPI &mdash; 7 arquivos para modificar</h2>
+
+<p>Cada router importa fun&ccedil;&otilde;es de <code>google_sheets</code> e chama
+<code>obter_cliente_gspread()</code>. A mudan&ccedil;a &eacute; sempre a mesma:</p>
+
+<ol>
+  <li>Trocar o <code>import</code> de <code>google_sheets</code> para <code>postgres</code></li>
+  <li>Remover a chamada a <code>obter_cliente_gspread()</code></li>
+  <li>Passar <code>spreadsheet_id</code> diretamente como primeiro argumento</li>
+</ol>
+
+<h3>3.1. <code>app/routers/selecao.py</code></h3>
+<p><strong>O que mudar:</strong></p>
+<table>
+  <tr><th>Atual (google_sheets)</th><th>Novo (postgres)</th></tr>
+  <tr>
+    <td><code>from app.services.google_sheets import buscar_planilhas, obter_cliente_gspread</code></td>
+    <td><code>from app.services.postgres import buscar_planilhas</code></td>
+  </tr>
+  <tr>
+    <td><code>client = obter_cliente_gspread()</code><br><code>eventos = buscar_planilhas(client) if client else {}</code></td>
+    <td><code>eventos = buscar_planilhas()</code></td>
+  </tr>
+</table>
+<p><strong>Arquivo:</strong> <code>app/routers/selecao.py</code> &mdash; linhas 5 e 18</p>
+
+<h3>3.2. <code>app/routers/menu.py</code></h3>
+<p><strong>O que mudar:</strong> import e remo&ccedil;&atilde;o do cliente.</p>
+<table>
+  <tr><th>Atual</th><th>Novo</th></tr>
+  <tr>
+    <td><code>from app.services.google_sheets import (carregar_pendencias_painel_mapeadas, carregar_pendencias_abordagem_pendentes, carregar_pendencias_todas_estacoes, get_city_map_url, obter_cliente_gspread)</code></td>
+    <td><code>from app.services.postgres import (carregar_pendencias_painel_mapeadas, carregar_pendencias_abordagem_pendentes, carregar_pendencias_todas_estacoes, get_city_map_url)</code></td>
+  </tr>
+  <tr>
+    <td><code>client = obter_cliente_gspread()</code><br><code>df_painel = carregar_pendencias_painel_mapeadas(client, sp_id)</code></td>
+    <td><code>df_painel = carregar_pendencias_painel_mapeadas(evento_id=sp_id)</code></td>
+  </tr>
+</table>
+<p><strong>Arquivo:</strong> <code>app/routers/menu.py</code> &mdash; linhas 5-12 e 25</p>
+
+<h3>3.3. <code>app/routers/inserir.py</code></h3>
+<p><strong>O que mudar:</strong></p>
+<ul>
+  <li>Trocar import de <code>google_sheets</code> para <code>postgres</code></li>
+  <li>Remover <code>client = obter_cliente_gspread()</code> (linha 45)</li>
+  <li>Remover chamada a <code>tentar_conexao_ou_offline(obter_cliente_gspread)</code> (linha 97) &mdash; PostgreSQL &eacute; local</li>
+  <li>Todas as fun&ccedil;&otilde;es s&atilde;o chamadas sem <code>client</code></li>
+</ul>
+<p><strong>Impacto no modo offline:</strong> A detec&ccedil;&atilde;o de falha de conex&atilde;o com Google Sheets deixa de fazer sentido. O formul&aacute;rio sempre consegue gravar no PostgreSQL local.</p>
+
+<h3>3.4. <code>app/routers/consultar.py</code></h3>
+<p><strong>O que mudar:</strong></p>
+<ul>
+  <li>Trocar import de <code>google_sheets</code> para <code>postgres</code> (linhas 10-16)</li>
+  <li>Remover as 3 ocorr&ecirc;ncias de <code>obter_cliente_gspread()</code> (linhas 72, 140, 186)</li>
+  <li>Simplificar fluxo offline: <code>tentar_conexao_ou_offline(obter_cliente_gspread)</code> n&atilde;o &eacute; mais necess&aacute;rio</li>
+</ul>
+
+<h3>3.5. <code>app/routers/bsr_erb.py</code></h3>
+<p><strong>O que mudar:</strong></p>
+<ul>
+  <li>Trocar import de <code>google_sheets</code> para <code>postgres</code> (linha 5)</li>
+  <li>Remover <code>client = obter_cliente_gspread()</code> (linha 81)</li>
+  <li><strong>Importante:</strong> remover convers&atilde;o de coordenadas para locale pt-BR:<br>
+    <code>lat_sheets = lat.replace(".", ",") if lat else ""</code> &mdash; PostgreSQL usa ponto decimal nativamente.</li>
+  <li>Chamar <code>inserir_bsr_erb(evento_id=sp_id, tipo, regiao, lat, lon)</code> diretamente</li>
+</ul>
+
+<h3>3.6. <code>app/routers/busca.py</code></h3>
+<p><strong>O que mudar:</strong></p>
+<ul>
+  <li>Trocar import (linhas 5-8)</li>
+  <li>Remover <code>client = obter_cliente_gspread()</code> (linha 70)</li>
+  <li><code>listar_abas_estacoes(evento_id=sp_id)</code> e <code>_buscar_por_texto_livre(evento_id=sp_id, ...)</code></li>
+</ul>
+
+<h3>3.7. <code>app/routers/tabela_ute.py</code></h3>
+<p><strong>O que mudar:</strong></p>
+<ul>
+  <li>Trocar import (linha 6)</li>
+  <li>Remover <code>client = obter_cliente_gspread()</code> (linha 33)</li>
+  <li><code>carregar_dados_ute(evento_id=sp_id)</code></li>
+</ul>
+
+<!-- ===== 4 ===== -->
+<h2 id="s4">4. Utilit&aacute;rios offline</h2>
+
+<h3>4.1. <code>app/utils/offline.py</code> <span class="tag tag-alert">REVISAR</span></h3>
+<p>Cont&eacute;m 4 fun&ccedil;&otilde;es que s&oacute; existiam por causa da instabilidade do Google Sheets:</p>
+
+<table>
+  <thead>
+    <tr><th>Fun&ccedil;&atilde;o</th><th>Uso atual</th><th>Com PostgreSQL</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>tentar_conexao_ou_offline()</code></td>
+      <td>Tenta obter cliente gspread; se falha, ativa modo offline</td>
+      <td><strong>Pode ser removida.</strong> PostgreSQL &eacute; local, n&atilde;o h&aacute; falha de conex&atilde;o externa.</td>
+    </tr>
+    <tr>
+      <td><code>preparar_offline_ctx()</code></td>
+      <td>Prepara contexto para template quando offline</td>
+      <td><strong>MANTIDO</strong> — necess&aacute;rio para modo offline WhatsApp</td>
+    </tr>
+    <tr>
+      <td><code>extrair_dados_inserir()</code></td>
+      <td>Extrai dados do form para fila offline</td>
+      <td><strong>MANTIDO</strong> — necess&aacute;rio para modo offline WhatsApp</td>
+    </tr>
+    <tr>
+      <td><code>extrair_dados_edicao()</code></td>
+      <td>Extrai dados de edi&ccedil;&atilde;o para fila offline</td>
+      <td><strong>MANTIDO</strong> — necess&aacute;rio para modo offline WhatsApp</td>
+    </tr>
+  </tbody>
+</table>
+
+<blockquote class="importante">
+  <strong>Aten&ccedil;&atilde;o:</strong> Se deseja manter compatibilidade com uso em &aacute;rea remota
+  (sem internet para acessar o servidor FastAPI), o modo offline do PWA (Service Worker + IndexedDB)
+  ainda &eacute; v&aacute;lido. Mas a <em>causa</em> da falha de escrita muda: n&atilde;o &eacute; mais
+  "Google Sheets inacess&iacute;vel", e sim "Servidor FastAPI inacess&iacute;vel".
+</blockquote>
+
+<p><strong>Arquivos que usam <code>offline.py</code>:</strong></p>
+<ul>
+  <li><code>app/routers/inserir.py</code> (linhas 13-14)</li>
+  <li><code>app/routers/consultar.py</code> (linha 23)</li>
+</ul>
+
+<!-- ===== 5 ===== -->
+<h2 id="s5">5. Frontend (JavaScript)</h2>
+
+<h3>5.1. <code>app/static/app.js</code> <span class="tag tag-ok">MANTER (com ressalvas)</span></h3>
+<p>M&oacute;dulo offline central. As filas de envio <strong>DEVEM ser mantidas</strong> por causa do modo offline WhatsApp:</p>
+<table>
+  <tr><th>Store</th><th>Fun&ccedil;&atilde;o atual</th><th>Com PostgreSQL</th></tr>
+  <tr><td><code>fila_envio</code></td><td>Inser&ccedil;&otilde;es offline</td><td><strong>MANTIDO</strong> — necess&aacute;rio para offline WhatsApp</td></tr>
+  <tr><td><code>fila_bsr_erb</code></td><td>BSR/ERB offline</td><td><strong>MANTIDO</strong> — necess&aacute;rio para offline WhatsApp</td></tr>
+  <tr><td><code>fila_edicoes</code></td><td>Edi&ccedil;&otilde;es offline</td><td><strong>MANTIDO</strong> — necess&aacute;rio para offline WhatsApp</td></tr>
+  <tr><td><code>cache_pendencias</code></td><td>Cache de consulta</td><td>Mantido</td></tr>
+  <tr><td><code>cache_frequencias</code></td><td>Cache de frequ&ecirc;ncias</td><td>Mantido</td></tr>
+</table>
+
+<h3>5.2. <code>app/static/sync.js</code> <span class="tag tag-ok">MANTER</span></h3>
+<p><strong>DEVE ser mantido.</strong> Respons&aacute;vel por chamar as APIs de sincroniza&ccedil;&atilde;o
+quando a conex&atilde;o volta. Essencial para o modo offline WhatsApp funcionar corretamente.</p>
+
+<h3>5.3. <code>app/static/inserir.js</code> <span class="tag tag-ok">MANTER</span></h3>
+<p>A se&ccedil;&atilde;o "Fallback offline do servidor" <strong>deve ser mantida</strong> para suportar
+o modo offline WhatsApp.</p>
+
+<h3>5.4. <code>app/static/bsr_erb.js</code> <span class="tag tag-ok">MANTER</span></h3>
+<p>A intercepta&ccedil;&atilde;o de submit quando offline <strong>deve ser mantida</strong>
+para suportar o modo offline WhatsApp.</p>
+
+<h3>5.5. <code>app/static/consultar.js</code> <span class="tag tag-ok">MANTER</span></h3>
+<p>L&oacute;gica de cache offline e fila de edi&ccedil;&otilde;es <strong>deve ser mantida</strong>
+para suportar o modo offline WhatsApp.</p>
+
+<h3>5.6. <code>app/static/connectivity.js</code> <span class="tag tag-ok">MANTER</span></h3>
+<p>O banner "Voc&ecirc; est&aacute; offline" &eacute; essencial para o PWA offline e deve ser mantido.</p>
+
+<h3>5.7. <code>app/static/db.js</code> <span class="tag tag-alert">REVISAR</span></h3>
+<p>C&oacute;digo legado anterior ao <code>app.js</code>. Pode ser mantido para compatibilidade,
+mas o novo fluxo usa <code>app.js</code> como principal.</p>
+
+<!-- ===== 6 ===== -->
+<h2 id="s6">6. Templates HTML</h2>
+
+<h3>6.1. <code>app/templates/base.html</code></h3>
+<p>Os scripts <code>db.js</code> e <code>sync.js</code> <strong>devem ser mantidos</strong>
+para suportar o modo offline WhatsApp.</p>
+
+<h3>6.2. <code>app/templates/inserir.html</code></h3>
+<p>Os scripts legados e o bloco <code>{% if offline_salvo %}</code>
+<strong>devem ser mantidos</strong> para suportar o modo offline WhatsApp.</p>
+
+<h3>6.3. <code>app/templates/bsr_erb.html</code></h3>
+<p>Os scripts <code>db.js</code> e <code>sync.js</code>
+<strong>devem ser mantidos</strong> para suportar o modo offline WhatsApp.</p>
+
+<h3>6.4. <code>app/templates/consultar.html</code></h3>
+<p>O bloco <code>{% if offline_salvo %}</code>
+<strong>deve ser mantido</strong> para suportar o modo offline WhatsApp.</p>
+
+<!-- ===== 7 ===== -->
+<h2 id="s7">7. Arquivos que podem ser removidos ou desativados</h2>
+
+<table>
+  <thead>
+    <tr><th>Arquivo</th><th>Motivo</th><th>A&ccedil;&atilde;o</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>app/services/google_sheets.py</code></td>
+      <td>N&atilde;o ser&aacute; mais importado por nada</td>
+      <td>Manter como legado ou remover</td>
+    </tr>
+    <tr>
+      <td><code>app/static/sync.js</code></td>
+      <td>Sincroniza&ccedil;&atilde;o de fila offline</td>
+      <td><strong>MANTIDO</strong> — necess&aacute;rio para offline WhatsApp</td>
+    </tr>
+    <tr>
+      <td><code>app/static/db.js</code></td>
+      <td>Legado anterior ao <code>app.js</code></td>
+      <td><strong>MANTIDO</strong> — pode ser referenciado ainda</td>
+    </tr>
+    <tr>
+      <td><code>.streamlit/secrets.toml</code></td>
+      <td>Credenciais do Google Sheets n&atilde;o necess&aacute;rias</td>
+      <td>Remover se&ccedil;&atilde;o <code>[gcp_service_account]</code></td>
+    </tr>
+    <tr>
+      <td><code>gspread</code> (depend&ecirc;ncia)</td>
+      <td>N&atilde;o utilizado</td>
+      <td>Remover do <code>pyproject.toml</code></td>
+    </tr>
+    <tr>
+      <td><code>google-auth</code> (depend&ecirc;ncia)</td>
+      <td>N&atilde;o utilizado</td>
+      <td>Remover do <code>pyproject.toml</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ===== 8 ===== -->
+<h2 id="s8">8. Ordem de implementa&ccedil;&atilde;o recomendada</h2>
+
+<ol>
+  <li><strong>Routers</strong> &mdash; alterar os 7 routers, um por vez, testando cada funcionalidade:
+    <ol style="list-style-type: lower-alpha;">
+      <li><code>selecao.py</code> (escolha do evento)</li>
+      <li><code>menu.py</code> (tela principal)</li>
+      <li><code>inserir.py</code> (inserir emiss&atilde;o)</li>
+      <li><code>consultar.py</code> (editar pend&ecirc;ncia)</li>
+      <li><code>bsr_erb.py</code> (BSR/Jammer)</li>
+      <li><code>busca.py</code> (busca textual)</li>
+      <li><code>tabela_ute.py</code> (consulta UTE)</li>
+    </ol>
+  </li>
+  <li><strong>Utilit&aacute;rios</strong> &mdash; revisar <code>app/utils/offline.py</code>:
+    <ul>
+      <li>Remover <code>tentar_conexao_ou_offline()</code> (Google Sheets offline n&atilde;o se aplica mais)</li>
+      <li><strong>MANTER</strong> as demais fun&ccedil;&otilde;es (<code>preparar_offline_ctx</code>, <code>extrair_dados_inserir</code>, <code>extrair_dados_edicao</code>) para modo offline WhatsApp</li>
+    </ul>
+  </li>
+  <li><strong>Frontend</strong> &mdash; manter todos os arquivos JS existentes (essenciais para o modo offline WhatsApp): <code>app.js</code>, <code>sync.js</code>, <code>db.js</code>, <code>inserir.js</code>, <code>bsr_erb.js</code>, <code>consultar.js</code>, <code>connectivity.js</code></li>
+  <li><strong>Templates</strong> &mdash; manter blocos offline e scripts legados (necess&aacute;rios para o modo offline WhatsApp)</li>
+  <li><strong>Depend&ecirc;ncias</strong> &mdash; remover <code>gspread</code> e <code>google-auth</code> do <code>pyproject.toml</code></li>
+  <li><strong>Limpeza</strong> &mdash; remover credenciais do Google (<code>.streamlit/secrets.toml</code> se&ccedil;&atilde;o <code>[gcp_service_account]</code>)</li>
+</ol>
+
+<hr>
+
+<blockquote class="ok">
+  <strong>Resumo:</strong> 7 routers para modificar, <code>postgres.py</code> j&aacute; est&aacute; pronto.
+  Todo o ecossistema offline (Service Worker, IndexedDB, filas de sincroniza&ccedil;&atilde;o)
+  <strong>DEVE SER MANTIDO</strong> para suportar o modo offline WhatsApp em &aacute;reas remotas.
+  A mudan&ccedil;a &eacute; segura e incremental, podendo ser feita router por router.
+</blockquote>
+
+<p class="footer">AppGrandesEventos &bull; Estudo de Migra&ccedil;&atilde;o Google Sheets &rarr; PostgreSQL &bull; 14/07/2026</p>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>hljs.highlightAll();</script>
+</body>
+</html>

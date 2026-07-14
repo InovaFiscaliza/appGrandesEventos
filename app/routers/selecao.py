@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.google_sheets import buscar_planilhas, obter_cliente_gspread
+from app.services.postgres import buscar_planilhas
 from app.utils.formatters import _img_b64
 from app.config import TITULO_PRINCIPAL
 
@@ -15,8 +15,7 @@ async def get_selecao(request: Request):
     if request.session.get("spreadsheet_id"):
         return RedirectResponse("/menu", status_code=302)
 
-    client = obter_cliente_gspread()
-    eventos = buscar_planilhas(client) if client else {}
+    eventos = buscar_planilhas()
 
     return templates.TemplateResponse(
         request,

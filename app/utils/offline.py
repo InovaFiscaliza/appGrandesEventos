@@ -2,40 +2,21 @@
 offline.py — Helpers para modo offline nos routers FastAPI.
 
 Centraliza a lógica de:
-  - Detecção de falha de conexão com Google Sheets
-  - Preparação de dados para fila offline
+  - Preparação de dados para fila offline (modo WhatsApp)
   - Contexto padronizado para templates em modo offline
 
-Uso nos routers:
-    from app.utils.offline import tentar_conexao_ou_offline, pacote_offline_inserir
+As funções aqui são usadas pelo frontend (IndexedDB / sync.js) para
+armazenar e reenviar dados quando o servidor FastAPI estiver inacessível
+(ex: uso em campo sem internet).
 
-    client, offline_data = tentar_conexao_ou_offline()
-    if client is None:
-        return templates.TemplateResponse(..., offline_data)
+Uso nos routers:
+    from app.utils.offline import preparar_offline_ctx, extrair_dados_inserir
+
+    dados_json = extrair_dados_inserir(form)
+    return templates.TemplateResponse(..., **preparar_offline_ctx(dados_json))
 """
 
-from typing import Any, Dict, Optional, Tuple
-
-
-def tentar_conexao_ou_offline(
-    obter_cliente: callable,
-) -> Tuple[Optional[Any], Optional[Dict[str, Any]]]:
-    """
-    Tenta obter o cliente gspread. Se falhar (offline), retorna um dicionário
-    com metadados indicando modo offline para o template.
-
-    Args:
-        obter_cliente: Função que retorna o cliente (ex: obter_cliente_gspread)
-
-    Returns:
-        (client, None) em caso de sucesso
-        (None, offline_ctx) em caso de falha — offline_ctx é dict com offline_salvo e afins
-    """
-    try:
-        client = obter_cliente()
-        return client, None
-    except Exception:
-        return None, {"offline_salvo": False, "offline_dados": None}
+from typing import Any, Dict
 
 
 def preparar_offline_ctx(
