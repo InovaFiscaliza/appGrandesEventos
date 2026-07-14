@@ -135,7 +135,7 @@ async def post_inserir(request: Request):
     except ValueError:
         larg = 0.0
 
-    conflito = verificar_frequencia_global(evento_id=sp_id, freq=freq)
+    conflito = verificar_frequencia_global(evento_id=sp_id, freq_digitada=freq)
 
     try:
         dia_obj = datetime.strptime(dia_str, "%Y-%m-%d").date()
@@ -204,7 +204,7 @@ async def check_freq(request: Request, freq: float = 0.0):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id or freq <= 0:
         return {"conflito": None}
-    conflito = verificar_frequencia_global(evento_id=sp_id, freq=freq)
+    conflito = verificar_frequencia_global(evento_id=sp_id, freq_digitada=freq)
     return {"conflito": conflito}
 
 
