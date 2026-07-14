@@ -26,3 +26,6 @@ dist/
 # Credenciais / segredos
 credentials.json
 *.key
+
+# Backups do banco
+bd_backup/*.sql
