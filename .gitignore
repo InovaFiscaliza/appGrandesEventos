@@ -28,4 +28,4 @@ credentials.json
 *.key
 
 # Backups do banco
-bd_backup/*.sql
+# bd_backup/*.sql
