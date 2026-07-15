@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.postgres import (
@@ -43,3 +43,9 @@ async def get_menu(request: Request):
             "flash_error": request.session.pop("flash_error", None),
         },
     )
+
+
+@router.get("/api/ping")
+async def api_ping():
+    """Endpoint de health check — usado pelo connectivity.js para detectar conectividade real."""
+    return JSONResponse({"ok": True})

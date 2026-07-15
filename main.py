@@ -2,7 +2,8 @@
 Entry point da aplicação AppEventos (FastAPI + Jinja2).
 
 Executar com:
-    python main.py
+    uv run main.py
+    uv run uvicorn main:app --reload --port 8501
   ou:
     uvicorn main:app --reload --port 8501
 """

@@ -64,24 +64,18 @@ document
   });
 
 async function carregarPendencias() {
-  const offline = window.APP_OFFLINE === true || !navigator.onLine;
-  if (!offline) {
-    try {
-      const resp = await fetch("/api/pendencias");
-      if (resp.status === 401) {
-        window.location.href = "/";
-        return;
-      }
-      const dados = await resp.json();
-      pendencias = dados;
-      await AppOffline.salvarTodos(STORE, dados);
-      document.getElementById("offline-aviso").style.display = "none";
-    } catch (e) {
-      console.warn("Falha ao buscar online, usando cache:", e);
-      pendencias = await AppOffline.lerTodos(STORE);
-      document.getElementById("offline-aviso").style.display = "block";
+  try {
+    const resp = await fetch("/api/pendencias");
+    if (resp.status === 401) {
+      window.location.href = "/";
+      return;
     }
-  } else {
+    const dados = await resp.json();
+    pendencias = dados;
+    await AppOffline.salvarTodos(STORE, dados);
+    document.getElementById("offline-aviso").style.display = "none";
+  } catch (e) {
+    console.warn("Falha ao buscar online, usando cache:", e);
     pendencias = await AppOffline.lerTodos(STORE);
     document.getElementById("offline-aviso").style.display = "block";
   }

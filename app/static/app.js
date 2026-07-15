@@ -16,23 +16,40 @@ const AppOffline = (() => {
   'use strict';
 
   const DB_NAME = 'appEventos';
-  const DB_VER  = 4;
+  const DB_VER  = 5;
   const STORES  = ['fila_envio', 'fila_bsr_erb', 'fila_edicoes', 'cache_pendencias', 'cache_frequencias'];
 
   // ─── IndexedDB ───────────────────────────────────────────────
 
-  async function _abrirDB() {
+  async function _abrirDB(tentou4 = false) {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VER);
       req.onupgradeneeded = e => {
         const db = e.target.result;
+        // Remove stores existentes para recriar com schema correto
         STORES.forEach(nome => {
-          if (!db.objectStoreNames.contains(nome))
-            db.createObjectStore(nome, { keyPath: 'id', autoIncrement: true });
+          if (db.objectStoreNames.contains(nome))
+            db.deleteObjectStore(nome);
+        });
+        // Filas de envio: keyPath 'id' com autoIncrement (gerado pelo banco)
+        ['fila_envio', 'fila_bsr_erb', 'fila_edicoes'].forEach(nome => {
+          db.createObjectStore(nome, { keyPath: 'id', autoIncrement: true });
+        });
+        // Caches: keyPath 'row_key' (valor único vindo dos dados), sem autoIncrement
+        ['cache_pendencias', 'cache_frequencias'].forEach(nome => {
+          db.createObjectStore(nome, { keyPath: 'row_key' });
         });
       };
       req.onsuccess = e => resolve(e.target.result);
-      req.onerror   = e => reject(e.target.error);
+      req.onerror = e => {
+        // Se falhou por VersionError (versão 4 tentando abrir após v5), tenta abrir v5
+        if (!tentou4 && e.target.error && e.target.error.name === 'VersionError') {
+          indexedDB.deleteDatabase(DB_NAME);
+          resolve(_abrirDB(true));
+          return;
+        }
+        reject(e.target.error);
+      };
     });
   }
 
@@ -72,16 +89,25 @@ const AppOffline = (() => {
         .objectStore(storeName).delete(id);
     },
 
-    /** Salva um array inteiro em uma store (substitui tudo) */
+    /** Salva um array inteiro em uma store (substitui tudo).
+     *  Tolerante a erros: itens com conflito de chave são ignorados,
+     *  nunca lança exceção para não atrapalhar o fluxo da tela. */
     async salvarTodos(storeName, itens) {
-      const db = await _abrirDB();
-      const tx = db.transaction(storeName, 'readwrite');
-      tx.objectStore(storeName).clear();
-      itens.forEach(item => tx.objectStore(storeName).add(item));
-      return new Promise((res, rej) => {
-        tx.oncomplete = () => res();
-        tx.onerror    = e => rej(e.target.error);
-      });
+      try {
+        const db = await _abrirDB();
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        store.clear();
+        itens.forEach(item => {
+          try { store.put(item); } catch (_) {}
+        });
+        await new Promise((resolve, reject) => {
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve(); // ignora erro da transação
+        });
+      } catch (_) {
+        // completamente silencioso — não quebra o carregamento da tela
+      }
     },
 
     // --- Sincronização ---
