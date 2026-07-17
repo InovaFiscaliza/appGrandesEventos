@@ -12,15 +12,11 @@ Sistema de monitoração de espectro eletromagnético para grandes eventos (Carn
 
 ## 1. Subindo o PostgreSQL com Podman
 
-
-
-
 ### 1.1. Criar e iniciar o contêiner
 
 Instalar o podman desktop, No PowerShell (Administrador): 
 
 wsl--install
-
 
 ```PowerShell
 podman run -d --name postgres_appeventos ^
