@@ -12,9 +12,17 @@ Sistema de monitoração de espectro eletromagnético para grandes eventos (Carn
 
 ## 1. Subindo o PostgreSQL com Podman
 
+
+
+
 ### 1.1. Criar e iniciar o contêiner
 
-```bash
+Instalar o podman desktop, No PowerShell (Administrador): 
+
+wsl--install
+
+
+```PowerShell
 podman run -d --name postgres_appeventos ^
   -e POSTGRES_USER=appeventos ^
   -e POSTGRES_PASSWORD=appeventos ^
@@ -25,7 +33,7 @@ podman run -d --name postgres_appeventos ^
 
 ### 1.2. Verificar se o contêiner está rodando
 
-```bash
+```PowerShell
 podman ps
 ```
 
@@ -37,7 +45,7 @@ Deverá listar o contêiner `postgres_appeventos` com status `Up`.
 
 ### 2.1. Copiar o dump para dentro do contêiner
 
-```bash
+```PowerShell
 podman cp bd_backup/backup_20260714_154519.sql postgres_appeventos:/tmp/backup.sql
 ```
 
@@ -45,13 +53,13 @@ podman cp bd_backup/backup_20260714_154519.sql postgres_appeventos:/tmp/backup.s
 
 ### 2.2. Executar o restore de dentro do contêiner
 
-```bash
+```PowerShell
 podman exec -i postgres_appeventos psql -U appeventos -d appeventos -f /tmp/backup.sql
 ```
 
 ### 2.3. Verificar se o restore funcionou
 
-```bash
+```PowerShell
 podman exec -i postgres_appeventos psql -U appeventos -d appeventos -c "\dt"
 ```
 
@@ -63,7 +71,7 @@ Deverá listar as tabelas: `eventos`, `estacoes`, `ocorrencias`, `tabela_ute`, `
 
 Com o PostgreSQL rodando e o banco restaurado:
 
-```bash
+```PowerShell
 uv run main.py
 ```
 
@@ -71,7 +79,7 @@ A aplicação estará disponível em: **http://localhost:8501**
 
 ### Modo desenvolvimento (com reload automático)
 
-```bash
+```PowerShell
 uv run uvicorn main:app --reload --port 8501
 ```
 
@@ -85,7 +93,7 @@ postgresql+psycopg://appeventos:appeventos@localhost:5432/appeventos
 
 Para usar credenciais diferentes, defina a variável de ambiente `DATABASE_URL`:
 
-```bash
+```PowerShell
 set DATABASE_URL=postgresql+psycopg://usuario:senha@host:5432/nome_banco
 uv run main.py
 ```
@@ -94,7 +102,7 @@ uv run main.py
 
 ## 4. Parando o ambiente
 
-```bash
+```PowerShell
 podman stop postgres_appeventos
 podman rm postgres_appeventos    # remove o contêiner
 ```
