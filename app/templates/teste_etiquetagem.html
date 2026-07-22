@@ -2,12 +2,133 @@
 {% block content %}
 {% include "partials/header.html" %}
 
-<div class="btn-col">
-    <div class="form-card">
-        <h2>Teste de Etiquetagem</h2>
-        <p>Esta tela esta em construcao.</p>
-        <p>As funcionalidades serao adicionadas gradualmente.</p>
+<div class="form-card teq-card">
+    <div class="teq-title">
+        Teste e etiquetagem - cadastra o tipo da etiqueta que foi atribuida ao equipamento
+        (o sistema deve fazer criticas e verificar se a frequencia esta livre, por exemplo)
     </div>
-    <a href="/menu" class="btn btn-back">Voltar ao menu</a>
+
+    <form class="teq-form" autocomplete="off">
+        <div class="teq-radio-panels">
+            <div class="teq-panel">
+                <div class="teq-radio-row">
+                    <label class="teq-radio-item"><input type="radio" name="licenca" value="ute">UTE</label>
+                    <label class="teq-radio-item"><input type="radio" name="licenca" value="outorgado">Outorgado</label>
+                    <label class="teq-radio-item"><input type="radio" name="licenca" value="nao_outorgado">Não Outorgado</label>
+                    <label class="teq-radio-item"><input type="radio" name="licenca" value="radiacao_restrita">Radiação Restrita</label>
+                </div>
+            </div>
+
+            <div class="teq-panel">
+                <div class="teq-radio-row">
+                    <label class="teq-radio-item"><input type="radio" name="perfil" value="pf">Pessoa Física</label>
+                    <label class="teq-radio-item"><input type="radio" name="perfil" value="pj">Pessoa Jurídica</label>
+                    <label class="teq-radio-item"><input type="radio" name="perfil" value="estrangeiro">Estrangeiro</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="teq-grid">
+            <div class="teq-col">
+                <div class="form-group">
+                    <label class="teq-label" for="entidade">Entidade</label>
+                    <input id="entidade" class="teq-control" type="text" value="Input text">
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label" for="contato">Contato</label>
+                    <input id="contato" class="teq-control" type="text" value="Input text">
+                </div>
+
+                <div class="form-group teq-search">
+                    <label class="teq-label" for="local">Local</label>
+                    <input id="local" class="teq-control" type="text" value="UTE" aria-describedby="btn-local">
+                    <button id="btn-local" class="teq-search-btn" type="button" aria-label="Pesquisar local">⌕</button>
+                </div>
+
+                <div class="form-cols">
+                    <div class="form-group">
+                        <label class="teq-label" for="frequencia">Frequência (MHz)</label>
+                        <input id="frequencia" class="teq-control" type="text" value="153,500">
+                    </div>
+                    <div class="form-group">
+                        <label class="teq-label" for="passo">&nbsp;</label>
+                        <select id="passo" class="teq-control">
+                            <option>25kHz</option>
+                            <option>12,5kHz</option>
+                            <option>50kHz</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label" for="faixa">Faixa</label>
+                    <select id="faixa" class="teq-control">
+                        <option>SLP</option>
+                        <option>VHF</option>
+                        <option>UHF</option>
+                    </select>
+                </div>
+
+                <div class="teq-checkbox-line">
+                    <span class="teq-checkbox-title">Equipamento Homologado</span>
+                    <label class="teq-checkbox"><input type="checkbox" checked> </label>
+                </div>
+
+                <div class="teq-subpanel">
+                    <div class="teq-radio-row">
+                        <label class="teq-radio-item"><input type="radio" name="perm" value="permitido">Permitido</label>
+                        <label class="teq-radio-item"><input type="radio" name="perm" value="todos">Permitido em todos</label>
+                        <label class="teq-radio-item"><input type="radio" name="perm" value="nao">Não permitido</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="teq-col">
+                <div class="form-group">
+                    <label class="teq-label" for="cpfcnpj">CPF/CNPJ</label>
+                    <input id="cpfcnpj" class="teq-control" type="text" value="Input text">
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label" for="frequencias">Frequências</label>
+                    <select id="frequencias" class="teq-control teq-listbox" size="8">
+                        <option>153,500 25kHz</option>
+                        <option>158,250 25kHz</option>
+                        <option>163,000 25kHz</option>
+                        <option>171,750 25kHz</option>
+                        <option>183,500 25kHz</option>
+                        <option>198,250 25kHz</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label" for="tipo-equipamento">Tipo do equipamento</label>
+                    <select id="tipo-equipamento" class="teq-control">
+                        <option>Tipo do equipamento</option>
+                        <option>Repetidora</option>
+                        <option>Portátil</option>
+                        <option>Base</option>
+                    </select>
+                </div>
+
+                <div class="form-group teq-number-box">
+                    <label class="teq-label" for="numero-etiqueta">Número da etiqueta</label>
+                    <input id="numero-etiqueta" class="teq-control" type="text" value="1567870">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="teq-label" for="observacoes">Observações</label>
+            <textarea id="observacoes" class="teq-control teq-textarea" rows="4"></textarea>
+        </div>
+
+        <div class="teq-actions">
+            <button class="btn teq-btn" type="button">Inserir de outra entidade</button>
+            <button class="btn teq-btn" type="button">Inserir da mesma entidade</button>
+            <a href="/menu" class="btn teq-btn teq-btn-back">Voltar ao Menu</a>
+        </div>
+    </form>
 </div>
 {% endblock %}
