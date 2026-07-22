@@ -15,7 +15,16 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.routers import bsr_erb, busca, consultar, inserir, menu, selecao, tabela_ute
+from app.routers import (
+    bsr_erb,
+    busca,
+    consultar,
+    inserir,
+    menu,
+    selecao,
+    tabela_ute,
+    teste_etiquetagem,
+)
 
 app = FastAPI(title="AppEventos", docs_url=None, redoc_url=None)
 
@@ -40,6 +49,7 @@ app.include_router(consultar.router)
 app.include_router(bsr_erb.router)
 app.include_router(busca.router)
 app.include_router(tabela_ute.router)
+app.include_router(teste_etiquetagem.router)
 
 if __name__ == "__main__":
     import uvicorn
