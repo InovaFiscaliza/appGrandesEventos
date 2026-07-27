@@ -385,6 +385,118 @@ def carregar_opcoes_identificacao(_client=None, evento_id=None) -> list:
 
 
 # =========================================================================
+# Teste e etiquetagem
+# =========================================================================
+
+
+def verificar_frequencia_etiquetagem(
+    _client=None, evento_id=None, freq_digitada=None
+) -> Optional[str]:
+    """Retorna a origem de uma frequência já cadastrada no evento, se houver."""
+    if evento_id is None or freq_digitada is None:
+        return None
+    try:
+        frequencia = round(float(freq_digitada), 3)
+    except (TypeError, ValueError):
+        return None
+    if frequencia <= 0:
+        return None
+
+    try:
+        with get_engine().connect() as conn:
+            row = conn.execute(
+                text("""
+                    SELECT COALESCE(e.nome, o.local_regiao, 'Ocorrências')
+                    FROM ocorrencias o
+                    LEFT JOIN estacoes e ON e.id = o.estacao_id
+                    WHERE o.evento_id = :ev
+                      AND round(o.frequencia_mhz, 3) = :freq
+                    LIMIT 1
+                """),
+                {"ev": int(evento_id), "freq": frequencia},
+            ).first()
+            if row:
+                return f"Ocorrências ({row[0]})"
+
+            row = conn.execute(
+                text("""
+                    SELECT 'Tabela UTE'
+                    FROM tabela_ute
+                    WHERE evento_id = :ev
+                      AND round(frequencia_mhz, 3) = :freq
+                    LIMIT 1
+                """),
+                {"ev": int(evento_id), "freq": frequencia},
+            ).first()
+            if row:
+                return row[0]
+
+            row = conn.execute(
+                text("""
+                    SELECT 'Teste de etiquetagem: ' || entidade
+                    FROM testes_etiquetagem
+                    WHERE evento_id = :ev
+                      AND round(frequencia_mhz, 3) = :freq
+                    LIMIT 1
+                """),
+                {"ev": int(evento_id), "freq": frequencia},
+            ).first()
+            if row:
+                return row[0]
+    except Exception as e:
+        logger.error(f"Erro verificar_frequencia_etiquetagem: {e}", exc_info=True)
+    return None
+
+
+def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) -> str:
+    """Insere um teste de etiquetagem vinculado ao evento selecionado."""
+    if evento_id is None or dados is None:
+        return "ERRO: parâmetros insuficientes."
+    try:
+        with get_engine().begin() as conn:
+            conn.execute(
+                text("""
+                    INSERT INTO testes_etiquetagem (
+                        evento_id, licenca, perfil, entidade, contato, local,
+                        cpf_cnpj, frequencia_mhz, passo_khz, faixa,
+                        equipamento_homologado, permissao,
+                        frequencias_selecionadas, tipo_equipamento,
+                        numero_etiqueta, observacoes
+                    ) VALUES (
+                        :ev, :licenca, :perfil, :entidade, :contato, :local,
+                        :cpf_cnpj, :freq, :passo, :faixa,
+                        :homologado, :permissao, :frequencias,
+                        :tipo_equipamento, :numero_etiqueta, :observacoes
+                    )
+                """),
+                {
+                    "ev": int(evento_id),
+                    "licenca": dados["licenca"],
+                    "perfil": dados["perfil"],
+                    "entidade": dados["entidade"],
+                    "contato": dados.get("contato", ""),
+                    "local": dados["local"],
+                    "cpf_cnpj": dados.get("cpf_cnpj", ""),
+                    "freq": float(dados["frequencia_mhz"]),
+                    "passo": float(dados["passo_khz"]),
+                    "faixa": dados["faixa"],
+                    "homologado": bool(dados.get("equipamento_homologado")),
+                    "permissao": dados["permissao"],
+                    "frequencias": dados.get("frequencias_selecionadas", []),
+                    "tipo_equipamento": dados["tipo_equipamento"],
+                    "numero_etiqueta": dados["numero_etiqueta"],
+                    "observacoes": dados.get("observacoes", ""),
+                },
+            )
+        return "Teste de etiquetagem inserido com sucesso."
+    except Exception as e:
+        logger.error(f"Erro inserir_teste_etiquetagem: {e}", exc_info=True)
+        if "testes_etiquetagem_evento_id_numero_etiqueta_key" in str(e):
+            return "ERRO: o número da etiqueta já existe neste evento."
+        return f"ERRO ao inserir teste de etiquetagem: {e}"
+
+
+# =========================================================================
 # Inserir ocorrência (era inserir_emissao_I_W)
 # =========================================================================
 

@@ -92,6 +92,41 @@ CREATE TABLE IF NOT EXISTS opcoes_identificacao (
     valor       TEXT NOT NULL
 );
 
+-- Teste e etiquetagem de equipamentos
+CREATE TABLE IF NOT EXISTS testes_etiquetagem (
+    id                        BIGSERIAL PRIMARY KEY,
+    evento_id                 BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    licenca                   TEXT NOT NULL CHECK (licenca IN (
+                                  'ute', 'outorgado', 'nao_outorgado', 'radiacao_restrita'
+                              )),
+    perfil                    TEXT NOT NULL CHECK (perfil IN (
+                                  'pf', 'pj', 'estrangeiro'
+                              )),
+    entidade                  TEXT NOT NULL,
+    contato                   TEXT,
+    local                     TEXT NOT NULL,
+    cpf_cnpj                  TEXT,
+    frequencia_mhz            NUMERIC(12,3) NOT NULL CHECK (frequencia_mhz > 0),
+    passo_khz                 NUMERIC(6,3) NOT NULL CHECK (passo_khz IN (12.5, 25, 50)),
+    faixa                     TEXT NOT NULL,
+    equipamento_homologado   BOOLEAN NOT NULL DEFAULT FALSE,
+    permissao                 TEXT NOT NULL CHECK (permissao IN (
+                                  'permitido', 'todos', 'nao'
+                              )),
+    frequencias_selecionadas  TEXT[] NOT NULL DEFAULT '{}',
+    tipo_equipamento          TEXT NOT NULL,
+    numero_etiqueta           TEXT NOT NULL,
+    observacoes               TEXT,
+    criado_em                 TIMESTAMPTZ NOT NULL DEFAULT now(),
+    atualizado_em             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (evento_id, numero_etiqueta)
+);
+
+CREATE INDEX IF NOT EXISTS idx_etiquetagem_evento_freq
+    ON testes_etiquetagem (evento_id, frequencia_mhz);
+CREATE INDEX IF NOT EXISTS idx_etiquetagem_evento_entidade
+    ON testes_etiquetagem (evento_id, entidade);
+
 -- ============================================================
 -- Trigger para atualizar atualizado_em automaticamente
 -- ============================================================
@@ -105,5 +140,11 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_ocorr_upd ON ocorrencias;
 CREATE TRIGGER trg_ocorr_upd
     BEFORE UPDATE ON ocorrencias
+    FOR EACH ROW
+    EXECUTE FUNCTION set_atualizado_em();
+
+DROP TRIGGER IF EXISTS trg_etiquetagem_upd ON testes_etiquetagem;
+CREATE TRIGGER trg_etiquetagem_upd
+    BEFORE UPDATE ON testes_etiquetagem
     FOR EACH ROW
     EXECUTE FUNCTION set_atualizado_em();
