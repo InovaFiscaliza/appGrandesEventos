@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
     local                     TEXT NOT NULL,
     cpf_cnpj                  TEXT,
     frequencia_mhz            NUMERIC(12,3) NOT NULL CHECK (frequencia_mhz > 0),
-    passo_khz                 NUMERIC(6,3) NOT NULL CHECK (passo_khz IN (12.5, 25, 50)),
+    passo_khz                 NUMERIC(12,3) NOT NULL CHECK (passo_khz >= 5 AND passo_khz <= 100000),
     faixa                     TEXT NOT NULL,
     equipamento_homologado   BOOLEAN NOT NULL DEFAULT FALSE,
     permissao                 TEXT NOT NULL CHECK (permissao IN (
@@ -121,6 +121,15 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
     atualizado_em             TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (evento_id, numero_etiqueta)
 );
+
+-- Mantém bancos existentes compatíveis com o intervalo de bandas do formulário.
+ALTER TABLE testes_etiquetagem
+    ALTER COLUMN passo_khz TYPE NUMERIC(12,3);
+ALTER TABLE testes_etiquetagem
+    DROP CONSTRAINT IF EXISTS testes_etiquetagem_passo_khz_check;
+ALTER TABLE testes_etiquetagem
+    ADD CONSTRAINT testes_etiquetagem_passo_khz_check
+    CHECK (passo_khz >= 5 AND passo_khz <= 100000);
 
 CREATE INDEX IF NOT EXISTS idx_etiquetagem_evento_freq
     ON testes_etiquetagem (evento_id, frequencia_mhz);
