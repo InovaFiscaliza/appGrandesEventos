@@ -60,8 +60,8 @@ def _form_values(form) -> dict:
         "local": form.get("local", "").strip(),
         "cpf_cnpj": form.get("cpf_cnpj", "").strip(),
         "frequencia_mhz": form.get("frequencia_mhz", "").strip(),
-        "passo": form.get("passo", BANDA_OPCOES[0]),
-        "faixa": form.get("faixa", "SLP").strip(),
+        "passo": form.get("passo", "").strip(),
+        "faixa": form.get("faixa", "").strip(),
         "equipamento_homologado": bool(form.get("equipamento_homologado")),
         "permissao": form.get("permissao", "permitido"),
         "frequencias_selecionadas": frequencias_selecionadas,
@@ -104,8 +104,8 @@ async def get_teste_etiquetagem(request: Request):
                 "local": "",
                 "cpf_cnpj": "",
                 "frequencia_mhz": "",
-                "passo": BANDA_OPCOES[0],
-                "faixa": FAIXAS_ETIQUETAGEM[0],
+                "passo": "",
+                "faixa": "",
                 "equipamento_homologado": False,
                 "permissao": "permitido",
                 "frequencias_selecionadas": [],
@@ -138,8 +138,6 @@ async def post_teste_etiquetagem(request: Request):
         erros.append("Entidade")
     if not values["local"]:
         erros.append("Local")
-    if not values["faixa"]:
-        erros.append("Faixa")
     if values["permissao"] not in PERMISSOES:
         erros.append("Permissão inválida")
     if not values["tipo_equipamento"]:
@@ -148,29 +146,30 @@ async def post_teste_etiquetagem(request: Request):
         erros.append("Número da etiqueta")
     if not values["frequencias_selecionadas"]:
         erros.append("Selecione ao menos uma frequência")
+    frequencia = None
+    if values["frequencia_mhz"]:
+        try:
+            frequencia = float(values["frequencia_mhz"].replace(",", "."))
+            if frequencia <= 0:
+                raise ValueError
+        except (AttributeError, ValueError):
+            erros.append("Frequência válida")
 
-    try:
-        frequencia = float(values["frequencia_mhz"].replace(",", "."))
-        if frequencia <= 0:
-            raise ValueError
-    except (AttributeError, ValueError):
-        frequencia = 0.0
-        erros.append("Frequência válida")
-
-    try:
-        passo_khz = float(
-            values["passo"]
-            .lower()
-            .replace("khz", "")
-            .strip()
-            .replace(".", "")
-            .replace(",", ".")
-        )
-        if passo_khz <= 0 or passo_khz > 100_000:
-            raise ValueError
-    except (AttributeError, ValueError):
-        passo_khz = None
-        erros.append("Passo de frequência inválido")
+    passo_khz = None
+    if values["passo"]:
+        try:
+            passo_khz = float(
+                values["passo"]
+                .lower()
+                .replace("khz", "")
+                .strip()
+                .replace(".", "")
+                .replace(",", ".")
+            )
+            if passo_khz <= 0 or passo_khz > 100_000:
+                raise ValueError
+        except (AttributeError, ValueError):
+            erros.append("Passo de frequência inválido")
 
     if erros:
         return _render_form(
@@ -179,8 +178,10 @@ async def post_teste_etiquetagem(request: Request):
             "Preencha os campos corretamente: " + ", ".join(dict.fromkeys(erros)) + ".",
         )
 
-    conflito = verificar_frequencia_etiquetagem(
-        evento_id=evento_id, freq_digitada=frequencia
+    conflito = (
+        verificar_frequencia_etiquetagem(evento_id=evento_id, freq_digitada=frequencia)
+        if frequencia is not None
+        else None
     )
     if conflito:
         return _render_form(

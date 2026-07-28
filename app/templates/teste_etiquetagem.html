@@ -65,11 +65,12 @@
                 <div class="teq-frequency-row">
                     <div class="form-group">
                         <label class="teq-label" for="frequencia">Frequência (MHz)</label>
-                        <input id="frequencia" name="frequencia_mhz" class="teq-control" type="text" inputmode="decimal" value="{{ values.frequencia_mhz }}" required>
+                        <input id="frequencia" name="frequencia_mhz" class="teq-control" type="text" inputmode="decimal" value="{{ values.frequencia_mhz }}">
                     </div>
                     <div class="form-group">
                         <label class="teq-label" for="passo">Banda</label>
                         <select id="passo" name="passo" class="teq-control">
+                            <option value="" {% if not values.passo %}selected{% endif %}>Selecione...</option>
                             {% for banda in banda_opcoes %}
                             <option value="{{ banda }}" {% if values.passo == banda %}selected{% endif %}>{{ banda }}</option>
                             {% endfor %}
@@ -78,6 +79,7 @@
                     <div class="form-group">
                         <label class="teq-label" for="faixa">Faixa</label>
                         <select id="faixa" name="faixa" class="teq-control">
+                            <option value="" {% if not values.faixa %}selected{% endif %}>Selecione...</option>
                             {% for faixa in faixa_opcoes %}
                             <option value="{{ faixa }}" {% if values.faixa == faixa %}selected{% endif %}>{{ faixa }}</option>
                             {% endfor %}
@@ -93,7 +95,7 @@
                             <button id="remover-frequencia" class="teq-list-btn" type="button" aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
                         </div>
                     </div>
-                    <select id="frequencias" name="frequencias_selecionadas" class="teq-control teq-listbox" size="8">
+                    <select id="frequencias" name="frequencias_selecionadas" class="teq-control teq-listbox" size="8" multiple required>
                         {% for freq in values.frequencias_disponiveis %}
                         <option value="{{ freq }}" {% if freq in values.frequencias_selecionadas %}selected{% endif %}>{{ freq }}</option>
                         {% endfor %}

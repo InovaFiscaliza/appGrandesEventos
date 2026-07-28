@@ -106,9 +106,9 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
     contato                   TEXT,
     local                     TEXT NOT NULL,
     cpf_cnpj                  TEXT,
-    frequencia_mhz            NUMERIC(12,3) NOT NULL CHECK (frequencia_mhz > 0),
-    passo_khz                 NUMERIC(12,3) NOT NULL CHECK (passo_khz >= 5 AND passo_khz <= 100000),
-    faixa                     TEXT NOT NULL,
+    frequencia_mhz            NUMERIC(12,3) CHECK (frequencia_mhz > 0),
+    passo_khz                 NUMERIC(12,3) CHECK (passo_khz >= 5 AND passo_khz <= 100000),
+    faixa                     TEXT,
     equipamento_homologado   BOOLEAN NOT NULL DEFAULT FALSE,
     permissao                 TEXT NOT NULL CHECK (permissao IN (
                                   'permitido', 'todos', 'nao'
@@ -125,6 +125,12 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
 -- Mantém bancos existentes compatíveis com o intervalo de bandas do formulário.
 ALTER TABLE testes_etiquetagem
     ALTER COLUMN passo_khz TYPE NUMERIC(12,3);
+ALTER TABLE testes_etiquetagem
+    ALTER COLUMN frequencia_mhz DROP NOT NULL;
+ALTER TABLE testes_etiquetagem
+    ALTER COLUMN passo_khz DROP NOT NULL;
+ALTER TABLE testes_etiquetagem
+    ALTER COLUMN faixa DROP NOT NULL;
 ALTER TABLE testes_etiquetagem
     DROP CONSTRAINT IF EXISTS testes_etiquetagem_passo_khz_check;
 ALTER TABLE testes_etiquetagem
