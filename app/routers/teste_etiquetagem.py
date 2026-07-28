@@ -15,7 +15,26 @@ templates = Jinja2Templates(directory="app/templates")
 LICENCAS = {"ute", "outorgado", "nao_outorgado", "radiacao_restrita"}
 PERFIS = {"pf", "pj", "estrangeiro"}
 PERMISSOES = {"permitido", "todos", "nao"}
-PASSOS = {"12,5kHz": 12.5, "25kHz": 25.0, "50kHz": 50.0}
+
+
+def _formatar_banda(valor: int) -> str:
+    """Formata a largura de banda em kHz para exibição no formulário."""
+    return f"{valor:,}".replace(",", ".") + " kHz"
+
+
+BANDA_OPCOES = [
+    _formatar_banda(valor)
+    for valor in [5, 10, *range(25, 501, 25), *range(1_000, 100_001, 1_000)]
+]
+FAIXAS_ETIQUETAGEM = [
+    "SLP / VHF (148-174 MHz)",
+    "SLP / UHF (360-470 MHz)",
+    "SLP / 800 MHz (806-854 MHz)",
+    "SLP / 2,4 GHz (2390-2495 MHz)",
+    "SLP / 3,7 GHz (3700-3800 MHz)",
+    "Radiação Restrita (Wi-Fi/Bluetooth/LoRa)",
+    "Outra faixa autorizada pela Anatel",
+]
 
 
 def _ctx(request: Request, **kwargs):
@@ -25,11 +44,14 @@ def _ctx(request: Request, **kwargs):
         "img_b64_esq": _img_b64("anatel.png"),
         "img_b64_dir": _img_b64("anatelS.png"),
         "evento_nome": request.session.get("evento_nome", ""),
+        "faixa_opcoes": FAIXAS_ETIQUETAGEM,
+        "banda_opcoes": BANDA_OPCOES,
         **kwargs,
     }
 
 
 def _form_values(form) -> dict:
+    frequencias_selecionadas = form.getlist("frequencias_selecionadas")
     return {
         "licenca": form.get("licenca", "ute"),
         "perfil": form.get("perfil", "pf"),
@@ -38,11 +60,12 @@ def _form_values(form) -> dict:
         "local": form.get("local", "").strip(),
         "cpf_cnpj": form.get("cpf_cnpj", "").strip(),
         "frequencia_mhz": form.get("frequencia_mhz", "").strip(),
-        "passo": form.get("passo", "25kHz"),
+        "passo": form.get("passo", "25 kHz"),
         "faixa": form.get("faixa", "SLP").strip(),
         "equipamento_homologado": bool(form.get("equipamento_homologado")),
         "permissao": form.get("permissao", "permitido"),
-        "frequencias_selecionadas": form.getlist("frequencias_selecionadas"),
+        "frequencias_selecionadas": frequencias_selecionadas,
+        "frequencias_disponiveis": frequencias_selecionadas.copy(),
         "tipo_equipamento": form.get("tipo_equipamento", "").strip(),
         "numero_etiqueta": form.get("numero_etiqueta", "").strip(),
         "observacoes": form.get("observacoes", "").strip(),
@@ -81,11 +104,12 @@ async def get_teste_etiquetagem(request: Request):
                 "local": "",
                 "cpf_cnpj": "",
                 "frequencia_mhz": "",
-                "passo": "25kHz",
-                "faixa": "SLP",
+                "passo": "25 kHz",
+                "faixa": FAIXAS_ETIQUETAGEM[0],
                 "equipamento_homologado": False,
                 "permissao": "permitido",
                 "frequencias_selecionadas": [],
+                "frequencias_disponiveis": [],
                 "tipo_equipamento": "",
                 "numero_etiqueta": "",
                 "observacoes": "",
@@ -133,8 +157,19 @@ async def post_teste_etiquetagem(request: Request):
         frequencia = 0.0
         erros.append("Frequência válida")
 
-    passo_khz = PASSOS.get(values["passo"])
-    if passo_khz is None:
+    try:
+        passo_khz = float(
+            values["passo"]
+            .lower()
+            .replace("khz", "")
+            .strip()
+            .replace(".", "")
+            .replace(",", ".")
+        )
+        if passo_khz <= 0 or passo_khz > 100_000:
+            raise ValueError
+    except (AttributeError, ValueError):
+        passo_khz = None
         erros.append("Passo de frequência inválido")
 
     if erros:

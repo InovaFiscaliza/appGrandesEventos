@@ -12,27 +12,17 @@
     {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
     <form class="teq-form" method="post" action="/teste_etiquetagem" autocomplete="off">
-        <div class="teq-radio-panels">
-            <div class="teq-panel">
-                <div class="teq-radio-row">
-                    <label class="teq-radio-item"><input type="radio" name="licenca" value="ute" {% if values.licenca == "ute" %}checked{% endif %}>UTE</label>
-                    <label class="teq-radio-item"><input type="radio" name="licenca" value="outorgado" {% if values.licenca == "outorgado" %}checked{% endif %}>Outorgado</label>
-                    <label class="teq-radio-item"><input type="radio" name="licenca" value="nao_outorgado" {% if values.licenca == "nao_outorgado" %}checked{% endif %}>Não Outorgado</label>
-                    <label class="teq-radio-item"><input type="radio" name="licenca" value="radiacao_restrita" {% if values.licenca == "radiacao_restrita" %}checked{% endif %}>Radiação Restrita</label>
-                </div>
-            </div>
-
-            <div class="teq-panel">
-                <div class="teq-radio-row">
-                    <label class="teq-radio-item"><input type="radio" name="perfil" value="pf" {% if values.perfil == "pf" %}checked{% endif %}>Pessoa Física</label>
-                    <label class="teq-radio-item"><input type="radio" name="perfil" value="pj" {% if values.perfil == "pj" %}checked{% endif %}>Pessoa Jurídica</label>
-                    <label class="teq-radio-item"><input type="radio" name="perfil" value="estrangeiro" {% if values.perfil == "estrangeiro" %}checked{% endif %}>Estrangeiro</label>
-                </div>
-            </div>
-        </div>
-
         <div class="teq-grid">
             <div class="teq-col">
+                <div class="teq-panel">
+                    <div class="teq-radio-row">
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="ute" {% if values.licenca == "ute" %}checked{% endif %}>UTE</label>
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="outorgado" {% if values.licenca == "outorgado" %}checked{% endif %}>Outorgado</label>
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="nao_outorgado" {% if values.licenca == "nao_outorgado" %}checked{% endif %}>Não Outorgado</label>
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="radiacao_restrita" {% if values.licenca == "radiacao_restrita" %}checked{% endif %}>Radiação Restrita</label>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label class="teq-label" for="entidade">Entidade</label>
                     <input id="entidade" name="entidade" class="teq-control" type="text" value="{{ values.entidade }}" required>
@@ -49,30 +39,6 @@
                     <button id="btn-local" class="teq-search-btn" type="button" aria-label="Pesquisar local">⌕</button>
                 </div>
 
-                <div class="form-cols">
-                    <div class="form-group">
-                        <label class="teq-label" for="frequencia">Frequência (MHz)</label>
-                        <input id="frequencia" name="frequencia_mhz" class="teq-control" type="text" inputmode="decimal" value="{{ values.frequencia_mhz }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="teq-label" for="passo">&nbsp;</label>
-                        <select id="passo" name="passo" class="teq-control">
-                            <option {% if values.passo == "25kHz" %}selected{% endif %}>25kHz</option>
-                            <option {% if values.passo == "12,5kHz" %}selected{% endif %}>12,5kHz</option>
-                            <option {% if values.passo == "50kHz" %}selected{% endif %}>50kHz</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="teq-label" for="faixa">Faixa</label>
-                    <select id="faixa" name="faixa" class="teq-control">
-                        <option {% if values.faixa == "SLP" %}selected{% endif %}>SLP</option>
-                        <option {% if values.faixa == "VHF" %}selected{% endif %}>VHF</option>
-                        <option {% if values.faixa == "UHF" %}selected{% endif %}>UHF</option>
-                    </select>
-                </div>
-
                 <div class="teq-checkbox-line">
                     <span class="teq-checkbox-title">Equipamento Homologado</span>
                     <label class="teq-checkbox"><input name="equipamento_homologado" type="checkbox" {% if values.equipamento_homologado %}checked{% endif %}> </label>
@@ -85,21 +51,58 @@
                         <label class="teq-radio-item"><input type="radio" name="permissao" value="nao" {% if values.permissao == "nao" %}checked{% endif %}>Não permitido</label>
                     </div>
                 </div>
+
+                <div class="teq-panel teq-profile-panel">
+                    <div class="teq-radio-row">
+                        <label class="teq-radio-item"><input type="radio" name="perfil" value="pf" {% if values.perfil == "pf" %}checked{% endif %}>Pessoa Física</label>
+                        <label class="teq-radio-item"><input type="radio" name="perfil" value="pj" {% if values.perfil == "pj" %}checked{% endif %}>Pessoa Jurídica</label>
+                        <label class="teq-radio-item"><input type="radio" name="perfil" value="estrangeiro" {% if values.perfil == "estrangeiro" %}checked{% endif %}>Estrangeiro</label>
+                    </div>
+                </div>
             </div>
 
             <div class="teq-col">
-                <div class="form-group">
-                    <label class="teq-label" for="cpfcnpj">CPF/CNPJ</label>
-                    <input id="cpfcnpj" name="cpf_cnpj" class="teq-control" type="text" value="{{ values.cpf_cnpj }}">
+                <div class="teq-frequency-row">
+                    <div class="form-group">
+                        <label class="teq-label" for="frequencia">Frequência (MHz)</label>
+                        <input id="frequencia" name="frequencia_mhz" class="teq-control" type="text" inputmode="decimal" value="{{ values.frequencia_mhz }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="teq-label" for="passo">Banda</label>
+                        <select id="passo" name="passo" class="teq-control">
+                            {% for banda in banda_opcoes %}
+                            <option value="{{ banda }}" {% if values.passo == banda %}selected{% endif %}>{{ banda }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="teq-label" for="faixa">Faixa</label>
+                        <select id="faixa" name="faixa" class="teq-control">
+                            {% for faixa in faixa_opcoes %}
+                            <option value="{{ faixa }}" {% if values.faixa == faixa %}selected{% endif %}>{{ faixa }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label class="teq-label" for="frequencias">Frequências</label>
+                <div class="form-group teq-frequency-list-group">
+                    <div class="teq-list-header">
+                        <label class="teq-label" for="frequencias">Frequências</label>
+                        <div class="teq-list-actions" aria-label="Gerenciar frequências">
+                            <button id="adicionar-frequencia" class="teq-list-btn" type="button" aria-label="Adicionar frequência" title="Adicionar frequência">+</button>
+                            <button id="remover-frequencia" class="teq-list-btn" type="button" aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
+                        </div>
+                    </div>
                     <select id="frequencias" name="frequencias_selecionadas" class="teq-control teq-listbox" size="8">
-                        {% for freq in ["153,500 25kHz", "158,250 25kHz", "163,000 25kHz", "171,750 25kHz", "183,500 25kHz", "198,250 25kHz"] %}
+                        {% for freq in values.frequencias_disponiveis %}
                         <option value="{{ freq }}" {% if freq in values.frequencias_selecionadas %}selected{% endif %}>{{ freq }}</option>
                         {% endfor %}
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label" for="cpfcnpj">CPF/CNPJ</label>
+                    <input id="cpfcnpj" name="cpf_cnpj" class="teq-control" type="text" value="{{ values.cpf_cnpj }}">
                 </div>
 
                 <div class="form-group">
@@ -127,8 +130,9 @@
         <div class="teq-actions">
             <button class="btn teq-btn" type="submit">Inserir teste</button>
             <button class="btn teq-btn" type="reset">Limpar formulário</button>
-            <a href="/menu" class="btn teq-btn teq-btn-back"> </a>
+            <a href="/menu" class="btn teq-btn teq-btn-back">Voltar ao Menu</a>
         </div>
     </form>
 </div>
+<script src="/static/teste_etiquetagem.js"></script>
 {% endblock %}
