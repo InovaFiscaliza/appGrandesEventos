@@ -11,7 +11,7 @@
     {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
     {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
-    <form class="teq-form" method="post" action="/teste_etiquetagem" autocomplete="off">
+    <form class="teq-form" method="post" action="/teste_etiquetagem" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
         <div class="teq-grid">
             <div class="teq-col">
                 <div class="teq-panel">
@@ -24,8 +24,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="teq-label" for="entidade">Entidade</label>
-                    <input id="entidade" name="entidade" class="teq-control" type="text" value="{{ values.entidade }}" required>
+                    <label class="teq-label{% if 'entidade' in values.invalid_fields %} teq-label-invalid{% endif %}" for="entidade">Entidade</label>
+                    <input id="entidade" name="entidade" class="teq-control{% if 'entidade' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.entidade }}" required>
                 </div>
 
                 <div class="form-group">
@@ -34,8 +34,8 @@
                 </div>
 
                 <div class="form-group teq-search">
-                    <label class="teq-label" for="local">Local</label>
-                    <input id="local" name="local" class="teq-control" type="text" value="{{ values.local }}" aria-describedby="btn-local" required>
+                    <label class="teq-label{% if 'local' in values.invalid_fields %} teq-label-invalid{% endif %}" for="local">Local</label>
+                    <input id="local" name="local" class="teq-control{% if 'local' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.local }}" aria-describedby="btn-local" required>
                     <button id="btn-local" class="teq-search-btn" type="button" aria-label="Pesquisar local">⌕</button>
                 </div>
 
@@ -64,12 +64,12 @@
             <div class="teq-col">
                 <div class="teq-frequency-row">
                     <div class="form-group">
-                        <label class="teq-label" for="frequencia">Frequência (MHz)</label>
-                        <input id="frequencia" name="frequencia_mhz" class="teq-control" type="text" inputmode="decimal" value="{{ values.frequencia_mhz }}">
+                        <label class="teq-label{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
+                        <input id="frequencia" name="frequencia_mhz" class="teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="decimal" value="{{ values.frequencia_mhz }}">
                     </div>
                     <div class="form-group">
-                        <label class="teq-label" for="passo">Banda</label>
-                        <select id="passo" name="passo" class="teq-control">
+                        <label class="teq-label{% if 'passo' in values.invalid_fields %} teq-label-invalid{% endif %}" for="passo">Banda</label>
+                        <select id="passo" name="passo" class="teq-control{% if 'passo' in values.invalid_fields %} teq-invalid{% endif %}">
                             <option value="" {% if not values.passo %}selected{% endif %}>Selecione...</option>
                             {% for banda in banda_opcoes %}
                             <option value="{{ banda }}" {% if values.passo == banda %}selected{% endif %}>{{ banda }}</option>
@@ -77,8 +77,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label class="teq-label" for="faixa">Faixa</label>
-                        <select id="faixa" name="faixa" class="teq-control">
+                        <label class="teq-label{% if 'faixa' in values.invalid_fields %} teq-label-invalid{% endif %}" for="faixa">Faixa</label>
+                        <select id="faixa" name="faixa" class="teq-control{% if 'faixa' in values.invalid_fields %} teq-invalid{% endif %}">
                             <option value="" {% if not values.faixa %}selected{% endif %}>Selecione...</option>
                             {% for faixa in faixa_opcoes %}
                             <option value="{{ faixa }}" {% if values.faixa == faixa %}selected{% endif %}>{{ faixa }}</option>
@@ -95,7 +95,7 @@
                             <button id="remover-frequencia" class="teq-list-btn" type="button" aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
                         </div>
                     </div>
-                    <select id="frequencias" name="frequencias_selecionadas" class="teq-control teq-listbox" size="8" multiple required>
+                    <select id="frequencias" name="frequencias_selecionadas" class="teq-control teq-listbox{% if 'frequencias_selecionadas' in values.invalid_fields %} teq-invalid{% endif %}" size="8" multiple required>
                         {% for freq in values.frequencias_disponiveis %}
                         <option value="{{ freq }}" {% if freq in values.frequencias_selecionadas %}selected{% endif %}>{{ freq }}</option>
                         {% endfor %}
@@ -103,13 +103,14 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="teq-label" for="cpfcnpj">CPF/CNPJ</label>
-                    <input id="cpfcnpj" name="cpf_cnpj" class="teq-control" type="text" value="{{ values.cpf_cnpj }}">
+                    <label class="teq-label{% if 'cpf_cnpj' in values.invalid_fields %} teq-label-invalid{% endif %}" for="cpfcnpj">CPF/CNPJ</label>
+                    <input id="cpfcnpj" name="cpf_cnpj" class="teq-control{% if 'cpf_cnpj' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="numeric" maxlength="18" value="{{ values.cpf_cnpj }}" aria-describedby="cpfcnpj-ajuda">
+                    <small id="cpfcnpj-ajuda" class="teq-field-help">Informe um CPF ou CNPJ válido, se necessário.</small>
                 </div>
 
                 <div class="form-group">
-                    <label class="teq-label" for="tipo-equipamento">Tipo do equipamento</label>
-                    <select id="tipo-equipamento" name="tipo_equipamento" class="teq-control" required>
+                    <label class="teq-label{% if 'tipo_equipamento' in values.invalid_fields %} teq-label-invalid{% endif %}" for="tipo-equipamento">Tipo do equipamento</label>
+                    <select id="tipo-equipamento" name="tipo_equipamento" class="teq-control{% if 'tipo_equipamento' in values.invalid_fields %} teq-invalid{% endif %}" required>
                         <option value="" {% if not values.tipo_equipamento %}selected{% endif %}>Tipo do equipamento</option>
                         <option {% if values.tipo_equipamento == "Repetidora" %}selected{% endif %}>Repetidora</option>
                         <option {% if values.tipo_equipamento == "Portátil" %}selected{% endif %}>Portátil</option>
@@ -118,8 +119,8 @@
                 </div>
 
                 <div class="form-group teq-number-box">
-                    <label class="teq-label" for="numero-etiqueta">Número da etiqueta</label>
-                    <input id="numero-etiqueta" name="numero_etiqueta" class="teq-control" type="text" value="{{ values.numero_etiqueta }}" required>
+                    <label class="teq-label{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-etiqueta">Número da etiqueta</label>
+                    <input id="numero-etiqueta" name="numero_etiqueta" class="teq-control{% if 'numero_etiqueta' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.numero_etiqueta }}" required>
                 </div>
             </div>
         </div>

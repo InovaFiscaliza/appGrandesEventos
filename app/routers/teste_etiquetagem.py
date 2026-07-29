@@ -37,6 +37,36 @@ FAIXAS_ETIQUETAGEM = [
 ]
 
 
+def _validar_cpf_cnpj(documento: str) -> bool:
+    """Valida CPF ou CNPJ pelos dígitos verificadores, quando informado."""
+    numeros = "".join(caractere for caractere in documento if caractere.isdigit())
+    if len(numeros) not in {11, 14} or len(set(numeros)) == 1:
+        return False
+
+    if len(numeros) == 11:
+        soma = sum(
+            int(numero) * (10 - indice) for indice, numero in enumerate(numeros[:9])
+        )
+        primeiro = (soma * 10 % 11) % 10
+        if primeiro != int(numeros[9]):
+            return False
+        soma = sum(
+            int(numero) * (11 - indice) for indice, numero in enumerate(numeros[:10])
+        )
+        segundo = (soma * 10 % 11) % 10
+        return segundo == int(numeros[10])
+
+    pesos = (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
+    soma = sum(int(numero) * peso for numero, peso in zip(numeros[:12], pesos))
+    primeiro = 0 if soma % 11 < 2 else 11 - soma % 11
+    if primeiro != int(numeros[12]):
+        return False
+    pesos = (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
+    soma = sum(int(numero) * peso for numero, peso in zip(numeros[:13], pesos))
+    segundo = 0 if soma % 11 < 2 else 11 - soma % 11
+    return segundo == int(numeros[13])
+
+
 def _ctx(request: Request, **kwargs):
     return {
         "request": request,
@@ -69,10 +99,17 @@ def _form_values(form) -> dict:
         "tipo_equipamento": form.get("tipo_equipamento", "").strip(),
         "numero_etiqueta": form.get("numero_etiqueta", "").strip(),
         "observacoes": form.get("observacoes", "").strip(),
+        "invalid_fields": [],
     }
 
 
-def _render_form(request: Request, values: dict, error: str | None = None):
+def _render_form(
+    request: Request,
+    values: dict,
+    error: str | None = None,
+    invalid_fields: list[str] | None = None,
+):
+    values = {**values, "invalid_fields": invalid_fields or []}
     return templates.TemplateResponse(
         request,
         "teste_etiquetagem.html",
@@ -113,6 +150,7 @@ async def get_teste_etiquetagem(request: Request):
                 "tipo_equipamento": "",
                 "numero_etiqueta": "",
                 "observacoes": "",
+                "invalid_fields": [],
             },
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
@@ -129,31 +167,39 @@ async def post_teste_etiquetagem(request: Request):
     form = await request.form()
     values = _form_values(form)
     erros = []
+    invalid_fields = []
+
+    def adicionar_erro(mensagem: str, campo: str | None = None):
+        erros.append(mensagem)
+        if campo and campo not in invalid_fields:
+            invalid_fields.append(campo)
 
     if values["licenca"] not in LICENCAS:
-        erros.append("Tipo de licença inválido")
+        adicionar_erro("Tipo de licença inválido")
     if values["perfil"] not in PERFIS:
-        erros.append("Perfil inválido")
+        adicionar_erro("Perfil inválido")
     if not values["entidade"]:
-        erros.append("Entidade")
+        adicionar_erro("Entidade", "entidade")
     if not values["local"]:
-        erros.append("Local")
+        adicionar_erro("Local", "local")
     if values["permissao"] not in PERMISSOES:
-        erros.append("Permissão inválida")
+        adicionar_erro("Permissão inválida")
     if not values["tipo_equipamento"]:
-        erros.append("Tipo do equipamento")
+        adicionar_erro("Tipo do equipamento", "tipo_equipamento")
     if not values["numero_etiqueta"]:
-        erros.append("Número da etiqueta")
+        adicionar_erro("Número da etiqueta", "numero_etiqueta")
+    if values["cpf_cnpj"] and not _validar_cpf_cnpj(values["cpf_cnpj"]):
+        adicionar_erro("CPF/CNPJ inválido", "cpf_cnpj")
     if not values["frequencias_selecionadas"]:
-        erros.append("Selecione ao menos uma frequência")
+        adicionar_erro("Selecione ao menos uma frequência", "frequencias_selecionadas")
     frequencia = None
     if values["frequencia_mhz"]:
         try:
             frequencia = float(values["frequencia_mhz"].replace(",", "."))
             if frequencia <= 0:
-                raise ValueError
+                frequencia = None
         except (AttributeError, ValueError):
-            erros.append("Frequência válida")
+            frequencia = None
 
     passo_khz = None
     if values["passo"]:
@@ -169,13 +215,14 @@ async def post_teste_etiquetagem(request: Request):
             if passo_khz <= 0 or passo_khz > 100_000:
                 raise ValueError
         except (AttributeError, ValueError):
-            erros.append("Passo de frequência inválido")
+            adicionar_erro("Passo de frequência inválido", "passo")
 
     if erros:
         return _render_form(
             request,
             values,
             "Preencha os campos corretamente: " + ", ".join(dict.fromkeys(erros)) + ".",
+            invalid_fields,
         )
 
     conflito = (

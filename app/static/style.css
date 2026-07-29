@@ -299,6 +299,12 @@ details > .details-body { padding: 0.75rem; }
     border-color: #33485a;
     box-shadow: 0 0 0 2px rgba(52,72,90,.12);
 }
+.teq-control.teq-valid { border-color: #2e7d32; }
+.teq-control.teq-invalid { border-color: #c62828; }
+.teq-label.teq-label-invalid { color: #c62828; }
+.teq-field-help { display: block; margin-top: 0.2rem; font-size: 0.7rem; }
+.teq-field-help.teq-valid { color: #2e7d32; }
+.teq-field-help.teq-invalid { color: #c62828; }
 .teq-search .teq-control { padding-right: 2.2rem; }
 .teq-search-btn {
     position: absolute;
