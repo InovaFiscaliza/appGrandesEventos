@@ -4,7 +4,11 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import TITULO_PRINCIPAL
 from app.services.postgres import (
+    atualizar_teste_etiquetagem,
+    excluir_teste_etiquetagem,
     inserir_teste_etiquetagem,
+    listar_testes_etiquetagem,
+    obter_teste_etiquetagem,
     verificar_frequencia_etiquetagem,
 )
 from app.utils.formatters import _img_b64
@@ -103,6 +107,24 @@ def _form_values(form) -> dict:
     }
 
 
+def _record_values(record: dict) -> dict:
+    """Converte um registro do PostgreSQL para o formato usado pelo formulário."""
+    values = dict(record)
+    for campo in ("frequencia_mhz", "passo_khz"):
+        if values.get(campo) is not None:
+            if campo == "passo_khz":
+                values["passo"] = _formatar_banda(round(float(values[campo])))
+            else:
+                values["frequencia_mhz"] = str(values[campo])
+    values["frequencia_mhz"] = values.get("frequencia_mhz", "")
+    values["passo"] = values.get("passo", "")
+    values["faixa"] = values.get("faixa") or ""
+    values["frequencias_selecionadas"] = values.get("frequencias_selecionadas") or []
+    values["frequencias_disponiveis"] = list(values["frequencias_selecionadas"])
+    values["invalid_fields"] = []
+    return values
+
+
 def _render_form(
     request: Request,
     values: dict,
@@ -123,35 +145,42 @@ def _render_form(
 
 
 @router.get("/teste_etiquetagem", response_class=HTMLResponse)
-async def get_teste_etiquetagem(request: Request):
+async def get_teste_etiquetagem(request: Request, edit_id: int | None = None):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+
+    values = {
+        "licenca": "ute",
+        "perfil": "pf",
+        "entidade": "",
+        "contato": "",
+        "local": "",
+        "cpf_cnpj": "",
+        "frequencia_mhz": "",
+        "passo": "",
+        "faixa": "",
+        "equipamento_homologado": False,
+        "permissao": "permitido",
+        "frequencias_selecionadas": [],
+        "frequencias_disponiveis": [],
+        "tipo_equipamento": "",
+        "numero_etiqueta": "",
+        "observacoes": "",
+        "invalid_fields": [],
+    }
+    if edit_id is not None:
+        registro = obter_teste_etiquetagem(evento_id=sp_id, registro_id=edit_id)
+        if registro:
+            values = _record_values(registro)
+            values["registro_id"] = edit_id
 
     return templates.TemplateResponse(
         request,
         "teste_etiquetagem.html",
         _ctx(
             request,
-            values={
-                "licenca": "ute",
-                "perfil": "pf",
-                "entidade": "",
-                "contato": "",
-                "local": "",
-                "cpf_cnpj": "",
-                "frequencia_mhz": "",
-                "passo": "",
-                "faixa": "",
-                "equipamento_homologado": False,
-                "permissao": "permitido",
-                "frequencias_selecionadas": [],
-                "frequencias_disponiveis": [],
-                "tipo_equipamento": "",
-                "numero_etiqueta": "",
-                "observacoes": "",
-                "invalid_fields": [],
-            },
+            values=values,
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -166,6 +195,7 @@ async def post_teste_etiquetagem(request: Request):
 
     form = await request.form()
     values = _form_values(form)
+    registro_id = form.get("registro_id")
     erros = []
     invalid_fields = []
 
@@ -226,7 +256,9 @@ async def post_teste_etiquetagem(request: Request):
         )
 
     conflito = (
-        verificar_frequencia_etiquetagem(evento_id=evento_id, freq_digitada=frequencia)
+        verificar_frequencia_etiquetagem(
+            evento_id=evento_id, freq_digitada=frequencia, excluir_id=registro_id
+        )
         if frequencia is not None
         else None
     )
@@ -237,16 +269,48 @@ async def post_teste_etiquetagem(request: Request):
             f"Frequência {values['frequencia_mhz']} MHz já cadastrada em {conflito}.",
         )
 
-    resultado = inserir_teste_etiquetagem(
-        evento_id=evento_id,
-        dados={
-            **values,
-            "frequencia_mhz": frequencia,
-            "passo_khz": passo_khz,
-        },
-    )
+    dados = {**values, "frequencia_mhz": frequencia, "passo_khz": passo_khz}
+    if registro_id:
+        resultado = atualizar_teste_etiquetagem(
+            evento_id=evento_id, registro_id=registro_id, dados=dados
+        )
+    else:
+        resultado = inserir_teste_etiquetagem(evento_id=evento_id, dados=dados)
     if resultado.startswith("ERRO"):
         return _render_form(request, values, resultado)
 
     request.session["flash_success"] = resultado
     return RedirectResponse("/teste_etiquetagem", status_code=303)
+
+
+@router.get("/teste_etiquetagem/consultar", response_class=HTMLResponse)
+async def consultar_testes_etiquetagem(request: Request):
+    """Exibe os registros de etiquetagem do evento atual."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    return templates.TemplateResponse(
+        request,
+        "teste_etiquetagem_consultar.html",
+        _ctx(
+            request,
+            registros=listar_testes_etiquetagem(evento_id=evento_id),
+            flash_success=request.session.pop("flash_success", None),
+            flash_error=request.session.pop("flash_error", None),
+        ),
+    )
+
+
+@router.post("/teste_etiquetagem/excluir")
+async def excluir_teste_etiquetagem_rota(request: Request):
+    """Exclui um registro de etiquetagem do evento atual."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    form = await request.form()
+    resultado = excluir_teste_etiquetagem(
+        evento_id=evento_id, registro_id=form.get("registro_id")
+    )
+    chave = "flash_success" if not resultado.startswith("ERRO") else "flash_error"
+    request.session[chave] = resultado
+    return RedirectResponse("/teste_etiquetagem/consultar", status_code=303)

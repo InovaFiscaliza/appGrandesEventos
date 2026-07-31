@@ -164,7 +164,7 @@
       return;
     }
 
-    const texto = `${valor} ${passo.value} ${faixa.value}`;
+    const texto = `${valor} MHz ⌂ ${passo.value} • ${faixa.value}`;
     const existente = [...lista.options].some((opcao) => opcao.value === texto);
     if (existente) {
       lista.querySelector(`option[value="${CSS.escape(texto)}"]`).selected = true;

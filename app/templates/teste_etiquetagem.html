@@ -11,7 +11,13 @@
     {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
     {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
+    <div class="teq-record-actions">
+        <a href="/teste_etiquetagem/consultar" class="btn teq-btn teq-btn-secondary">Consultar registros</a>
+        {% if values.registro_id %}<span class="teq-editing-note">Editando registro #{{ values.registro_id }}</span>{% endif %}
+    </div>
+
     <form class="teq-form" method="post" action="/teste_etiquetagem" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
+        {% if values.registro_id %}<input type="hidden" name="registro_id" value="{{ values.registro_id }}">{% endif %}
         <div class="teq-grid">
             <div class="teq-col">
                 <div class="teq-panel">
@@ -131,7 +137,7 @@
         </div>
 
         <div class="teq-actions">
-            <button class="btn teq-btn" type="submit">Inserir teste</button>
+            <button class="btn teq-btn" type="submit">{% if values.registro_id %}Salvar alterações{% else %}Inserir teste{% endif %}</button>
             <button class="btn teq-btn" type="reset">Limpar formulário</button>
             <a href="/menu" class="btn teq-btn teq-btn-back">Voltar ao Menu</a>
         </div>

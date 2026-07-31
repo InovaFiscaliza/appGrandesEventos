@@ -27,6 +27,7 @@
     <button type="submit" class="btn" style="max-width:200px;margin-bottom:0.5rem">Ordenar</button>
 </form>
 
+<div class="table-scroll" role="region" aria-label="Tabela de atos de UTE" tabindex="0">
 <table class="ute-table">
     <thead>
         <tr>
@@ -47,6 +48,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% else %}
 <div class="flash flash-info">Sem dados de UTE.</div>
 {% endif %}

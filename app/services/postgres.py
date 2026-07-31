@@ -390,7 +390,7 @@ def carregar_opcoes_identificacao(_client=None, evento_id=None) -> list:
 
 
 def verificar_frequencia_etiquetagem(
-    _client=None, evento_id=None, freq_digitada=None
+    _client=None, evento_id=None, freq_digitada=None, excluir_id=None
 ) -> Optional[str]:
     """Retorna a origem de uma frequência já cadastrada no evento, se houver."""
     if evento_id is None or freq_digitada is None:
@@ -437,9 +437,10 @@ def verificar_frequencia_etiquetagem(
                     FROM testes_etiquetagem
                     WHERE evento_id = :ev
                       AND round(frequencia_mhz, 3) = :freq
+                      AND (:excluir_id IS NULL OR id <> :excluir_id)
                     LIMIT 1
                 """),
-                {"ev": int(evento_id), "freq": frequencia},
+                {"ev": int(evento_id), "freq": frequencia, "excluir_id": excluir_id},
             ).first()
             if row:
                 return row[0]
@@ -494,6 +495,141 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
         if "testes_etiquetagem_evento_id_numero_etiqueta_key" in str(e):
             return "ERRO: o número da etiqueta já existe neste evento."
         return f"ERRO ao inserir teste de etiquetagem: {e}"
+
+
+def listar_testes_etiquetagem(_client=None, evento_id=None) -> list[dict]:
+    """Lista os testes de etiquetagem cadastrados no evento selecionado."""
+    if evento_id is None:
+        return []
+    try:
+        with get_engine().connect() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                    SELECT id, licenca, perfil, entidade, contato, local,
+                           cpf_cnpj, frequencia_mhz, passo_khz, faixa,
+                           equipamento_homologado, permissao,
+                           frequencias_selecionadas, tipo_equipamento,
+                           numero_etiqueta, observacoes, criado_em, atualizado_em
+                    FROM testes_etiquetagem
+                    WHERE evento_id = :ev
+                    ORDER BY criado_em DESC, id DESC
+                """),
+                    {"ev": int(evento_id)},
+                )
+                .mappings()
+                .all()
+            )
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"Erro ao listar testes de etiquetagem: {e}", exc_info=True)
+        return []
+
+
+def obter_teste_etiquetagem(
+    _client=None, evento_id=None, registro_id=None
+) -> dict | None:
+    """Obtém um teste de etiquetagem pertencente ao evento selecionado."""
+    if evento_id is None or registro_id is None:
+        return None
+    try:
+        with get_engine().connect() as conn:
+            row = (
+                conn.execute(
+                    text("""
+                    SELECT id, licenca, perfil, entidade, contato, local,
+                           cpf_cnpj, frequencia_mhz, passo_khz, faixa,
+                           equipamento_homologado, permissao,
+                           frequencias_selecionadas, tipo_equipamento,
+                           numero_etiqueta, observacoes
+                    FROM testes_etiquetagem
+                    WHERE id = :id AND evento_id = :ev
+                """),
+                    {"id": int(registro_id), "ev": int(evento_id)},
+                )
+                .mappings()
+                .first()
+            )
+        return dict(row) if row else None
+    except Exception as e:
+        logger.error(f"Erro ao obter teste de etiquetagem: {e}", exc_info=True)
+        return None
+
+
+def atualizar_teste_etiquetagem(
+    _client=None, evento_id=None, registro_id=None, dados: dict = None
+) -> str:
+    """Atualiza um teste de etiquetagem pertencente ao evento selecionado."""
+    if evento_id is None or registro_id is None or dados is None:
+        return "ERRO: parâmetros insuficientes."
+    try:
+        with get_engine().begin() as conn:
+            result = conn.execute(
+                text("""
+                    UPDATE testes_etiquetagem
+                    SET licenca = :licenca, perfil = :perfil, entidade = :entidade,
+                        contato = :contato, local = :local, cpf_cnpj = :cpf_cnpj,
+                        frequencia_mhz = :freq, passo_khz = :passo, faixa = :faixa,
+                        equipamento_homologado = :homologado, permissao = :permissao,
+                        frequencias_selecionadas = :frequencias,
+                        tipo_equipamento = :tipo_equipamento,
+                        numero_etiqueta = :numero_etiqueta, observacoes = :observacoes,
+                        atualizado_em = now()
+                    WHERE id = :id AND evento_id = :ev
+                """),
+                {
+                    "id": int(registro_id),
+                    "ev": int(evento_id),
+                    "licenca": dados["licenca"],
+                    "perfil": dados["perfil"],
+                    "entidade": dados["entidade"],
+                    "contato": dados.get("contato", ""),
+                    "local": dados["local"],
+                    "cpf_cnpj": dados.get("cpf_cnpj", ""),
+                    "freq": dados.get("frequencia_mhz"),
+                    "passo": dados.get("passo_khz"),
+                    "faixa": dados.get("faixa") or None,
+                    "homologado": bool(dados.get("equipamento_homologado")),
+                    "permissao": dados["permissao"],
+                    "frequencias": dados.get("frequencias_selecionadas", []),
+                    "tipo_equipamento": dados["tipo_equipamento"],
+                    "numero_etiqueta": dados["numero_etiqueta"],
+                    "observacoes": dados.get("observacoes", ""),
+                },
+            )
+        return (
+            "Teste de etiquetagem atualizado com sucesso."
+            if result.rowcount
+            else "ERRO: registro não encontrado."
+        )
+    except Exception as e:
+        logger.error(f"Erro ao atualizar teste de etiquetagem: {e}", exc_info=True)
+        if "testes_etiquetagem_evento_id_numero_etiqueta_key" in str(e):
+            return "ERRO: o número da etiqueta já existe neste evento."
+        return f"ERRO ao atualizar teste de etiquetagem: {e}"
+
+
+def excluir_teste_etiquetagem(_client=None, evento_id=None, registro_id=None) -> str:
+    """Exclui um teste de etiquetagem pertencente ao evento selecionado."""
+    if evento_id is None or registro_id is None:
+        return "ERRO: parâmetros insuficientes."
+    try:
+        with get_engine().begin() as conn:
+            result = conn.execute(
+                text("""
+                    DELETE FROM testes_etiquetagem
+                    WHERE id = :id AND evento_id = :ev
+                """),
+                {"id": int(registro_id), "ev": int(evento_id)},
+            )
+        return (
+            "Teste de etiquetagem excluído com sucesso."
+            if result.rowcount
+            else "ERRO: registro não encontrado."
+        )
+    except Exception as e:
+        logger.error(f"Erro ao excluir teste de etiquetagem: {e}", exc_info=True)
+        return f"ERRO ao excluir teste de etiquetagem: {e}"
 
 
 # =========================================================================
