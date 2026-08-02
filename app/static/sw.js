@@ -1,12 +1,19 @@
-const CACHE = "appEventos-v8";
+const CACHE = "appEventos-v22";
 const SHELL = [
   "/static/style.css",
   "/static/app.js",
   "/static/db.js",
   "/static/sync.js",
   "/static/connectivity.js",
+  "/static/header.js",
   "/static/sw-register.js",
   "/static/offline.html",
+  "/static/consultar.js",
+  "/static/inserir.js",
+  "/static/bsr_erb.js",
+  "/static/tabela_ute.js",
+  "/static/selecao.js",
+  "/static/teste_etiquetagem.js",
 ];
 
 // Instalação: pré-carrega os assets essenciais

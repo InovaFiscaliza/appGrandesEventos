@@ -1,7 +1,6 @@
 // Detecção ATIVA de conectividade.
-// navigator.onLine não é confiável (adaptadores virtuais mantêm 'true'
-// mesmo com a placa de rede física desligada). Por isso testamos a
-// conectividade real com um recurso externo periodicamente.
+// Usa o próprio servidor da aplicação como referência (/api/ping)
+// em vez de serviço externo, evitando falsos positivos com proxy corporativo.
 (function () {
   window.APP_OFFLINE = !navigator.onLine;
 
@@ -26,15 +25,15 @@
     var ctrl = new AbortController();
     var t = setTimeout(function () {
       ctrl.abort();
-    }, 4000);
-    fetch("https://www.gstatic.com/generate_204", {
-      mode: "no-cors",
+    }, 6000);
+    // Usa endpoint local em vez de serviço externo
+    fetch("/api/ping", {
       cache: "no-store",
       signal: ctrl.signal,
     })
-      .then(function () {
+      .then(function (r) {
         clearTimeout(t);
-        aplicarEstado(false);
+        aplicarEstado(!r.ok);
       })
       .catch(function () {
         clearTimeout(t);
@@ -44,6 +43,6 @@
 
   window.addEventListener("online", checarConexao);
   window.addEventListener("offline", checarConexao);
-  setInterval(checarConexao, 5000);
+  setInterval(checarConexao, 8000);
   checarConexao();
 })();

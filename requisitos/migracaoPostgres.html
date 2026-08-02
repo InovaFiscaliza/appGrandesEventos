@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guia de Migração — Google Sheets → PostgreSQL | AppEventos</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<style>
+  :root {
+    --azul: #1a5fb4;
+    --azul-claro: #3584e4;
+    --verde: #2ec27e;
+    --amarelo: #e5a50a;
+    --vermelho: #c01c28;
+    --cinza-fundo: #f6f8fa;
+    --cinza-borda: #d0d7de;
+    --texto: #1f2328;
+    --texto-suave: #57606a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+    color: var(--texto);
+    margin: 0;
+    background: #fff;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 5rem;
+  }
+  header.hero {
+    background: linear-gradient(135deg, var(--azul) 0%, var(--azul-claro) 100%);
+    color: #fff;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+  }
+  header.hero h1 { margin: 0 0 .5rem; font-size: 1.9rem; }
+  header.hero p { margin: 0; opacity: .92; font-size: 1.05rem; }
+  header.hero .badge {
+    display: inline-block; margin-top: 1rem; background: rgba(255,255,255,.2);
+    padding: .3rem .9rem; border-radius: 999px; font-size: .85rem;
+  }
+  h2 {
+    font-size: 1.5rem; margin-top: 2.5rem; padding-bottom: .4rem;
+    border-bottom: 2px solid var(--cinza-borda);
+  }
+  h3 { font-size: 1.15rem; margin-top: 1.8rem; color: var(--azul); }
+  h4 { font-size: 1rem; margin-top: 1.2rem; color: var(--texto-suave); }
+  a { color: var(--azul-claro); }
+  blockquote {
+    border-left: 4px solid var(--azul-claro);
+    background: var(--cinza-fundo);
+    margin: 1rem 0; padding: .8rem 1.2rem; border-radius: 0 6px 6px 0;
+    color: var(--texto-suave);
+  }
+  blockquote.regra { border-left-color: var(--amarelo); background: #fff8e1; color: var(--texto); }
+  blockquote.status { border-left-color: var(--verde); background: #eafaf1; }
+  code:not(pre code) {
+    background: rgba(175,184,193,.25); padding: .15em .4em;
+    border-radius: 5px; font-size: .88em;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+  pre {
+    background: #282c34; border-radius: 8px; padding: 1rem 1.2rem;
+    overflow-x: auto; font-size: .86rem; line-height: 1.5;
+  }
+  pre code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+  table {
+    border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .92rem;
+  }
+  th, td { border: 1px solid var(--cinza-borda); padding: .55rem .8rem; text-align: left; }
+  th { background: var(--cinza-fundo); }
+  tr:nth-child(even) td { background: #fafbfc; }
+  ul.checklist { list-style: none; padding-left: 0; }
+  ul.checklist li { padding-left: 1.9rem; position: relative; margin: .4rem 0; }
+  ul.checklist li::before {
+    content: "☐"; position: absolute; left: 0; color: var(--azul-claro);
+    font-size: 1.1rem; top: -1px;
+  }
+  .mermaid { text-align: center; background: var(--cinza-fundo); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  .toc {
+    background: var(--cinza-fundo); border: 1px solid var(--cinza-borda);
+    border-radius: 8px; padding: 1rem 1.5rem; margin: 1.5rem 0;
+  }
+  .toc h2 { margin-top: 0; border: none; font-size: 1.15rem; }
+  .toc ol { margin: 0; padding-left: 1.2rem; }
+  .toc a { text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--cinza-borda); margin: 2.5rem 0; }
+  .footer { text-align: center; color: var(--texto-suave); font-size: .85rem; margin-top: 3rem; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>Guia de Migração — Google Sheets → PostgreSQL</h1>
+  <p>Aplicação <strong>AppEventos</strong> (FastAPI + PWA offline)</p>
+  <span class="badge">📄 Documento de planejamento</span>
+</header>
+
+<div class="container">
+
+  <blockquote>
+    <strong>Objetivo:</strong> substituir o backend de dados atual (Google Sheets via
+    <code>gspread</code>) por um banco de dados relacional <strong>PostgreSQL</strong>,
+    mantendo as funcionalidades existentes (inserção de emissões, consulta de pendências,
+    busca, UTE, BSR/ERB e o modo offline com fila de sincronização).
+  </blockquote>
+
+  <nav class="toc">
+    <h2>Índice</h2>
+    <ol>
+      <li><a href="#s1">Avaliação da situação atual</a></li>
+      <li><a href="#s2">Modelagem relacional proposta</a></li>
+      <li><a href="#s3">Dependências e configuração</a></li>
+      <li><a href="#s4">Reescrita do serviço de dados</a></li>
+      <li><a href="#s5">Script de migração dos dados existentes</a></li>
+      <li><a href="#s6">Impacto no modo offline / PWA</a></li>
+      <li><a href="#s7">Ordem de execução recomendada</a></li>
+      <li><a href="#s8">Riscos e pontos de atenção</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============ 1 ============ -->
+  <h2 id="s1">1. Avaliação da situação atual</h2>
+
+  <h3>1.1. Como os dados funcionam hoje</h3>
+  <p>Atualmente <strong>cada evento é uma planilha do Google</strong> (arquivo cujo nome
+  contém "monitoracao"), e dentro dela cada aba (worksheet) guarda um tipo de dado:</p>
+  <table>
+    <thead><tr><th>Aba (worksheet)</th><th>Papel atual</th></tr></thead>
+    <tbody>
+      <tr><td><code>PAINEL</code></td><td>Consolidação de todas as ocorrências/pendências do evento</td></tr>
+      <tr><td><code>Abordagem</code></td><td>Emissões verificadas em campo (colunas H–W) + BSR/ERB (colunas X–AC)</td></tr>
+      <tr><td><code>Tabela UTE</code></td><td>Uso Temporário de Espectro (País/Entidade, Local, Frequência, SEI)</td></tr>
+      <tr><td><code>LISTAS</code></td><td>Listas de valores (dropdowns)</td></tr>
+      <tr><td>Abas de estação</td><td>Uma aba por estação, com as ocorrências daquela estação</td></tr>
+    </tbody>
+  </table>
+  <p>Constantes relevantes (ver <code>app/config.py</code>):</p>
+  <ul>
+    <li><code>ABAS_SISTEMA = ["PAINEL", "Abordagem", "Tabela UTE", "Escala", "LISTAS"]</code>
+    → tudo que <strong>não</strong> está nessa lista é tratado como <strong>aba de estação</strong>.</li>
+  </ul>
+  <p>O acesso é centralizado em <code>app/services/google_sheets.py</code>, que concentra
+  ~todas as operações de leitura/escrita. Este é o <strong>único módulo</strong> que precisa
+  ser reescrito para falar com o PostgreSQL.</p>
+
+  <h3>1.2. Operações que o serviço expõe hoje (contrato a preservar)</h3>
+  <h4>Leitura</h4>
+  <ul>
+    <li><code>buscar_planilhas</code> → lista de eventos disponíveis</li>
+    <li><code>listar_abas_estacoes</code> → estações de um evento</li>
+    <li><code>get_city_map_url</code> / <code>obter_fuso_horario_evento</code> → metadados do evento (lat/lon/fuso)</li>
+    <li><code>verificar_frequencia_existente</code> / <code>verificar_frequencia_global</code> → checagem de duplicidade de frequência</li>
+    <li><code>carregar_dados_ute</code> → Tabela UTE</li>
+    <li><code>carregar_pendencias_painel_mapeadas</code> / <code>carregar_pendencias_abordagem_pendentes</code> / <code>carregar_pendencias_todas_estacoes</code> → pendências</li>
+    <li><code>carregar_todas_frequencias</code> → mapa frequência → estação</li>
+    <li><code>carregar_opcoes_identificacao</code> → opções do combobox</li>
+  </ul>
+  <h4>Escrita</h4>
+  <ul>
+    <li><code>inserir_emissao_I_W</code> → nova emissão (Abordagem)</li>
+    <li><code>inserir_bsr_erb</code> → registro de BSR/Jammer ou ERB</li>
+    <li><code>atualizar_campos_na_aba_mae</code> / <code>atualizar_campos_abordagem_por_id</code> → edição de ocorrências</li>
+    <li><code>_buscar_por_texto_livre</code> → busca textual</li>
+  </ul>
+  <blockquote class="regra">
+    <strong>Regra de ouro da migração:</strong> manter as <strong>mesmas assinaturas de função</strong>
+    (mesmos nomes e retornos: <code>pd.DataFrame</code>, <code>str</code>, <code>bool</code>, <code>dict</code>),
+    trocando apenas a implementação interna. Assim os <em>routers</em> e <em>views</em> não precisam mudar.
+  </blockquote>
+
+  <!-- ============ 2 ============ -->
+  <h2 id="s2">2. Modelagem relacional proposta</h2>
+  <p>O modelo "planilha por evento + aba por estação" vira um esquema normalizado:</p>
+  <div class="mermaid">
+erDiagram
+    eventos ||--o{ estacoes : possui
+    eventos ||--o{ ocorrencias : possui
+    eventos ||--o{ tabela_ute : possui
+    eventos ||--o{ bsr_erb : possui
+    estacoes ||--o{ ocorrencias : registra
+  </div>
+
+  <h3>2.1. DDL (script de criação)</h3>
+  <p>Crie um arquivo <code>db/schema.sql</code>:</p>
+  <pre><code class="language-sql">-- Extensão útil para busca textual sem acento
+CREATE EXTENSION IF NOT EXISTS unaccent;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+-- Um registro por evento (substitui "1 planilha = 1 evento")
+CREATE TABLE eventos (
+    id              BIGSERIAL PRIMARY KEY,
+    nome            TEXT NOT NULL UNIQUE,
+    legacy_sheet_id TEXT,                 -- id da planilha antiga (rastreio da migração)
+    latitude        NUMERIC(9,6),
+    longitude       NUMERIC(9,6),
+    fuso_horario    TEXT DEFAULT 'America/Sao_Paulo',
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Estações (substitui "abas de estação")
+CREATE TABLE estacoes (
+    id          BIGSERIAL PRIMARY KEY,
+    evento_id   BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    nome        TEXT NOT NULL,
+    latitude    NUMERIC(9,6),
+    longitude   NUMERIC(9,6),
+    UNIQUE (evento_id, nome)
+);
+
+-- Ocorrências/emissões (unifica PAINEL + Abordagem + abas de estação)
+CREATE TABLE ocorrencias (
+    id                BIGSERIAL PRIMARY KEY,
+    evento_id         BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    estacao_id        BIGINT REFERENCES estacoes(id) ON DELETE SET NULL,
+    local_regiao      TEXT,               -- "Local/Região" (inclui "Abordagem")
+    fiscal            TEXT,
+    data              DATE,
+    hora              TIME,
+    frequencia_mhz    NUMERIC(12,3),
+    largura_khz       NUMERIC(12,3),
+    faixa             TEXT,
+    identificacao     TEXT,
+    autorizado        TEXT,
+    ute               BOOLEAN DEFAULT FALSE,
+    processo_sei_ute  TEXT,
+    observacoes       TEXT,
+    alguem_ciente     TEXT,
+    interferente      TEXT,
+    situacao          TEXT NOT NULL DEFAULT 'Pendente',
+    fonte             TEXT,               -- 'ABORDAGEM' | 'PAINEL' | 'ESTACAO' | 'BUSCA'
+    criado_em         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    atualizado_em     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Índices para as consultas mais usadas
+CREATE INDEX idx_ocorr_evento_situacao ON ocorrencias (evento_id, situacao);
+CREATE INDEX idx_ocorr_frequencia      ON ocorrencias (evento_id, frequencia_mhz);
+CREATE INDEX idx_ocorr_busca_trgm      ON ocorrencias USING gin (observacoes gin_trgm_ops);
+
+-- Tabela UTE
+CREATE TABLE tabela_ute (
+    id              BIGSERIAL PRIMARY KEY,
+    evento_id       BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    pais_entidade   TEXT,
+    local           TEXT,
+    frequencia_mhz  NUMERIC(12,3),
+    processo_sei    TEXT
+);
+CREATE INDEX idx_ute_evento_freq ON tabela_ute (evento_id, frequencia_mhz);
+
+-- BSR / Jammer / ERB (colunas X–AC da aba Abordagem)
+CREATE TABLE bsr_erb (
+    id          BIGSERIAL PRIMARY KEY,
+    evento_id   BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    tipo        TEXT NOT NULL,           -- 'BSR/Jammer' | 'ERB'
+    regiao      TEXT,
+    latitude    NUMERIC(9,6),
+    longitude   NUMERIC(9,6),
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Opções de identificação (substitui LISTAS / AC2:AC7)
+CREATE TABLE opcoes_identificacao (
+    id          BIGSERIAL PRIMARY KEY,
+    evento_id   BIGINT REFERENCES eventos(id) ON DELETE CASCADE,  -- NULL = global
+    valor       TEXT NOT NULL
+);
+
+-- Atualiza atualizado_em automaticamente
+CREATE OR REPLACE FUNCTION set_atualizado_em() RETURNS trigger AS $$
+BEGIN NEW.atualizado_em = now(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_ocorr_upd BEFORE UPDATE ON ocorrencias
+FOR EACH ROW EXECUTE FUNCTION set_atualizado_em();</code></pre>
+
+  <blockquote>
+    Observação: o "ID sequencial por aba" (coluna H da Abordagem) deixa de ser necessário —
+    o <code>BIGSERIAL</code> do PostgreSQL passa a ser a chave primária. Se a aplicação exibe
+    esse ID ao usuário, ele passa a ser o <code>ocorrencias.id</code>.
+  </blockquote>
+
+  <!-- ============ 3 ============ -->
+  <h2 id="s3">3. Dependências e configuração</h2>
+
+  <h3>3.1. Novas dependências (<code>requirements.txt</code>)</h3>
+  <pre><code class="language-text">fastapi[standard]
+pandas
+timezonefinder
+# --- novas ---
+sqlalchemy>=2.0        # ORM/Core
+psycopg[binary]>=3.1   # driver PostgreSQL
+alembic                # migrações de schema (opcional, recomendado)</code></pre>
+  <p>Pode-se <strong>remover</strong> <code>gspread</code> e <code>google-auth</code> ao final da migração.</p>
+  <p>Instalar (no venv já ativo):</p>
+  <pre><code class="language-powershell">pip install "sqlalchemy>=2.0" "psycopg[binary]>=3.1" alembic</code></pre>
+
+  <h3>3.2. String de conexão (segredo)</h3>
+  <p>Reaproveite o padrão de segredos já existente. Hoje o app lê
+  <code>.streamlit/secrets.toml</code>; adicione uma seção:</p>
+  <pre><code class="language-toml">[database]
+url = "postgresql+psycopg://usuario:senha@host:5432/appeventos"</code></pre>
+  <blockquote class="regra">
+    <code>.streamlit/secrets.toml</code> <strong>já está no <code>.gitignore</code></strong> — mantenha assim.
+    Alternativa: variável de ambiente <code>DATABASE_URL</code>.
+  </blockquote>
+
+  <h3>3.3. Camada de conexão (<code>app/services/db.py</code>)</h3>
+  <pre><code class="language-python">import tomllib
+from pathlib import Path
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+def _get_database_url() -> str:
+    with open(Path(".streamlit/secrets.toml"), "rb") as f:
+        return tomllib.load(f)["database"]["url"]
+
+_engine = create_engine(_get_database_url(), pool_pre_ping=True, future=True)
+SessionLocal = sessionmaker(bind=_engine, autoflush=False, future=True)
+
+def get_engine():
+    return _engine</code></pre>
+
+  <!-- ============ 4 ============ -->
+  <h2 id="s4">4. Reescrita do serviço de dados</h2>
+  <p>Crie <code>app/services/postgres.py</code> (ou substitua o conteúdo de
+  <code>google_sheets.py</code>), <strong>mantendo os mesmos nomes de função</strong>.
+  Exemplos de equivalência:</p>
+
+  <h3>4.1. Listar eventos (era <code>buscar_planilhas</code>)</h3>
+  <pre><code class="language-python">import pandas as pd
+from sqlalchemy import text
+from app.services.db import get_engine
+
+def buscar_planilhas(_client=None) -> dict:
+    with get_engine().connect() as conn:
+        rows = conn.execute(text("SELECT nome, id FROM eventos ORDER BY nome")).all()
+    return {nome: str(evento_id) for nome, evento_id in rows}</code></pre>
+
+  <h3>4.2. Pendências (era <code>carregar_pendencias_*</code>)</h3>
+  <p>Toda a lógica de "achar a coluna certa por heurística" <strong>desaparece</strong> —
+  no banco os campos têm nomes fixos:</p>
+  <pre><code class="language-python">def carregar_pendencias_todas_estacoes(_client, evento_id) -> pd.DataFrame:
+    sql = text("""
+        SELECT o.id AS "ID", COALESCE(e.nome, o.local_regiao) AS "Local",
+               o.fiscal AS "Fiscal", o.data AS "Data", o.hora AS "HH:mm",
+               o.frequencia_mhz AS "Frequência (MHz)", o.largura_khz AS "Largura (kHz)",
+               o.faixa AS "Faixa de Frequência Envolvida", o.identificacao AS "Identificação",
+               o.autorizado AS "Autorizado?", o.ute AS "UTE?",
+               o.processo_sei_ute AS "Processo SEI UTE",
+               o.observacoes AS "Ocorrência (observações)",
+               o.alguem_ciente AS "Alguém mais ciente?", o.interferente AS "Interferente?",
+               o.situacao AS "Situação", o.fonte AS "Fonte"
+        FROM ocorrencias o
+        LEFT JOIN estacoes e ON e.id = o.estacao_id
+        WHERE o.evento_id = :ev AND lower(trim(o.situacao)) = 'pendente'
+        ORDER BY "Local", "Data"
+    """)
+    return pd.read_sql(sql, get_engine(), params={"ev": evento_id})</code></pre>
+
+  <h3>4.3. Verificar frequência duplicada (era <code>verificar_frequencia_*</code>)</h3>
+  <pre><code class="language-python">def verificar_frequencia_global(_client, evento_id, freq) -> str | None:
+    if not freq or freq <= 0:
+        return None
+    with get_engine().connect() as conn:
+        r = conn.execute(text("""
+            SELECT COALESCE(e.nome, o.local_regiao)
+            FROM ocorrencias o LEFT JOIN estacoes e ON e.id = o.estacao_id
+            WHERE o.evento_id = :ev AND round(o.frequencia_mhz, 3) = round(:f, 3)
+            LIMIT 1
+        """), {"ev": evento_id, "f": float(freq)}).first()
+    return r[0] if r else None</code></pre>
+
+  <h3>4.4. Inserir emissão (era <code>inserir_emissao_I_W</code>)</h3>
+  <pre><code class="language-python">def inserir_emissao_I_W(_client, evento_id, dados: dict) -> bool:
+    try:
+        with get_engine().begin() as conn:   # begin() = transação automática
+            conn.execute(text("""
+                INSERT INTO ocorrencias
+                  (evento_id, local_regiao, fiscal, data, hora, frequencia_mhz,
+                   largura_khz, faixa, identificacao, autorizado, ute,
+                   processo_sei_ute, observacoes, interferente, situacao, fonte)
+                VALUES
+                  (:ev, :local, :fiscal, :data, :hora, :freq, :bw, :faixa,
+                   :ident, :autz, :ute, :proc, :obs, :inter, :situ, 'ABORDAGEM')
+            """), {
+                "ev": evento_id,
+                "local": dados.get("Local/Região", "Abordagem"),
+                "fiscal": dados.get("Fiscal", ""),
+                "data": dados.get("Dia"), "hora": dados.get("Hora"),
+                "freq": float(dados.get("Frequência em MHz", 0)),
+                "bw": float(dados.get("Largura em kHz", 0)),
+                "faixa": dados.get("Faixa de Frequência", ""),
+                "ident": dados.get("Identificação", ""),
+                "autz": dados.get("Autorizado? (Q)", ""),
+                "ute": bool(dados.get("UTE?")),
+                "proc": dados.get("Processo SEI ou Ato UTE", ""),
+                "obs": f"{dados.get('Observações/Detalhes/Contatos','')} - {dados.get('Responsável pela emissão','')}",
+                "inter": dados.get("Interferente?", ""),
+                "situ": dados.get("Situação", "Pendente"),
+            })
+        return True
+    except Exception:
+        return False</code></pre>
+
+  <h3>4.5. Busca textual (era <code>_buscar_por_texto_livre</code>)</h3>
+  <p>Use <code>unaccent</code> + <code>ILIKE</code> (ou <code>pg_trgm</code>) em vez de normalizar em Python:</p>
+  <pre><code class="language-python">def _buscar_por_texto_livre(_client, evento_id, termos, abas=None) -> pd.DataFrame:
+    sql = text("""
+        SELECT * FROM ocorrencias
+        WHERE evento_id = :ev
+          AND unaccent(lower(
+                coalesce(local_regiao,'')||' '||coalesce(fiscal,'')||' '||
+                coalesce(identificacao,'')||' '||coalesce(observacoes,'')
+              )) LIKE unaccent(lower(:q))
+    """)
+    return pd.read_sql(sql, get_engine(),
+                       params={"ev": evento_id, "q": f"%{termos}%"})</code></pre>
+
+  <blockquote>
+    As demais funções (<code>get_city_map_url</code>, <code>obter_fuso_horario_evento</code>,
+    <code>carregar_dados_ute</code>, <code>inserir_bsr_erb</code>, <code>atualizar_campos_*</code>,
+    <code>carregar_opcoes_identificacao</code>) seguem o mesmo padrão: um
+    <code>SELECT</code>/<code>INSERT</code>/<code>UPDATE</code> simples contra as tabelas do §2.
+  </blockquote>
+
+  <!-- ============ 5 ============ -->
+  <h2 id="s5">5. Script de migração dos dados existentes</h2>
+  <p>Antes de desligar o Sheets, migre os dados uma única vez. Crie
+  <code>scripts/migrar_sheets_para_postgres.py</code>:</p>
+  <pre><code class="language-python">"""Lê cada planilha do Google e grava no PostgreSQL. Rodar UMA vez."""
+from app.services import google_sheets as gs      # serviço ANTIGO
+from app.services.db import get_engine
+from sqlalchemy import text
+
+def migrar():
+    client = gs.obter_cliente_gspread()
+    planilhas = gs.buscar_planilhas(client)        # {nome: sheet_id}
+    with get_engine().begin() as conn:
+        for nome, sheet_id in planilhas.items():
+            lat_lon = gs.get_city_map_url(client, sheet_id)  # extrair lat/lon
+            fuso = gs.obter_fuso_horario_evento(client, sheet_id)
+            evento_id = conn.execute(text("""
+                INSERT INTO eventos (nome, legacy_sheet_id, fuso_horario)
+                VALUES (:n, :sid, :fz)
+                ON CONFLICT (nome) DO UPDATE SET legacy_sheet_id = EXCLUDED.legacy_sheet_id
+                RETURNING id
+            """), {"n": nome, "sid": sheet_id, "fz": fuso}).scalar()
+
+            # Estações
+            for est in gs.listar_abas_estacoes(client, sheet_id):
+                conn.execute(text("""
+                    INSERT INTO estacoes (evento_id, nome) VALUES (:ev, :n)
+                    ON CONFLICT (evento_id, nome) DO NOTHING
+                """), {"ev": evento_id, "n": est})
+
+            # Ocorrências: use carregar_pendencias_* (ou get_all_values das abas)
+            # e faça INSERT em ocorrencias mapeando cada coluna.
+            # Tabela UTE: carregar_dados_ute -> INSERT em tabela_ute.
+            print(f"Migrado: {nome} (evento_id={evento_id})")
+
+if __name__ == "__main__":
+    migrar()</code></pre>
+
+  <p><strong>Checklist da migração de dados:</strong></p>
+  <ul class="checklist">
+    <li>Fazer <strong>backup</strong> (exportar as planilhas para XLSX/CSV) antes de começar.</li>
+    <li>Rodar o script em ambiente de <strong>teste</strong> primeiro.</li>
+    <li>Conferir contagem de linhas: <code>SELECT count(*) FROM ocorrencias;</code> vs. planilhas.</li>
+    <li>Validar frequências (tipos numéricos, vírgula → ponto).</li>
+    <li>Só então apontar a aplicação para o novo serviço.</li>
+  </ul>
+
+  <!-- ============ 6 ============ -->
+  <h2 id="s6">6. Impacto no modo offline / PWA</h2>
+  <p>O app tem uma camada offline (IndexedDB + fila de sincronização em
+  <code>app/static/db.js</code>, <code>sync.js</code>, <code>sw.js</code>).
+  <strong>Boa notícia:</strong> essa camada é independente do backend de dados —
+  ela só precisa que o endpoint de escrita continue existindo.</p>
+  <p>O que muda:</p>
+  <ul>
+    <li>O endpoint que hoje chama <code>inserir_emissao_I_W</code> passa a gravar no Postgres.
+    A fila offline (<code>enfileirar('fila_envio', dados)</code>) e o <em>replay</em> ao
+    reconectar <strong>continuam iguais</strong>.</li>
+    <li><strong>Cuidado com IDs:</strong> como o ID agora é gerado pelo banco
+    (<code>BIGSERIAL</code>), o cliente offline não deve inventar IDs. Envie os dados sem ID
+    e deixe o <code>INSERT</code> retornar o <code>id</code> (<code>RETURNING id</code>).</li>
+    <li><strong>Idempotência:</strong> para evitar duplicações quando a fila reenvia um item
+    já gravado, gere um <code>uuid</code> no cliente e adicione uma coluna
+    <code>client_uuid TEXT UNIQUE</code> em <code>ocorrencias</code>, usando
+    <code>INSERT ... ON CONFLICT (client_uuid) DO NOTHING</code>.</li>
+  </ul>
+
+  <!-- ============ 7 ============ -->
+  <h2 id="s7">7. Ordem de execução recomendada</h2>
+  <ol>
+    <li>Provisionar o PostgreSQL (local via Docker ou serviço gerenciado).</li>
+    <li>Rodar <code>db/schema.sql</code> (§2.1).</li>
+    <li>Adicionar dependências e a seção <code>[database]</code> no secrets (§3).</li>
+    <li>Criar <code>app/services/db.py</code> (§3.3).</li>
+    <li>Implementar <code>app/services/postgres.py</code> mantendo o contrato (§4).</li>
+    <li>Rodar o script de migração de dados em teste (§5).</li>
+    <li>Trocar os imports nos <em>routers</em>/<em>views</em>
+    (<code>from app.services import google_sheets</code> → <code>postgres</code>),
+    ou renomear o novo arquivo para <code>google_sheets.py</code>.</li>
+    <li>Testar: inserção, pendências, busca, UTE, BSR/ERB, e o fluxo <strong>offline</strong>.</li>
+    <li>Remover <code>gspread</code>/<code>google-auth</code> do <code>requirements.txt</code>.</li>
+  </ol>
+
+  <!-- ============ 8 ============ -->
+  <h2 id="s8">8. Riscos e pontos de atenção</h2>
+  <ul>
+    <li><strong>Números com vírgula:</strong> o Sheets guarda <code>123,456</code>;
+    converter para <code>.</code> no script de migração
+    (<code>float(str(v).replace(",", "."))</code>).</li>
+    <li><strong>Datas/horas:</strong> padronizar formato ao migrar
+    (<code>DD/MM/YYYY</code> → <code>DATE</code>).</li>
+    <li><strong>Duplicidade de frequência:</strong> a checagem que hoje varre várias abas
+    vira um único <code>SELECT</code> indexado (mais rápido e confiável).</li>
+    <li><strong>Segredos:</strong> nunca commitar <code>secrets.toml</code> nem a
+    <code>DATABASE_URL</code>.</li>
+    <li><strong>Rollback:</strong> manter as planilhas antigas intactas até validar 100%
+    do novo fluxo em produção.</li>
+  </ul>
+
+  <hr>
+  <blockquote class="status">
+    <strong>Status:</strong> 📄 Guia de referência — nenhum código de produção foi alterado ainda.
+    Este documento descreve o <strong>plano</strong> de migração para PostgreSQL.
+  </blockquote>
+
+  <p class="footer">AppEventos • Guia de Migração para PostgreSQL</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  hljs.highlightAll();
+  mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+</script>
+</body>
+</html>

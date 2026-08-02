@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.google_sheets import inserir_bsr_erb, obter_cliente_gspread
+from app.services.postgres import inserir_bsr_erb
 from app.utils.formatters import _img_b64, _normalize_coord, _valid_coord
 from app.config import TITULO_PRINCIPAL
 
@@ -78,11 +78,7 @@ async def post_bsr_erb(request: Request):
             ),
         )
 
-    client = obter_cliente_gspread()
-    # Troca ponto por vírgula para compatibilidade com locale pt-BR do Google Sheets
-    lat_sheets = lat.replace(".", ",") if lat else ""
-    lon_sheets = lon.replace(".", ",") if lon else ""
-    res = inserir_bsr_erb(client, sp_id, tipo, regiao, lat_sheets, lon_sheets)
+    res = inserir_bsr_erb(evento_id=sp_id, tipo=tipo, regiao=regiao, lat=lat, lon=lon)
 
     if res.startswith("ERRO"):
         return templates.TemplateResponse(
@@ -126,10 +122,7 @@ async def api_bsr_erb(request: Request):
     if not _valid_coord(lon, -180.0, 180.0):
         return JSONResponse({"erro": "Longitude inválida"}, status_code=400)
 
-    client = obter_cliente_gspread()
-    lat_sheets = lat.replace(".", ",") if lat else ""
-    lon_sheets = lon.replace(".", ",") if lon else ""
-    res = inserir_bsr_erb(client, sp_id, tipo, regiao, lat_sheets, lon_sheets)
+    res = inserir_bsr_erb(evento_id=sp_id, tipo=tipo, regiao=regiao, lat=lat, lon=lon)
     if res.startswith("ERRO"):
         return JSONResponse({"erro": res}, status_code=500)
     return JSONResponse({"ok": True, "msg": res})

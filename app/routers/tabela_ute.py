@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.google_sheets import carregar_dados_ute, obter_cliente_gspread
+from app.services.postgres import carregar_dados_ute
 from app.utils.formatters import _img_b64
 from app.config import TITULO_PRINCIPAL
 
@@ -30,8 +30,7 @@ async def get_ute(request: Request, sort: str = "Frequência (MHz)", dir: str = 
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
-    client = obter_cliente_gspread()
-    df = carregar_dados_ute(client, sp_id)
+    df = carregar_dados_ute(evento_id=sp_id)
 
     rows = []
     if not df.empty:

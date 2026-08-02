@@ -5,10 +5,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.google_sheets import (
+from app.services.postgres import (
     carregar_opcoes_identificacao,
     inserir_emissao_I_W,
-    obter_cliente_gspread,
     obter_fuso_horario_evento,
     verificar_frequencia_global,
 )
@@ -16,7 +15,6 @@ from app.utils.formatters import _img_b64
 from app.utils.offline import (
     extrair_dados_inserir,
     preparar_offline_ctx,
-    tentar_conexao_ou_offline,
 )
 from app.config import FAIXA_OPCOES, TITULO_PRINCIPAL
 
@@ -42,9 +40,8 @@ async def get_inserir(request: Request):
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
-    client = obter_cliente_gspread()
-    idents = carregar_opcoes_identificacao(client, sp_id)
-    fuso = obter_fuso_horario_evento(client, sp_id)
+    idents = carregar_opcoes_identificacao(evento_id=sp_id)
+    fuso = obter_fuso_horario_evento(evento_id=sp_id)
     agora = datetime.now(ZoneInfo(fuso))
 
     return templates.TemplateResponse(
@@ -93,36 +90,7 @@ async def post_inserir(request: Request):
     obs = form.get("obs", "").strip()
     situacao = form.get("situacao", "")
 
-    # --- Tenta conectar; se offline, prepara dados para fila local ---
-    client, offline_ctx = tentar_conexao_ou_offline(obter_cliente_gspread)
-    if client is None:
-        dados_json = extrair_dados_inserir(form)
-        return templates.TemplateResponse(
-            request,
-            "inserir.html",
-            _ctx(
-                request,
-                ident_opcoes=carregar_opcoes_identificacao(None, ""),
-                dia=dia_str,
-                hora=hora_str,
-                fiscal=fiscal,
-                local=local,
-                freq=freq_str,
-                larg=larg_str,
-                faixa=faixa,
-                ident=ident,
-                interferente=interferente,
-                ute=ute,
-                proc=proc,
-                obs=obs,
-                situacao=situacao,
-                flash_error=None,
-                flash_success=None,
-                **preparar_offline_ctx(dados_json),
-            ),
-        )
-
-    idents = carregar_opcoes_identificacao(client, sp_id)
+    idents = carregar_opcoes_identificacao(evento_id=sp_id)
 
     erros = []
     if not fiscal:
@@ -167,7 +135,7 @@ async def post_inserir(request: Request):
     except ValueError:
         larg = 0.0
 
-    conflito = verificar_frequencia_global(client, sp_id, freq)
+    conflito = verificar_frequencia_global(evento_id=sp_id, freq_digitada=freq)
 
     try:
         dia_obj = datetime.strptime(dia_str, "%Y-%m-%d").date()
@@ -195,12 +163,7 @@ async def post_inserir(request: Request):
         "Interferente?": interferente,
     }
 
-    ok = False
-    try:
-        ok = inserir_emissao_I_W(client, sp_id, dados_submit)
-    except Exception:
-        pass  # Falha ao escrever na planilha (ex: conexão caiu durante)
-
+    ok = inserir_emissao_I_W(evento_id=sp_id, dados_formulario=dados_submit)
     if ok:
         msg = "Emissão inserida com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Registrar Emissão."
         if conflito:
@@ -241,8 +204,7 @@ async def check_freq(request: Request, freq: float = 0.0):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id or freq <= 0:
         return {"conflito": None}
-    client = obter_cliente_gspread()
-    conflito = verificar_frequencia_global(client, sp_id, freq)
+    conflito = verificar_frequencia_global(evento_id=sp_id, freq_digitada=freq)
     return {"conflito": conflito}
 
 
@@ -257,8 +219,7 @@ async def api_inserir(request: Request):
     except Exception:
         return JSONResponse({"erro": "JSON inválido"}, status_code=400)
 
-    client = obter_cliente_gspread()
-    ok = inserir_emissao_I_W(client, sp_id, dados)
+    ok = inserir_emissao_I_W(evento_id=sp_id, dados_formulario=dados)
     if ok:
         return JSONResponse({"ok": True})
     return JSONResponse({"erro": "Falha ao inserir na planilha"}, status_code=500)

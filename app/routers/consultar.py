@@ -7,13 +7,12 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.google_sheets import (
+from app.services.postgres import (
     atualizar_campos_abordagem_por_id,
     atualizar_campos_na_aba_mae,
     carregar_pendencias_abordagem_pendentes,
     carregar_pendencias_painel_mapeadas,
     carregar_pendencias_todas_estacoes,
-    obter_cliente_gspread,
 )
 from app.utils.formatters import _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
@@ -35,13 +34,13 @@ def _ctx(request: Request, **kwargs):
     }
 
 
-def _load_pendencias(client, sp_id) -> pd.DataFrame:
+def _load_pendencias(sp_id) -> pd.DataFrame:
     dfs = [
         d
         for d in [
-            carregar_pendencias_painel_mapeadas(client, sp_id),
-            carregar_pendencias_abordagem_pendentes(client, sp_id),
-            carregar_pendencias_todas_estacoes(client, sp_id),
+            carregar_pendencias_painel_mapeadas(evento_id=sp_id),
+            carregar_pendencias_abordagem_pendentes(evento_id=sp_id),
+            carregar_pendencias_todas_estacoes(evento_id=sp_id),
         ]
         if d is not None and not d.empty
     ]
@@ -69,8 +68,7 @@ async def get_consultar(request: Request, key: str = ""):
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
-    client = obter_cliente_gspread()
-    df = _load_pendencias(client, sp_id)
+    df = _load_pendencias(sp_id)
 
     pendencias = []
     selected_row = None
@@ -115,6 +113,7 @@ async def post_consultar_salvar(request: Request):
     cient_edit = form.get("cient_edit", "").strip()
     interf_edit = form.get("interf_edit", "")
     situ_edit = form.get("situ_edit", "")
+    acao = form.get("acao", "salvar")
 
     erros = []
     if not ident_edit:
@@ -137,18 +136,27 @@ async def post_consultar_salvar(request: Request):
         "Situação": situ_edit,
     }
 
-    client = obter_cliente_gspread()
     res = ""
     falhou_conexao = False
     try:
         if fonte == "PAINEL":
-            # Dados da aba PAINEL → atualiza diretamente na aba "PAINEL"
-            res = atualizar_campos_na_aba_mae(client, sp_id, "PAINEL", id_val, pac)
+            res = atualizar_campos_na_aba_mae(
+                evento_id=sp_id,
+                estacao_raw="PAINEL",
+                id_ocorrencia=id_val,
+                novos_valores=pac,
+            )
         elif fonte == "ESTACAO":
-            # Dados de aba de estação → estacao_raw é o nome da aba
-            res = atualizar_campos_na_aba_mae(client, sp_id, estacao_raw, id_val, pac)
+            res = atualizar_campos_na_aba_mae(
+                evento_id=sp_id,
+                estacao_raw=estacao_raw,
+                id_ocorrencia=id_val,
+                novos_valores=pac,
+            )
         else:
-            res = atualizar_campos_abordagem_por_id(client, sp_id, id_val, pac)
+            res = atualizar_campos_abordagem_por_id(
+                evento_id=sp_id, id_h=id_val, novos_valores=pac
+            )
     except Exception as e:
         logging.error(f"Falha ao salvar edição (offline?): {e}")
         falhou_conexao = True
@@ -174,6 +182,19 @@ async def post_consultar_salvar(request: Request):
         request.session["flash_error"] = res
     else:
         request.session["flash_success"] = res
+    if acao == "salvar_proxima":
+        proximas = _load_pendencias(sp_id)
+        proxima_key = ""
+        if not proximas.empty:
+            for _, row in proximas.iterrows():
+                candidata = _make_row_key(row)
+                if candidata != row_key:
+                    proxima_key = candidata
+                    break
+        destino = (
+            f"/consultar?key={quote(proxima_key)}" if proxima_key else "/consultar"
+        )
+        return RedirectResponse(destino, status_code=303)
     return RedirectResponse("/consultar", status_code=303)
 
 
@@ -183,8 +204,7 @@ async def api_pendencias(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
-    client = obter_cliente_gspread()
-    df = _load_pendencias(client, sp_id)
+    df = _load_pendencias(sp_id)
     if df.empty:
         return JSONResponse([])
     records = []
@@ -241,13 +261,24 @@ async def api_consultar_salvar(request: Request):
         "Situação": dados.get("Situação", ""),
     }
 
-    client = obter_cliente_gspread()
     if fonte == "PAINEL":
-        res = atualizar_campos_na_aba_mae(client, sp_id, "PAINEL", id_val, pac)
+        res = atualizar_campos_na_aba_mae(
+            evento_id=sp_id,
+            estacao_raw="PAINEL",
+            id_ocorrencia=id_val,
+            novos_valores=pac,
+        )
     elif fonte == "ESTACAO":
-        res = atualizar_campos_na_aba_mae(client, sp_id, estacao_raw, id_val, pac)
+        res = atualizar_campos_na_aba_mae(
+            evento_id=sp_id,
+            estacao_raw=estacao_raw,
+            id_ocorrencia=id_val,
+            novos_valores=pac,
+        )
     else:
-        res = atualizar_campos_abordagem_por_id(client, sp_id, id_val, pac)
+        res = atualizar_campos_abordagem_por_id(
+            evento_id=sp_id, id_h=id_val, novos_valores=pac
+        )
 
     if res.startswith("ERRO") or res.startswith("Erro"):
         return JSONResponse({"erro": res}, status_code=500)

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+<div class="form-card teq-card font-semi-bold">
+    <div class="teq-title">Registros de teste e etiquetagem</div>
+
+    {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+    {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+    {% if registros %}
+    <div class="teq-table-wrap">
+        <table class="teq-table">
+            <thead>
+                <tr>
+                    <th>Etiqueta</th>
+                    <th>Entidade</th>
+                    <th>Local</th>
+                    <th>Tipo</th>
+                    <th>Frequências</th>
+                    <th>Atualizado em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                <tr>
+                    <td data-label="Etiqueta">{{ registro.numero_etiqueta }}</td>
+                    <td data-label="Entidade">{{ registro.entidade }}</td>
+                    <td data-label="Local">{{ registro.local }}</td>
+                    <td data-label="Tipo">{{ registro.tipo_equipamento }}</td>
+                    <td data-label="Frequências">{{ (registro.frequencias_selecionadas or []) | join('; ') }}</td>
+                    <td data-label="Atualizado em">{{ registro.atualizado_em.strftime('%d/%m/%Y %H:%M') if registro.atualizado_em else '' }}</td>
+                    <td class="teq-row-actions" data-label="Ações">
+                        <a class="btn teq-action-btn" href="/teste_etiquetagem?edit_id={{ registro.id }}">Editar</a>
+                        <form method="post" action="/teste_etiquetagem/excluir" onsubmit="return confirm('Excluir este registro de etiquetagem?');">
+                            <input type="hidden" name="registro_id" value="{{ registro.id }}">
+                            <button class="btn teq-action-btn teq-delete-btn" type="submit">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="flash flash-success">Nenhum registro de etiquetagem cadastrado neste evento.</div>
+    {% endif %}
+
+    <div class="teq-actions">
+        <a href="/teste_etiquetagem" class="btn teq-btn">Novo teste</a>
+        <a href="/menu" class="btn teq-btn teq-btn-back">Voltar ao Menu</a>
+    </div>
+</div>
+{% endblock %}

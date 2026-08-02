@@ -1,1 +1,31 @@
 .streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+ENV/
+
+# Distribuição / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Caches de ferramentas
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Credenciais / segredos
+credentials.json
+*.key
+
+# Backups do banco
+# bd_backup/*.sql

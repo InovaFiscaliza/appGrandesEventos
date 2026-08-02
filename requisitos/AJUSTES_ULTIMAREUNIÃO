@@ -1,0 +1,19 @@
+1. Alterar o tag da emissão p/ que fique igual ao appAnalise: {FREQ} MHz ⌂ {BW} kHz • {SERVIÇO}
+2. Ajustar os campos  <input> que recebem números para type="number"
+3. Eliminar do banco de etiquetagem as colunas "frequencia_mhz", "passo_khz" e "faixa".
+4. Na tela de consulta, o horário está sendo apresentado como UTC.
+5. Nos dropdowns, trocar o "Selecione..." por "" e esse ser o valor default (inicial) do campo. O valor inicial do campo Frequência, ao consultar um registro, é "".
+6. Os campos de árvore, na consulta, não devem estar selecionados inicialmente.
+7. Precisa ter controle de fluxo na tela de TRATAR EMISSÕES PENDENTES.
+
+Onde se inspirar no layout
+
+RF.Fusion:
+RF.Fusion - Módulos     http://172.16.18.11:9082/
+(Entrar via VPN) Augusto ajuda a copiar o layout
+
+- Foco no fluxo de trabalho.
+- Modelar banco p/ atender fluxo de trabalho.
+- GUI orientada ao RF.Fusion. (Augusto César Federici Peterle ajuda)
+
+

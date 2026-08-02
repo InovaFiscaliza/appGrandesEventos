@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+<div class="form-card teq-card font-semi-bold">
+    <div class="teq-title">
+        Teste e etiquetagem - cadastra o tipo da etiqueta que foi atribuida ao equipamento
+        (o sistema deve fazer criticas e verificar se a frequencia esta livre, por exemplo)
+    </div>
+
+    {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+    {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+    <div class="teq-record-actions">
+        <a href="/teste_etiquetagem/consultar" class="btn teq-btn teq-btn-secondary">Consultar registros</a>
+        {% if values.registro_id %}<span class="teq-editing-note">Editando registro #{{ values.registro_id }}</span>{% endif %}
+    </div>
+
+    <form class="teq-form" method="post" action="/teste_etiquetagem" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
+        {% if values.registro_id %}<input type="hidden" name="registro_id" value="{{ values.registro_id }}">{% endif %}
+        <div class="teq-grid">
+            <div class="teq-col">
+                <div class="teq-panel">
+                    <div class="teq-radio-row">
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="ute" {% if values.licenca == "ute" %}checked{% endif %}>UTE</label>
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="outorgado" {% if values.licenca == "outorgado" %}checked{% endif %}>Outorgado</label>
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="nao_outorgado" {% if values.licenca == "nao_outorgado" %}checked{% endif %}>Não Outorgado</label>
+                        <label class="teq-radio-item"><input type="radio" name="licenca" value="radiacao_restrita" {% if values.licenca == "radiacao_restrita" %}checked{% endif %}>Radiação Restrita</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label{% if 'entidade' in values.invalid_fields %} teq-label-invalid{% endif %}" for="entidade">Entidade</label>
+                    <input id="entidade" name="entidade" class="teq-control{% if 'entidade' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.entidade }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label" for="contato">Contato</label>
+                    <input id="contato" name="contato" class="teq-control" type="text" value="{{ values.contato }}">
+                </div>
+
+                <div class="form-group teq-search">
+                    <label class="teq-label{% if 'local' in values.invalid_fields %} teq-label-invalid{% endif %}" for="local">Local</label>
+                    <input id="local" name="local" class="teq-control{% if 'local' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.local }}" aria-describedby="btn-local" required>
+                    <button id="btn-local" class="teq-search-btn" type="button" aria-label="Pesquisar local">⌕</button>
+                </div>
+
+                <div class="teq-checkbox-line">
+                    <span class="teq-checkbox-title">Equipamento Homologado</span>
+                    <label class="teq-checkbox"><input name="equipamento_homologado" type="checkbox" {% if values.equipamento_homologado %}checked{% endif %}> </label>
+                </div>
+
+                <div class="teq-subpanel">
+                    <div class="teq-radio-row">
+                        <label class="teq-radio-item"><input type="radio" name="permissao" value="permitido" {% if values.permissao == "permitido" %}checked{% endif %}>Permitido</label>
+                        <label class="teq-radio-item"><input type="radio" name="permissao" value="todos" {% if values.permissao == "todos" %}checked{% endif %}>Permitido em todos</label>
+                        <label class="teq-radio-item"><input type="radio" name="permissao" value="nao" {% if values.permissao == "nao" %}checked{% endif %}>Não permitido</label>
+                    </div>
+                </div>
+
+                <div class="teq-panel teq-profile-panel">
+                    <div class="teq-radio-row">
+                        <label class="teq-radio-item"><input type="radio" name="perfil" value="pf" {% if values.perfil == "pf" %}checked{% endif %}>Pessoa Física</label>
+                        <label class="teq-radio-item"><input type="radio" name="perfil" value="pj" {% if values.perfil == "pj" %}checked{% endif %}>Pessoa Jurídica</label>
+                        <label class="teq-radio-item"><input type="radio" name="perfil" value="estrangeiro" {% if values.perfil == "estrangeiro" %}checked{% endif %}>Estrangeiro</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="teq-col">
+                <div class="teq-frequency-row">
+                    <div class="form-group">
+                        <label class="teq-label{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
+                        <input id="frequencia" name="frequencia_mhz" class="teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="number" step="any" min="0" value="{{ values.frequencia_mhz }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="teq-label{% if 'passo' in values.invalid_fields %} teq-label-invalid{% endif %}" for="passo">Banda</label>
+                        <select id="passo" name="passo" class="teq-control{% if 'passo' in values.invalid_fields %} teq-invalid{% endif %}">
+                            <option value="" {% if not values.passo %}selected{% endif %}></option>
+                            {% for banda in banda_opcoes %}
+                            <option value="{{ banda }}" {% if values.passo == banda %}selected{% endif %}>{{ banda }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="teq-label{% if 'faixa' in values.invalid_fields %} teq-label-invalid{% endif %}" for="faixa">Faixa</label>
+                        <select id="faixa" name="faixa" class="teq-control{% if 'faixa' in values.invalid_fields %} teq-invalid{% endif %}">
+                            <option value="" {% if not values.faixa %}selected{% endif %}></option>
+                            {% for faixa in faixa_opcoes %}
+                            <option value="{{ faixa }}" {% if values.faixa == faixa %}selected{% endif %}>{{ faixa }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group teq-frequency-list-group">
+                    <div class="teq-list-header">
+                        <label class="teq-label" for="frequencias">Frequências</label>
+                        <div class="teq-list-actions" aria-label="Gerenciar frequências">
+                            <button id="adicionar-frequencia" class="teq-list-btn" type="button" aria-label="Adicionar frequência" title="Adicionar frequência">+</button>
+                            <button id="remover-frequencia" class="teq-list-btn" type="button" aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
+                        </div>
+                    </div>
+                    <select id="frequencias" name="frequencias_selecionadas" class="teq-control teq-listbox{% if 'frequencias_selecionadas' in values.invalid_fields %} teq-invalid{% endif %}" size="8" multiple required>
+                        {% for freq in values.frequencias_disponiveis %}
+                        <option value="{{ freq }}" {% if freq in values.frequencias_selecionadas %}selected{% endif %}>{{ freq }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label{% if 'cpf_cnpj' in values.invalid_fields %} teq-label-invalid{% endif %}" for="cpfcnpj">CPF/CNPJ</label>
+                    <input id="cpfcnpj" name="cpf_cnpj" class="teq-control{% if 'cpf_cnpj' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="numeric" maxlength="18" value="{{ values.cpf_cnpj }}" aria-describedby="cpfcnpj-ajuda">
+                    <small id="cpfcnpj-ajuda" class="teq-field-help">Informe um CPF ou CNPJ válido, se necessário.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="teq-label{% if 'tipo_equipamento' in values.invalid_fields %} teq-label-invalid{% endif %}" for="tipo-equipamento">Tipo do equipamento</label>
+                    <select id="tipo-equipamento" name="tipo_equipamento" class="teq-control{% if 'tipo_equipamento' in values.invalid_fields %} teq-invalid{% endif %}" required>
+                        <option value="" {% if not values.tipo_equipamento %}selected{% endif %}>Tipo do equipamento</option>
+                        <option {% if values.tipo_equipamento == "Repetidora" %}selected{% endif %}>Repetidora</option>
+                        <option {% if values.tipo_equipamento == "Portátil" %}selected{% endif %}>Portátil</option>
+                        <option {% if values.tipo_equipamento == "Base" %}selected{% endif %}>Base</option>
+                    </select>
+                </div>
+
+                <div class="form-group teq-number-box">
+                    <label class="teq-label{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-etiqueta">Número da etiqueta</label>
+                    <input id="numero-etiqueta" name="numero_etiqueta" class="teq-control{% if 'numero_etiqueta' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.numero_etiqueta }}" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="teq-label" for="observacoes">Observações</label>
+            <textarea id="observacoes" name="observacoes" class="teq-control teq-textarea" rows="4">{{ values.observacoes }}</textarea>
+        </div>
+
+        <div class="teq-actions">
+            <button class="btn teq-btn" type="submit">{% if values.registro_id %}Salvar alterações{% else %}Inserir teste{% endif %}</button>
+            <button class="btn teq-btn" type="reset">Limpar formulário</button>
+            <a href="/menu" class="btn teq-btn teq-btn-back">Voltar ao Menu</a>
+        </div>
+    </form>
+</div>
+<script src="/static/teste_etiquetagem.js"></script>
+{% endblock %}

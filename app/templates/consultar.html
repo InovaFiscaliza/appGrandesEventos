@@ -13,14 +13,15 @@
 
 <div class="form-group" id="bloco-select" style="display:none">
     <label>Selecione a emissão:</label>
-    <select id="sel-pendencia">
-        <option value="">Escolha uma pendência...</option>
+    <select id="sel-pendencia" data-selected-key="{{ selected_key }}">
+        <option value=""></option>
     </select>
+    <small id="progresso-pendencias" class="field-help"></small>
 </div>
 
-<div id="bloco-form" style="display:none">
+<div id="bloco-form" class="font-semi-bold" style="display:none">
 <h4 style="margin:0.75rem 0 0.5rem">Editar ocorrência</h4>
-<div class="form-card">
+<div class="form-card font-semi-bold">
     <form method="post" action="/consultar/salvar" id="form-consultar">
         <input type="hidden" name="row_key" id="f-row_key">
         <input type="hidden" name="fonte" id="f-fonte">
@@ -41,6 +42,7 @@
         <div class="form-group">
             <label>Identificação <span class="required">*</span></label>
             <select name="ident_edit" id="f-ident">
+                <option value="" selected></option>
                 {% for op in ident_opcoes %}
                 <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
@@ -49,6 +51,7 @@
         <div class="form-group">
             <label>Autorizado? <span class="required">*</span></label>
             <select name="autz_edit" id="f-autz">
+                <option value="" selected></option>
                 {% for op in ["Sim", "Não", "Não licenciável"] %}
                 <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
@@ -72,6 +75,7 @@
         <div class="form-group">
             <label>Interferente? <span class="required">*</span></label>
             <select name="interf_edit" id="f-interf">
+                <option value="" selected></option>
                 {% for op in ["Sim", "Não", "Indefinido"] %}
                 <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
@@ -80,12 +84,16 @@
         <div class="form-group">
             <label>Situação <span class="required">*</span></label>
             <select name="situ_edit" id="f-situ">
+                <option value="" selected></option>
                 {% for op in ["Pendente", "Concluído"] %}
                 <option value="{{ op }}">{{ op }}</option>
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn btn-submit">Salvar alterações</button>
+        <div class="btn-col">
+            <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
+            <button type="submit" class="btn" name="acao" value="salvar_proxima">Salvar e próxima</button>
+        </div>
     </form>
 </div>
 </div>

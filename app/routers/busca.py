@@ -2,10 +2,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.google_sheets import (
+from app.services.postgres import (
     _buscar_por_texto_livre,
     listar_abas_estacoes,
-    obter_cliente_gspread,
 )
 from app.utils.formatters import _img_b64
 from app.config import TITULO_PRINCIPAL
@@ -67,8 +66,7 @@ async def get_busca(request: Request):
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
-    client = obter_cliente_gspread()
-    abas_est = listar_abas_estacoes(client, sp_id)
+    abas_est = listar_abas_estacoes(evento_id=sp_id)
     abas_opcoes = ["Abordagem"] + abas_est
 
     return templates.TemplateResponse(
@@ -95,8 +93,7 @@ async def post_busca(request: Request):
     termo = form.get("termo", "").strip()
     abas_sel = form.getlist("abas")
 
-    client = obter_cliente_gspread()
-    abas_est = listar_abas_estacoes(client, sp_id)
+    abas_est = listar_abas_estacoes(evento_id=sp_id)
     abas_opcoes = ["Abordagem"] + abas_est
 
     if not abas_sel:
@@ -116,7 +113,7 @@ async def post_busca(request: Request):
             ),
         )
 
-    res = _buscar_por_texto_livre(client, sp_id, termo, abas_sel)
+    res = _buscar_por_texto_livre(evento_id=sp_id, termos=termo, abas=abas_sel)
     resultados = (
         []
         if res.empty

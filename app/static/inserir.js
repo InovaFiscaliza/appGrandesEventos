@@ -2,14 +2,8 @@
 (function () {
   const avisoEl = document.getElementById("offline-aviso-inserir");
   if (avisoEl) {
-    function atualizarAviso() {
-      const offline = window.APP_OFFLINE === true || !navigator.onLine;
-      avisoEl.style.display = offline ? "block" : "none";
-    }
-    window.addEventListener("app-connectivity", atualizarAviso);
-    window.addEventListener("online", atualizarAviso);
-    window.addEventListener("offline", atualizarAviso);
-    atualizarAviso();
+    // O aviso só aparece se o fetch ao servidor falhar (tratado no carregamento)
+    avisoEl.style.display = "none";
   }
 })();
 

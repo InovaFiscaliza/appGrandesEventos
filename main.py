@@ -2,24 +2,43 @@
 Entry point da aplicação AppEventos (FastAPI + Jinja2).
 
 Executar com:
-    python main.py
+    uv run main.py
+    uv run uvicorn main:app --reload --port 8501
   ou:
     uvicorn main:app --reload --port 8501
 """
 
 import secrets
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.routers import bsr_erb, busca, consultar, inserir, menu, selecao, tabela_ute
+from app.routers import (
+    bsr_erb,
+    busca,
+    consultar,
+    inserir,
+    menu,
+    selecao,
+    tabela_ute,
+    teste_etiquetagem,
+)
+from app.services.postgres import buscar_planilhas
 
 app = FastAPI(title="AppEventos", docs_url=None, redoc_url=None)
 
 # Sessão via cookie assinado; secret aleatório por inicialização (aceitável para este app)
 app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
+
+
+@app.middleware("http")
+async def carregar_eventos_no_request(request: Request, call_next):
+    """Disponibiliza a lista de eventos para o cabeçalho compartilhado."""
+    request.state.eventos = buscar_planilhas()
+    return await call_next(request)
+
 
 # Arquivos estáticos (CSS, imagens)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -39,15 +58,16 @@ app.include_router(consultar.router)
 app.include_router(bsr_erb.router)
 app.include_router(busca.router)
 app.include_router(tabela_ute.router)
+app.include_router(teste_etiquetagem.router)
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False)
 
 
 def start():
     """Função chamada por 'uv run app' (definido em pyproject.toml)."""
     import uvicorn
 
-    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8501, reload=False)

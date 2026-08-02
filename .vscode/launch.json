@@ -1,17 +1,8 @@
 {
     "version": "0.2.0",
     "configurations": [
-        
-
-
-
-
-
-
-
-
         {
-            "name": "FastAPI (uvicorn)",
+            "name": "FastAPI (depuração)",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
