@@ -71,12 +71,12 @@
                 <div class="teq-frequency-row">
                     <div class="form-group">
                         <label class="teq-label{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
-                        <input id="frequencia" name="frequencia_mhz" class="teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="decimal" value="{{ values.frequencia_mhz }}">
+                        <input id="frequencia" name="frequencia_mhz" class="teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="number" step="any" min="0" value="{{ values.frequencia_mhz }}">
                     </div>
                     <div class="form-group">
                         <label class="teq-label{% if 'passo' in values.invalid_fields %} teq-label-invalid{% endif %}" for="passo">Banda</label>
                         <select id="passo" name="passo" class="teq-control{% if 'passo' in values.invalid_fields %} teq-invalid{% endif %}">
-                            <option value="" {% if not values.passo %}selected{% endif %}>Selecione...</option>
+                            <option value="" {% if not values.passo %}selected{% endif %}></option>
                             {% for banda in banda_opcoes %}
                             <option value="{{ banda }}" {% if values.passo == banda %}selected{% endif %}>{{ banda }}</option>
                             {% endfor %}
@@ -85,7 +85,7 @@
                     <div class="form-group">
                         <label class="teq-label{% if 'faixa' in values.invalid_fields %} teq-label-invalid{% endif %}" for="faixa">Faixa</label>
                         <select id="faixa" name="faixa" class="teq-control{% if 'faixa' in values.invalid_fields %} teq-invalid{% endif %}">
-                            <option value="" {% if not values.faixa %}selected{% endif %}>Selecione...</option>
+                            <option value="" {% if not values.faixa %}selected{% endif %}></option>
                             {% for faixa in faixa_opcoes %}
                             <option value="{{ faixa }}" {% if values.faixa == faixa %}selected{% endif %}>{{ faixa }}</option>
                             {% endfor %}

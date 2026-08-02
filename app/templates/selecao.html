@@ -14,7 +14,7 @@
 <form method="post" action="/">
     <div class="form-group">
         <select name="evento_key">
-            <option value="">Selecione...</option>
+            <option value=""></option>
             {% for nome, ev_id in eventos.items() %}
             <option value="{{ nome }}|||{{ ev_id }}">{{ nome }}</option>
             {% endfor %}

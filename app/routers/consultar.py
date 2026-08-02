@@ -113,6 +113,7 @@ async def post_consultar_salvar(request: Request):
     cient_edit = form.get("cient_edit", "").strip()
     interf_edit = form.get("interf_edit", "")
     situ_edit = form.get("situ_edit", "")
+    acao = form.get("acao", "salvar")
 
     erros = []
     if not ident_edit:
@@ -181,6 +182,19 @@ async def post_consultar_salvar(request: Request):
         request.session["flash_error"] = res
     else:
         request.session["flash_success"] = res
+    if acao == "salvar_proxima":
+        proximas = _load_pendencias(sp_id)
+        proxima_key = ""
+        if not proximas.empty:
+            for _, row in proximas.iterrows():
+                candidata = _make_row_key(row)
+                if candidata != row_key:
+                    proxima_key = candidata
+                    break
+        destino = (
+            f"/consultar?key={quote(proxima_key)}" if proxima_key else "/consultar"
+        )
+        return RedirectResponse(destino, status_code=303)
     return RedirectResponse("/consultar", status_code=303)
 
 

@@ -106,9 +106,6 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
     contato                   TEXT,
     local                     TEXT NOT NULL,
     cpf_cnpj                  TEXT,
-    frequencia_mhz            NUMERIC(12,3) CHECK (frequencia_mhz > 0),
-    passo_khz                 NUMERIC(12,3) CHECK (passo_khz >= 5 AND passo_khz <= 100000),
-    faixa                     TEXT,
     equipamento_homologado   BOOLEAN NOT NULL DEFAULT FALSE,
     permissao                 TEXT NOT NULL CHECK (permissao IN (
                                   'permitido', 'todos', 'nao'
@@ -122,23 +119,40 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
     UNIQUE (evento_id, numero_etiqueta)
 );
 
--- Mantém bancos existentes compatíveis com o intervalo de bandas do formulário.
-ALTER TABLE testes_etiquetagem
-    ALTER COLUMN passo_khz TYPE NUMERIC(12,3);
-ALTER TABLE testes_etiquetagem
-    ALTER COLUMN frequencia_mhz DROP NOT NULL;
-ALTER TABLE testes_etiquetagem
-    ALTER COLUMN passo_khz DROP NOT NULL;
-ALTER TABLE testes_etiquetagem
-    ALTER COLUMN faixa DROP NOT NULL;
-ALTER TABLE testes_etiquetagem
-    DROP CONSTRAINT IF EXISTS testes_etiquetagem_passo_khz_check;
-ALTER TABLE testes_etiquetagem
-    ADD CONSTRAINT testes_etiquetagem_passo_khz_check
-    CHECK (passo_khz >= 5 AND passo_khz <= 100000);
+-- Migra os valores legados para a etiqueta completa antes de remover as colunas.
+DO $do$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'testes_etiquetagem'
+          AND column_name = 'frequencia_mhz'
+    ) THEN
+        EXECUTE $migration$
+            UPDATE testes_etiquetagem
+            SET frequencias_selecionadas = array_append(
+                COALESCE(frequencias_selecionadas, '{}'),
+                replace(to_char(frequencia_mhz, 'FM999999990.000'), '.', ',')
+                    || ' MHz ⌂ '
+                    || COALESCE(rtrim(rtrim(to_char(passo_khz, 'FM999999990.999'), '0'), '.'), '')
+                    || ' kHz • ' || COALESCE(faixa, '')
+            )
+            WHERE frequencia_mhz IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM unnest(COALESCE(frequencias_selecionadas, '{}')) AS existente
+                  WHERE existente LIKE replace(to_char(frequencia_mhz, 'FM999999990.000'), '.', ',')
+                      || ' MHz ⌂%'
+              )
+        $migration$;
+    END IF;
+    END $do$;
 
-CREATE INDEX IF NOT EXISTS idx_etiquetagem_evento_freq
-    ON testes_etiquetagem (evento_id, frequencia_mhz);
+-- Remove campos legados: a etiqueta completa fica em frequencias_selecionadas.
+ALTER TABLE testes_etiquetagem DROP COLUMN IF EXISTS frequencia_mhz;
+ALTER TABLE testes_etiquetagem DROP COLUMN IF EXISTS passo_khz;
+ALTER TABLE testes_etiquetagem DROP COLUMN IF EXISTS faixa;
+
 CREATE INDEX IF NOT EXISTS idx_etiquetagem_evento_entidade
     ON testes_etiquetagem (evento_id, entidade);
 

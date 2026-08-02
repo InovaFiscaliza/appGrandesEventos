@@ -32,21 +32,32 @@ function preencherForm(row) {
     (row.ute || "").toLowerCase()
   );
   setSelect("f-ident", row.identificacao || "");
-  setSelect("f-autz", row.autorizado || "Não licenciável");
-  setSelect("f-interf", row.interferente || "Indefinido");
-  setSelect("f-situ", row.situacao || "Pendente");
+  setSelect("f-autz", row.autorizado || "");
+  setSelect("f-interf", row.interferente || "");
+  setSelect("f-situ", row.situacao || "");
   document.getElementById("bloco-form").style.display = "block";
 }
 
 function popularSelect(lista) {
   const sel = document.getElementById("sel-pendencia");
-  sel.innerHTML = '<option value="">Escolha uma pendência...</option>';
+  sel.innerHTML = '<option value=""></option>';
   lista.forEach((row) => {
     const opt = document.createElement("option");
     opt.value = row.row_key;
     opt.textContent = row.label;
     sel.appendChild(opt);
   });
+  const selectedKey = sel.dataset.selectedKey || "";
+  if (selectedKey && lista.some((row) => row.row_key === selectedKey)) {
+    sel.value = selectedKey;
+    preencherForm(lista.find((row) => row.row_key === selectedKey));
+  }
+  const progresso = document.getElementById("progresso-pendencias");
+  if (progresso) {
+    progresso.textContent = lista.length
+      ? `${lista.length} pendência(s) aguardando tratamento.`
+      : "";
+  }
   document.getElementById("bloco-select").style.display = lista.length
     ? "block"
     : "none";

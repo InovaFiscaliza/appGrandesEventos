@@ -191,6 +191,66 @@ details summary { padding: 0.5rem 0.75rem; cursor: pointer; font-weight: 600; ba
 details[open] summary { border-bottom: 1px solid #ddd; border-radius: 4px 4px 0 0; }
 details > .details-body { padding: 0.75rem; }
 
+    /* ---- RF.Fusion-inspired operational shell ---- */
+:root {
+    --blue-dark: #12345b;
+    --blue-light: #1d5f87;
+    --blue-accent: #16a3b7;
+    --red-dark: #a8323e;
+    --bg: #eef2f5;
+    --border: 1px solid #cbd5df;
+    --radius: 3px;
+    --shadow: 0 1px 3px rgba(15, 35, 55, .12);
+}
+
+body {
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background: #eef2f5;
+    color: #233442;
+}
+
+.app-shell { min-height: 100vh; border-top: 4px solid #12345b; }
+.container { max-width: 1180px; padding: 0 1.25rem 2.5rem; }
+.app-header { background: #fff; border: var(--border); border-top: 0; box-shadow: var(--shadow); margin-bottom: 1.25rem; }
+.header { min-height: 74px; padding: .65rem 1rem .35rem; margin-bottom: 0; }
+.header-img { height: 42px; }
+.header-title { color: #12345b; font-size: 1.28rem; letter-spacing: .01em; text-shadow: none; text-transform: uppercase; }
+.header-event { color: #527083; font-size: .78rem; font-weight: 600; margin-bottom: .3rem; }
+.btn-trocar { color: #1d5f87; font-size: .76rem; padding-bottom: .6rem; }
+
+.btn { min-height: 2.55rem; padding: .45rem .8rem; border: 1px solid #12345b; border-radius: 3px; background: #12345b; box-shadow: none; font-size: .88rem; }
+.btn:hover, button.btn:hover { background: #1d5f87 !important; border-color: #16a3b7 !important; }
+.btn-red { background: #a8323e; border-color: #8e2934; }
+.btn-green, .btn-submit { background: #177c78; border-color: #12615e; }
+.form-card { border: var(--border); border-radius: 3px; box-shadow: var(--shadow); }
+.form-group label { color: #405363; font-size: .8rem; }
+.form-group input, .form-group select, .form-group textarea { border-color: #b8c6d1; border-radius: 3px; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--blue-accent); box-shadow: 0 0 0 2px rgba(22, 163, 183, .14); outline: none; }
+.flash, .info-green { border-radius: 3px; box-shadow: var(--shadow); }
+.info-green { background: #dcecf1; color: #17465d; border: 1px solid #b8d6df; font-size: .88rem; }
+
+.module-section { background: #fff; border: var(--border); box-shadow: var(--shadow); padding: 1.25rem; }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #d9e1e7; padding-bottom: .8rem; margin-bottom: 1rem; }
+.section-heading h1 { color: #12345b; font-size: 1.35rem; font-weight: 600; margin: .2rem 0 0; }
+.eyebrow { color: #16a3b7; font-size: .68rem; font-weight: 700; letter-spacing: .12em; }
+.module-count { color: #607486; font-size: .78rem; white-space: nowrap; }
+.module-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.module-card { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); align-items: center; gap: .75rem; min-height: 76px; padding: .75rem .85rem; border: 1px solid #cbd5df; border-left: 4px solid #1d5f87; background: #f8fafb; color: #233442; text-decoration: none; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.module-card:hover, .module-card:focus-visible { background: #edf7f8; border-color: #16a3b7; transform: translateY(-1px); outline: none; }
+.module-card-primary { border-left-color: #177c78; }
+.module-card-alert { border-left-color: #a8323e; }
+.module-card-secondary { border-left-color: #788b9a; }
+.module-icon { display: grid; place-items: center; width: 2.15rem; height: 2.15rem; background: #e2edf3; border-radius: 3px; font-size: 1.15rem; }
+.module-card strong { display: block; color: #12345b; font-size: .9rem; font-weight: 700; }
+.module-card small { display: block; color: #607486; font-size: .75rem; line-height: 1.35; margin-top: .2rem; }
+
+@media (max-width: 640px) {
+    .container { padding: 0 .65rem 1.5rem; }
+    .module-section { padding: .8rem; }
+    .module-grid { grid-template-columns: 1fr; }
+    .section-heading { align-items: start; flex-direction: column; gap: .25rem; }
+}
+
 /* ---- Readonly fields ---- */
 .readonly-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
 .readonly-field { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 0.3rem 0.5rem; }

@@ -5,14 +5,39 @@
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
-<div class="btn-col">
-    <a href="/inserir" class="btn btn-red">📋 INSERIR emissão verificada em campo</a>
-    <a href="/consultar" class="btn btn-red">📝 TRATAR emissões pendentes ({{ total }})</a>
-    <a href="/teste_etiquetagem" class="btn btn-red">🗒️ TESTE de Etiquetagem</a>
-    <a href="/bsr-erb" class="btn btn-red">📵 REGISTRAR Jammer ou ERB Fake</a>
-    <a href="/busca" class="btn btn-red">🔎 PESQUISAR emissões cadastradas</a>
-    <a href="/ute" class="btn">🗒️ CONSULTAR Atos de UTE</a>
-    <a href="{{ link_mapa }}" target="_blank" class="btn btn-green">🗺️ Mapa da Região/Evento</a>
-    <a href="https://translate.google.com/?sl=auto&tl=pt&op=translate" target="_blank" class="btn btn-green">🌍 Tradutor de Texto/Voz</a>
-</div>
+<section class="module-section" aria-labelledby="modulos-titulo">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">OPERAÇÃO</span>
+            <h1 id="modulos-titulo">Módulos do sistema</h1>
+        </div>
+        <span class="module-count">{{ total }} pendência(s)</span>
+    </div>
+    <div class="module-grid">
+        <a href="/inserir" class="module-card module-card-primary">
+            <span class="module-icon">📋</span><span><strong>Inserir emissão</strong><small>Registrar emissão verificada em campo</small></span>
+        </a>
+        <a href="/consultar" class="module-card module-card-alert">
+            <span class="module-icon">📝</span><span><strong>Tratar emissões pendentes</strong><small>{{ total }} registro(s) aguardando identificação</small></span>
+        </a>
+        <a href="/teste_etiquetagem" class="module-card">
+            <span class="module-icon">🗒️</span><span><strong>Teste e etiquetagem</strong><small>Gerenciar etiquetas de equipamentos</small></span>
+        </a>
+        <a href="/bsr-erb" class="module-card">
+            <span class="module-icon">📵</span><span><strong>Jammer ou ERB Fake</strong><small>Registrar interferências especiais</small></span>
+        </a>
+        <a href="/busca" class="module-card">
+            <span class="module-icon">🔎</span><span><strong>Pesquisar emissões</strong><small>Consultar registros cadastrados</small></span>
+        </a>
+        <a href="/ute" class="module-card">
+            <span class="module-icon">🗂️</span><span><strong>Atos de UTE</strong><small>Consultar usuários de espectro</small></span>
+        </a>
+        <a href="{{ link_mapa }}" target="_blank" class="module-card module-card-secondary">
+            <span class="module-icon">🗺️</span><span><strong>Mapa do evento</strong><small>Visualizar estações e região</small></span>
+        </a>
+        <a href="https://translate.google.com/?sl=auto&tl=pt&op=translate" target="_blank" class="module-card module-card-secondary">
+            <span class="module-icon">🌍</span><span><strong>Tradutor</strong><small>Texto e voz para apoio em campo</small></span>
+        </a>
+    </div>
+</section>
 {% endblock %}

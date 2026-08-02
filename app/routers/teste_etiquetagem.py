@@ -110,15 +110,9 @@ def _form_values(form) -> dict:
 def _record_values(record: dict) -> dict:
     """Converte um registro do PostgreSQL para o formato usado pelo formulário."""
     values = dict(record)
-    for campo in ("frequencia_mhz", "passo_khz"):
-        if values.get(campo) is not None:
-            if campo == "passo_khz":
-                values["passo"] = _formatar_banda(round(float(values[campo])))
-            else:
-                values["frequencia_mhz"] = str(values[campo])
-    values["frequencia_mhz"] = values.get("frequencia_mhz", "")
-    values["passo"] = values.get("passo", "")
-    values["faixa"] = values.get("faixa") or ""
+    values["frequencia_mhz"] = ""
+    values["passo"] = ""
+    values["faixa"] = ""
     values["frequencias_selecionadas"] = values.get("frequencias_selecionadas") or []
     values["frequencias_disponiveis"] = list(values["frequencias_selecionadas"])
     values["invalid_fields"] = []
@@ -269,7 +263,7 @@ async def post_teste_etiquetagem(request: Request):
             f"Frequência {values['frequencia_mhz']} MHz já cadastrada em {conflito}.",
         )
 
-    dados = {**values, "frequencia_mhz": frequencia, "passo_khz": passo_khz}
+    dados = values
     if registro_id:
         resultado = atualizar_teste_etiquetagem(
             evento_id=evento_id, registro_id=registro_id, dados=dados

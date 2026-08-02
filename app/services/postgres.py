@@ -205,7 +205,11 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
-                o.hora::text AS "HH:mm",
+                to_char(
+                    ((o.data + o.hora) AT TIME ZONE 'UTC'
+                        AT TIME ZONE COALESCE(ev.fuso_horario, 'America/Sao_Paulo')),
+                    'HH24:MI'
+                ) AS "HH:mm",
                 o.frequencia_mhz::text AS "Frequência (MHz)",
                 o.largura_khz::text AS "Largura (kHz)",
                 o.faixa AS "Faixa de Frequência Envolvida",
@@ -220,6 +224,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
                 o.fonte AS "Fonte"
             FROM ocorrencias o
             LEFT JOIN estacoes e ON e.id = o.estacao_id
+            JOIN eventos ev ON ev.id = o.evento_id
             WHERE o.evento_id = :ev
               AND lower(trim(o.situacao)) = 'pendente'
             ORDER BY "Local", "Data"
@@ -243,7 +248,11 @@ def carregar_pendencias_abordagem_pendentes(
                 COALESCE(o.local_regiao, 'Abordagem') AS "Local",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
-                o.hora::text AS "HH:mm",
+                to_char(
+                    ((o.data + o.hora) AT TIME ZONE 'UTC'
+                        AT TIME ZONE COALESCE(ev.fuso_horario, 'America/Sao_Paulo')),
+                    'HH24:MI'
+                ) AS "HH:mm",
                 o.frequencia_mhz::text AS "Frequência (MHz)",
                 o.largura_khz::text AS "Largura (kHz)",
                 o.faixa AS "Faixa de Frequência Envolvida",
@@ -258,6 +267,7 @@ def carregar_pendencias_abordagem_pendentes(
                 'ABORDAGEM' AS "EstacaoRaw",
                 'ABORDAGEM' AS "Fonte"
             FROM ocorrencias o
+            JOIN eventos ev ON ev.id = o.evento_id
             WHERE o.evento_id = :ev
               AND o.fonte = 'ABORDAGEM'
               AND lower(trim(o.situacao)) = 'pendente'
@@ -283,7 +293,11 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
-                o.hora::text AS "HH:mm",
+                to_char(
+                    ((o.data + o.hora) AT TIME ZONE 'UTC'
+                        AT TIME ZONE COALESCE(ev.fuso_horario, 'America/Sao_Paulo')),
+                    'HH24:MI'
+                ) AS "HH:mm",
                 o.frequencia_mhz::text AS "Frequência (MHz)",
                 o.largura_khz::text AS "Largura (kHz)",
                 o.faixa AS "Faixa de Frequência Envolvida",
@@ -298,6 +312,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
                 'ESTACAO' AS "Fonte"
             FROM ocorrencias o
             JOIN estacoes e ON e.id = o.estacao_id
+            JOIN eventos ev ON ev.id = o.evento_id
             WHERE o.evento_id = :ev
               AND lower(trim(o.situacao)) = 'pendente'
             ORDER BY "Local", "Data"
@@ -434,13 +449,18 @@ def verificar_frequencia_etiquetagem(
             row = conn.execute(
                 text("""
                     SELECT 'Teste de etiquetagem: ' || entidade
-                    FROM testes_etiquetagem
-                    WHERE evento_id = :ev
-                      AND round(frequencia_mhz, 3) = :freq
-                      AND (:excluir_id IS NULL OR id <> :excluir_id)
+                    FROM testes_etiquetagem t
+                    CROSS JOIN LATERAL unnest(t.frequencias_selecionadas) AS selecionada
+                    WHERE t.evento_id = :ev
+                      AND selecionada LIKE :prefixo
+                                            AND (:excluir_id IS NULL OR t.id <> :excluir_id)
                     LIMIT 1
                 """),
-                {"ev": int(evento_id), "freq": frequencia, "excluir_id": excluir_id},
+                {
+                    "ev": int(evento_id),
+                    "prefixo": f"{frequencia:.3f}".replace(".", ",") + " MHz ⌂%",
+                    "excluir_id": excluir_id,
+                },
             ).first()
             if row:
                 return row[0]
@@ -459,13 +479,13 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
                 text("""
                     INSERT INTO testes_etiquetagem (
                         evento_id, licenca, perfil, entidade, contato, local,
-                        cpf_cnpj, frequencia_mhz, passo_khz, faixa,
+                        cpf_cnpj,
                         equipamento_homologado, permissao,
                         frequencias_selecionadas, tipo_equipamento,
                         numero_etiqueta, observacoes
                     ) VALUES (
                         :ev, :licenca, :perfil, :entidade, :contato, :local,
-                        :cpf_cnpj, :freq, :passo, :faixa,
+                        :cpf_cnpj,
                         :homologado, :permissao, :frequencias,
                         :tipo_equipamento, :numero_etiqueta, :observacoes
                     )
@@ -478,9 +498,6 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
                     "contato": dados.get("contato", ""),
                     "local": dados["local"],
                     "cpf_cnpj": dados.get("cpf_cnpj", ""),
-                    "freq": dados.get("frequencia_mhz"),
-                    "passo": dados.get("passo_khz"),
-                    "faixa": dados.get("faixa") or None,
                     "homologado": bool(dados.get("equipamento_homologado")),
                     "permissao": dados["permissao"],
                     "frequencias": dados.get("frequencias_selecionadas", []),
@@ -507,7 +524,7 @@ def listar_testes_etiquetagem(_client=None, evento_id=None) -> list[dict]:
                 conn.execute(
                     text("""
                     SELECT id, licenca, perfil, entidade, contato, local,
-                           cpf_cnpj, frequencia_mhz, passo_khz, faixa,
+                              cpf_cnpj,
                            equipamento_homologado, permissao,
                            frequencias_selecionadas, tipo_equipamento,
                            numero_etiqueta, observacoes, criado_em, atualizado_em
@@ -538,7 +555,7 @@ def obter_teste_etiquetagem(
                 conn.execute(
                     text("""
                     SELECT id, licenca, perfil, entidade, contato, local,
-                           cpf_cnpj, frequencia_mhz, passo_khz, faixa,
+                              cpf_cnpj,
                            equipamento_homologado, permissao,
                            frequencias_selecionadas, tipo_equipamento,
                            numero_etiqueta, observacoes
@@ -569,7 +586,6 @@ def atualizar_teste_etiquetagem(
                     UPDATE testes_etiquetagem
                     SET licenca = :licenca, perfil = :perfil, entidade = :entidade,
                         contato = :contato, local = :local, cpf_cnpj = :cpf_cnpj,
-                        frequencia_mhz = :freq, passo_khz = :passo, faixa = :faixa,
                         equipamento_homologado = :homologado, permissao = :permissao,
                         frequencias_selecionadas = :frequencias,
                         tipo_equipamento = :tipo_equipamento,
@@ -586,9 +602,6 @@ def atualizar_teste_etiquetagem(
                     "contato": dados.get("contato", ""),
                     "local": dados["local"],
                     "cpf_cnpj": dados.get("cpf_cnpj", ""),
-                    "freq": dados.get("frequencia_mhz"),
-                    "passo": dados.get("passo_khz"),
-                    "faixa": dados.get("faixa") or None,
                     "homologado": bool(dados.get("equipamento_homologado")),
                     "permissao": dados["permissao"],
                     "frequencias": dados.get("frequencias_selecionadas", []),

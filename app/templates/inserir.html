@@ -42,7 +42,7 @@
         <div class="form-group">
             <label>Faixa relacionada <span class="required">*</span></label>
             <select name="faixa">
-                <option value="">Selecione...</option>
+                <option value=""></option>
                 {% for op in faixa_opcoes %}
                 <option value="{{ op }}" {% if op == faixa %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
@@ -51,7 +51,7 @@
         <div class="form-group">
             <label>Identificação <span class="required">*</span></label>
             <select name="ident">
-                <option value="">Selecione...</option>
+                <option value=""></option>
                 {% for op in ident_opcoes %}
                 <option value="{{ op }}" {% if op == ident %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
@@ -60,7 +60,7 @@
         <div class="form-group">
             <label>Interferente? <span class="required">*</span></label>
             <select name="interferente">
-                <option value="">Selecione...</option>
+                <option value=""></option>
                 {% for op in ["Sim", "Não", "Indefinido"] %}
                 <option value="{{ op }}" {% if op == interferente %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
@@ -80,7 +80,7 @@
         <div class="form-group">
             <label>Status desta emissão <span class="required">*</span></label>
             <select name="situacao">
-                <option value="">Selecione o status</option>
+                <option value=""></option>
                 {% for op in ["Pendente", "Concluído"] %}
                 <option value="{{ op }}" {% if op == situacao %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
