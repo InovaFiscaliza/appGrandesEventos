@@ -9,35 +9,20 @@
     <div class="section-heading">
         <div>
             <span class="eyebrow">OPERAÇÃO</span>
-            <h1 id="modulos-titulo">Módulos do sistema</h1>
+            <h1 id="modulos-titulo" class="wf-screen-title margin-bottom-l">Módulos do sistema</h1>
         </div>
         <span class="module-count">{{ total }} pendência(s)</span>
     </div>
     <div class="module-grid">
-        <a href="/inserir" class="module-card module-card-primary">
-            <span class="module-icon">📋</span><span><strong>Inserir emissão</strong><small>Registrar emissão verificada em campo</small></span>
-        </a>
-        <a href="/consultar" class="module-card module-card-alert">
-            <span class="module-icon">📝</span><span><strong>Tratar emissões pendentes</strong><small>{{ total }} registro(s) aguardando identificação</small></span>
-        </a>
-        <a href="/teste_etiquetagem" class="module-card">
-            <span class="module-icon">🗒️</span><span><strong>Teste e etiquetagem</strong><small>Gerenciar etiquetas de equipamentos</small></span>
-        </a>
-        <a href="/bsr-erb" class="module-card">
-            <span class="module-icon">📵</span><span><strong>Jammer ou ERB Fake</strong><small>Registrar interferências especiais</small></span>
-        </a>
-        <a href="/busca" class="module-card">
-            <span class="module-icon">🔎</span><span><strong>Pesquisar emissões</strong><small>Consultar registros cadastrados</small></span>
-        </a>
-        <a href="/ute" class="module-card">
-            <span class="module-icon">🗂️</span><span><strong>Atos de UTE</strong><small>Consultar usuários de espectro</small></span>
-        </a>
-        <a href="{{ link_mapa }}" target="_blank" class="module-card module-card-secondary">
-            <span class="module-icon">🗺️</span><span><strong>Mapa do evento</strong><small>Visualizar estações e região</small></span>
-        </a>
-        <a href="https://translate.google.com/?sl=auto&tl=pt&op=translate" target="_blank" class="module-card module-card-secondary">
-            <span class="module-icon">🌍</span><span><strong>Tradutor</strong><small>Texto e voz para apoio em campo</small></span>
-        </a>
+        <div><a href="/inserir" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">📋</div><div><div class="font-semi-bold">Inserir emissão</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">Registrar emissão verificada em campo</div></div></div></div></a></div>
+        <div><a href="/consultar" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">📝</div><div><div class="font-semi-bold">Tratar emissões pendentes</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">{{ total }} registro(s) aguardando identificação</div></div></div></div></a></div>
+        <div><a href="/teste_etiquetagem" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">🗒️</div><div><div class="font-semi-bold">Teste e etiquetagem</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">Gerenciar etiquetas de equipamentos</div></div></div></div></a></div>
+        <div><a href="/bsr-erb" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">📵</div><div><div class="font-semi-bold">Jammer ou ERB Fake</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">Registrar interferências especiais</div></div></div></div></a></div>
+        <div><a href="/busca" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">🔎</div><div><div class="font-semi-bold">Pesquisar emissões</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">Consultar registros cadastrados</div></div></div></div></a></div>
+        <div><a href="/ute" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">🗂️</div><div><div class="font-semi-bold">Atos de UTE</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">Consultar usuários de espectro</div></div></div></div></a></div>
+        <div><a href="{{ link_mapa }}" target="_blank" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">🗺️</div><div><div class="font-semi-bold">Mapa do evento</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">Visualizar estações e região</div></div></div></div></a></div>
+        <div><a href="https://translate.google.com/?sl=auto&tl=pt&op=translate" target="_blank" class="module-link"><div class="card background-neutral-0 padding-l border-radius-m module-card"><div class="display-flex align-items-center gap-m"><div class="module-icon text-primary">🌍</div><div><div class="font-semi-bold">Tradutor</div><div class="font-size-s text-neutral-6 margin-top-xs module-description">Texto e voz para apoio em campo</div></div></div></div></a></div>
     </div>
+    <footer class="app-footer">Desenvolvido por LITE - Laboratório de Inovação Tecnológica - ANATEL</footer>
 </section>
 {% endblock %}

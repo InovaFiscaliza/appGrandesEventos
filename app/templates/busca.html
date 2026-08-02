@@ -4,7 +4,7 @@
 
 {% if flash_warning %}<div class="flash flash-warning">{{ flash_warning }}</div>{% endif %}
 
-<form method="post" action="/busca">
+<form method="post" action="/busca" class="font-semi-bold">
     <div class="form-group">
         <label>Buscar texto (mín 3 chars):</label>
         <input type="text" name="termo" value="{{ termo or '' }}" placeholder="Digite para buscar...">

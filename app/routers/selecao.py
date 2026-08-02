@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.services.postgres import buscar_planilhas
@@ -43,6 +43,18 @@ async def post_selecao(request: Request):
     request.session["evento_nome"] = nome
     request.session["spreadsheet_id"] = ev_id
     return RedirectResponse("/menu", status_code=303)
+
+
+@router.get("/api/eventos")
+async def api_eventos():
+    """Retorna eventos disponíveis para o combo da barra superior."""
+    eventos = buscar_planilhas()
+    return JSONResponse(
+        [
+            {"nome": nome, "key": f"{nome}|||{evento_id}"}
+            for nome, evento_id in eventos.items()
+        ]
+    )
 
 
 @router.get("/logout")

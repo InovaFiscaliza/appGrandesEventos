@@ -5,8 +5,8 @@
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
-<div class="form-card">
-    <form method="post" action="/inserir" id="form-inserir">
+<div class="form-card inserir-form font-semi-bold">
+    <form method="post" action="/inserir" id="form-inserir" class="font-semi-bold">
         <div id="offline-aviso-inserir" class="flash flash-error" style="display:none">
           ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
         </div>
@@ -86,12 +86,12 @@
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn btn-submit">Registrar Emissão</button>
+        <button type="submit" class="btn btn-submit font-semi-bold">Registrar Emissão</button>
     </form>
 </div>
 
 <div class="btn-col">
-    <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
+    <a href="/menu" class="btn btn-back font-semi-bold">⬅️ Voltar ao Menu</a>
 </div>
 
 <!-- db.js e sync.js mantidos para compatibilidade legada -->

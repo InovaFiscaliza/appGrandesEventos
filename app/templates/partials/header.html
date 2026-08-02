@@ -1,17 +1,20 @@
 <header class="app-header">
-<div class="header">
-    <div style="text-align:right">
-        {% if img_b64_esq %}<img class="header-img" src="data:image/png;base64,{{ img_b64_esq }}" alt="Anatel">{% endif %}
-    </div>
-    <div class="header-title">{{ titulo }}</div>
-    <div style="text-align:left">
-        {% if img_b64_dir %}<img class="header-img" src="data:image/png;base64,{{ img_b64_dir }}" alt="Anatel Serviços">{% endif %}
-    </div>
+<div class="rf-topbar">
+    <span class="rf-brand" aria-label="App Eventos">
+        <img class="rf-brand-logo" src="/static/logoanatelwhite-transparent.png" alt="ANATEL">
+        <span class="rf-topbar-context">App Eventos - Módulos</span>
+    </span>
+    {% if evento_nome %}
+    <form id="evento-form" class="evento-switcher" method="post" action="/">
+        <label for="evento-combo">Evento:</label>
+        <select id="evento-combo" name="evento_key" data-evento-atual="{{ evento_nome }}" required>
+            {% for nome, evento_id in request.state.eventos.items() %}
+            <option value="{{ nome }}|||{{ evento_id }}" {% if nome == evento_nome %}selected{% endif %}>{{ nome }}</option>
+            {% else %}
+            <option value="">Nenhum evento disponível</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
 </div>
-{% if evento_nome %}
-<div class="header-event">Evento: {{ evento_nome }}</div>
-<div style="text-align:center;margin-top:2px">
-    <a href="/logout" class="btn-trocar">Trocar Evento 🔄</a>
-</div>
-{% endif %}
 </header>

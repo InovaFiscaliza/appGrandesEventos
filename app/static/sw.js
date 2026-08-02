@@ -1,10 +1,11 @@
-const CACHE = "appEventos-v20";
+const CACHE = "appEventos-v22";
 const SHELL = [
   "/static/style.css",
   "/static/app.js",
   "/static/db.js",
   "/static/sync.js",
   "/static/connectivity.js",
+  "/static/header.js",
   "/static/sw-register.js",
   "/static/offline.html",
   "/static/consultar.js",

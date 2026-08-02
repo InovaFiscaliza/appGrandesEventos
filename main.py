@@ -10,7 +10,7 @@ Executar com:
 
 import secrets
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -25,11 +25,20 @@ from app.routers import (
     tabela_ute,
     teste_etiquetagem,
 )
+from app.services.postgres import buscar_planilhas
 
 app = FastAPI(title="AppEventos", docs_url=None, redoc_url=None)
 
 # Sessão via cookie assinado; secret aleatório por inicialização (aceitável para este app)
 app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
+
+
+@app.middleware("http")
+async def carregar_eventos_no_request(request: Request, call_next):
+    """Disponibiliza a lista de eventos para o cabeçalho compartilhado."""
+    request.state.eventos = buscar_planilhas()
+    return await call_next(request)
+
 
 # Arquivos estáticos (CSS, imagens)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
