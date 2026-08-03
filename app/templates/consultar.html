@@ -2,7 +2,7 @@
 {% block content %}
 {% include "partials/header.html" %}
 
-<div class="info-green">Consulte as emissões pendentes de identificação.</div>
+<div class="consultar-orientacao">Consulte as emissões pendentes de identificação.</div>
 
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
@@ -11,12 +11,29 @@
   ⚠️ Você está offline — exibindo dados do último acesso.
 </div>
 
-<div class="form-group" id="bloco-select" style="display:none">
-    <label>Selecione a emissão:</label>
-    <select id="sel-pendencia" data-selected-key="{{ selected_key }}">
-        <option value=""></option>
-    </select>
-    <small id="progresso-pendencias" class="field-help"></small>
+<div id="bloco-select" class="pendencias-panel" style="display:none">
+    <div class="pendencias-toolbar">
+        <span id="progresso-pendencias" class="pendencias-count"></span>
+        <nav id="paginacao-pendencias" class="pendencias-pagination" aria-label="Paginação das emissões pendentes"></nav>
+    </div>
+    <div class="pendencias-table-wrap">
+        <table class="pendencias-table">
+            <thead>
+                <tr>
+                    <th scope="col" class="pendencia-action-col"><span class="sr-only">Abrir</span></th>
+                    <th scope="col">ID</th>
+                    <th scope="col">Estação</th>
+                    <th scope="col">Localidade</th>
+                    <th scope="col">Início</th>
+                    <th scope="col">Frequência (MHz)</th>
+                    <th scope="col">Largura (kHz)</th>
+                    <th scope="col">Faixa envolvida</th>
+                    <th scope="col">Situação</th>
+                </tr>
+            </thead>
+            <tbody id="pendencias-tbody"></tbody>
+        </table>
+    </div>
 </div>
 
 <div id="bloco-form" class="font-semi-bold" style="display:none">
@@ -90,7 +107,7 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="btn-col">
+        <div class="btn-col consultar-acoes">
             <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
             <button type="submit" class="btn" name="acao" value="salvar_proxima">Salvar e próxima</button>
         </div>
@@ -100,7 +117,7 @@
 
 <div id="msg-vazio" class="flash flash-success" style="display:none">✔️ Nenhuma pendência encontrada.</div>
 
-<div class="btn-col">
+<div class="btn-col consultar-voltar">
     <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
 </div>
 
