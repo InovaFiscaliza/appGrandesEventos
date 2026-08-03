@@ -1,5 +1,7 @@
 const STORE = "cache_pendencias";
 let pendencias = [];
+let paginaAtual = 1;
+const ITENS_POR_PAGINA = 10;
 
 function setSelect(id, val) {
   const el = document.getElementById(id);
@@ -38,41 +40,115 @@ function preencherForm(row) {
   document.getElementById("bloco-form").style.display = "block";
 }
 
-function popularSelect(lista) {
-  const sel = document.getElementById("sel-pendencia");
-  sel.innerHTML = '<option value=""></option>';
-  lista.forEach((row) => {
-    const opt = document.createElement("option");
-    opt.value = row.row_key;
-    opt.textContent = row.label;
-    sel.appendChild(opt);
-  });
-  const selectedKey = sel.dataset.selectedKey || "";
-  if (selectedKey && lista.some((row) => row.row_key === selectedKey)) {
-    sel.value = selectedKey;
-    preencherForm(lista.find((row) => row.row_key === selectedKey));
-  }
-  const progresso = document.getElementById("progresso-pendencias");
-  if (progresso) {
-    progresso.textContent = lista.length
-      ? `${lista.length} pendência(s) aguardando tratamento.`
-      : "";
-  }
-  document.getElementById("bloco-select").style.display = lista.length
-    ? "block"
-    : "none";
-  document.getElementById("msg-vazio").style.display = lista.length
-    ? "none"
-    : "block";
+function textoSeguro(valor) {
+  return String(valor || "");
 }
 
-document
-  .getElementById("sel-pendencia")
-  .addEventListener("change", function () {
-    const row = pendencias.find((r) => r.row_key === this.value);
-    if (row) preencherForm(row);
-    else document.getElementById("bloco-form").style.display = "none";
+function formatarInicio(row) {
+  const data = textoSeguro(row.data);
+  const hora = textoSeguro(row.hora);
+  return [data, hora].filter(Boolean).join(" ");
+}
+
+function renderizarTabela(lista) {
+  const tbody = document.getElementById("pendencias-tbody");
+  const totalPaginas = Math.max(1, Math.ceil(lista.length / ITENS_POR_PAGINA));
+  paginaAtual = Math.min(paginaAtual, totalPaginas);
+  const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
+  const pagina = lista.slice(inicio, inicio + ITENS_POR_PAGINA);
+  tbody.innerHTML = "";
+
+  pagina.forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.dataset.rowKey = row.row_key;
+    const valores = [
+      textoSeguro(row.id),
+      textoSeguro(row.estacao_raw || row.fonte),
+      textoSeguro(row.local),
+      formatarInicio(row),
+      textoSeguro(row.freq),
+      textoSeguro(row.largura),
+      textoSeguro(row.faixa),
+      textoSeguro(row.situacao) || "Pendente",
+    ];
+    const acao = document.createElement("td");
+    acao.className = "pendencia-action-col";
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "pendencia-expandir";
+    botao.setAttribute("aria-label", `Abrir emissão ${textoSeguro(row.id)}`);
+    botao.textContent = "+";
+    acao.appendChild(botao);
+    tr.appendChild(acao);
+    valores.forEach((valor, indice) => {
+      const celula = document.createElement("td");
+      celula.textContent = valor;
+      if (indice === 0) celula.className = "pendencia-id";
+      tr.appendChild(celula);
+    });
+    tr.addEventListener("click", () => selecionarPendencia(row));
+    tbody.appendChild(tr);
   });
+  renderizarPaginacao(lista.length, totalPaginas);
+}
+
+function renderizarPaginacao(totalItens, totalPaginas) {
+  const paginacao = document.getElementById("paginacao-pendencias");
+  paginacao.innerHTML = "";
+  const adicionarBotao = (texto, pagina, disabled = false, atual = false) => {
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.textContent = texto;
+    botao.disabled = disabled;
+    botao.className = atual ? "pagina-atual" : "";
+    botao.addEventListener("click", () => {
+      paginaAtual = pagina;
+      renderizarTabela(pendencias);
+    });
+    paginacao.appendChild(botao);
+  };
+  adicionarBotao("«", 1, paginaAtual === 1);
+  adicionarBotao("‹", Math.max(1, paginaAtual - 1), paginaAtual === 1);
+  for (let pagina = 1; pagina <= totalPaginas; pagina += 1) {
+    if (totalPaginas > 7 && pagina > 3 && pagina < totalPaginas - 2) {
+      if (pagina === 4) {
+        const separador = document.createElement("span");
+        separador.textContent = "…";
+        paginacao.appendChild(separador);
+      }
+      continue;
+    }
+    adicionarBotao(String(pagina), pagina, false, pagina === paginaAtual);
+  }
+  adicionarBotao("›", Math.min(totalPaginas, paginaAtual + 1), paginaAtual === totalPaginas);
+  adicionarBotao("»", totalPaginas, paginaAtual === totalPaginas);
+}
+
+function selecionarPendencia(row) {
+  document.querySelectorAll(".pendencias-table tbody tr").forEach((linha) => {
+    linha.classList.toggle("pendencia-selecionada", linha.dataset.rowKey === row.row_key);
+  });
+  const progresso = document.getElementById("progresso-pendencias");
+  if (progresso) {
+    progresso.textContent = `${pendencias.length} pendência(s) aguardando tratamento.`;
+  }
+  preencherForm(row);
+  document.getElementById("bloco-form").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function popularTabela(lista) {
+  const selectedKey = new URLSearchParams(window.location.search).get("key") || "";
+  paginaAtual = 1;
+  document.getElementById("bloco-select").style.display = lista.length ? "block" : "none";
+  document.getElementById("msg-vazio").style.display = lista.length ? "none" : "block";
+  if (!lista.length) return;
+  document.getElementById("progresso-pendencias").textContent = `${lista.length} pendência(s) aguardando tratamento.`;
+  renderizarTabela(lista);
+  if (selectedKey) {
+    const row = lista.find((item) => item.row_key === selectedKey);
+    if (row) selecionarPendencia(row);
+  }
+}
 
 async function carregarPendencias() {
   try {
@@ -90,7 +166,7 @@ async function carregarPendencias() {
     pendencias = await AppOffline.lerTodos(STORE);
     document.getElementById("offline-aviso").style.display = "block";
   }
-  popularSelect(pendencias);
+  popularTabela(pendencias);
 }
 
 carregarPendencias();
@@ -129,7 +205,7 @@ document
             "📥 Alteração salva localmente. Será enviada ao reconectar."
           );
           document.getElementById("bloco-form").style.display = "none";
-          document.getElementById("sel-pendencia").value = "";
+          document.getElementById("bloco-form").style.display = "none";
         })
         .catch((err) =>
           AppOfflineUI.mostrarErro("Erro ao salvar localmente: " + err)
