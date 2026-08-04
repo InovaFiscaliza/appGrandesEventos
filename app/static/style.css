@@ -113,6 +113,9 @@ button.btn { font-family: inherit; }
     border-color: #1b5e20;
     width: auto;
 }
+.inserir-acoes { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; }
+.inserir-acoes .btn { margin: 0; width: max-content; }
+.inserir-acoes .btn-submit { background: linear-gradient(to bottom, var(--blue-dark), var(--blue-light)); border: var(--border); }
 .btn-back { max-width: 220px; margin: 0.75rem auto 0; }
 .consultar-voltar { align-items: flex-end; margin-left: auto; margin-right: 0; }
 .consultar-voltar .btn-back { margin-left: 0; margin-right: 0; }
@@ -1059,4 +1062,91 @@ button.btn-submit { margin-left: auto; }
     }
     .teq-actions > *,
     .teq-actions .teq-btn { width: max-content !important; }
+}
+
+.btn-green,
+.btn-submit,
+.teq-btn:not(.teq-btn-secondary),
+.teq-btn-back {
+    width: max-content;
+    max-width: 100%;
+    background: linear-gradient(to bottom, var(--blue-dark), var(--blue-light));
+    border: var(--border);
+}
+.btn-green:hover,
+.btn-submit:hover,
+.teq-btn:not(.teq-btn-secondary):hover,
+.teq-btn-back:hover {
+    background: linear-gradient(to bottom, #9ccc65, #AED581) !important;
+    border: var(--border) !important;
+}
+form > .btn-submit { margin-left: auto; }
+.teq-record-actions { justify-content: flex-end; }
+.btn-back,
+.teq-btn-back {
+    background: linear-gradient(to bottom, var(--blue-dark), var(--blue-light));
+    border: var(--border);
+}
+.consultar-acoes {
+    width: max-content;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.75rem;
+}
+.consultar-acoes .btn,
+.consultar-acoes .btn-back,
+.consultar-acoes button.btn-submit {
+    margin: 0;
+}
+.teq-actions .teq-btn-back {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+.teq-actions {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    justify-content: flex-end;
+}
+
+/* Tabela de etiquetagem no padrao RF.Fusion */
+.teq-table-wrap {
+    max-height: 34rem;
+    overflow: auto;
+    border: 1px solid #dbe3ec;
+    border-radius: 6px;
+    background: #fff;
+}
+.teq-table {
+    min-width: 900px;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: #233442;
+    font-size: .88rem;
+}
+.teq-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: .65rem .7rem;
+    border: 0;
+    border-bottom: 1px solid #d8e0ea;
+    background: #f1f3f6;
+    color: #24466f;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.teq-table td {
+    padding: .58rem .7rem;
+    border: 0;
+    border-bottom: 1px solid #e8edf2;
+    vertical-align: middle;
+}
+.teq-table tbody tr { transition: background-color .12s ease; }
+.teq-table tbody tr:hover { background: #edf4fc; }
+.teq-table tbody tr:last-child td { border-bottom: 0; }
+.teq-row-actions {
+    justify-content: flex-end;
+    min-width: 12rem;
 }
