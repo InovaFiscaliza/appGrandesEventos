@@ -110,6 +110,7 @@
         <div class="btn-col consultar-acoes">
             <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
             <button type="submit" class="btn" name="acao" value="salvar_proxima">Salvar e próxima</button>
+            <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
         </div>
     </form>
 </div>
@@ -117,13 +118,9 @@
 
 <div id="msg-vazio" class="flash flash-success" style="display:none">✔️ Nenhuma pendência encontrada.</div>
 
-<div class="btn-col consultar-voltar">
-    <a href="/menu" class="btn btn-back">⬅️ Voltar ao Menu</a>
-</div>
-
 {% if offline_salvo %}
 <script type="application/json" id="offline-edicao-data">{{ offline_dados|tojson }}</script>
 {% endif %}
-<script src="/static/consultar.js"></script>
+<script src="/static/consultar.js?v=3"></script>
 {% endblock %}
 

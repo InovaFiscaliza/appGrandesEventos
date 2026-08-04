@@ -152,11 +152,15 @@ function popularTabela(lista) {
 
 async function carregarPendencias() {
   try {
-    const resp = await fetch("/api/pendencias");
+    const resp = await fetch(`/api/pendencias?_=${Date.now()}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
     if (resp.status === 401) {
       window.location.href = "/";
       return;
     }
+    if (!resp.ok) throw new Error(`Falha HTTP ${resp.status}`);
     const dados = await resp.json();
     pendencias = dados;
     await AppOffline.salvarTodos(STORE, dados);
@@ -204,7 +208,6 @@ document
             ref,
             "📥 Alteração salva localmente. Será enviada ao reconectar."
           );
-          document.getElementById("bloco-form").style.display = "none";
           document.getElementById("bloco-form").style.display = "none";
         })
         .catch((err) =>

@@ -1,4 +1,4 @@
-const CACHE = "appEventos-v36";
+const CACHE = "appEventos-v43";
 const SHELL = [
   "/static/style.css",
   "/static/app.js",
@@ -56,17 +56,23 @@ self.addEventListener("fetch", e => {
 
   const ehEstatico = url.pathname.startsWith("/static/");
 
-  // Assets estáticos (CSS/JS/imagens): cache-first, atualiza em segundo plano
+  // Assets estáticos: rede primeiro para evitar estilos/scripts obsoletos;
+  // o cache permanece como fallback para o modo offline.
   if (ehEstatico) {
     e.respondWith(
-      caches.match(e.request).then(cached => {
-        if (cached) return cached;
-        return fetch(e.request).then(res => {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+      fetch(e.request, { cache: "no-store" })
+        .then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone));
+          }
           return res;
-        });
-      })
+        })
+        .catch(() =>
+          caches.match(e.request).then(cached =>
+            cached || caches.match(url.pathname)
+          )
+        )
     );
     return;
   }
