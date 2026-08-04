@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.services.postgres import (
     carregar_opcoes_identificacao,
+    FrequenciaOcupadaError,
     inserir_emissao_I_W,
     obter_fuso_horario_evento,
     verificar_frequencia_global,
@@ -163,7 +164,32 @@ async def post_inserir(request: Request):
         "Interferente?": interferente,
     }
 
-    ok = inserir_emissao_I_W(evento_id=sp_id, dados_formulario=dados_submit)
+    try:
+        ok = inserir_emissao_I_W(evento_id=sp_id, dados_formulario=dados_submit)
+    except FrequenciaOcupadaError as exc:
+        return templates.TemplateResponse(
+            request,
+            "inserir.html",
+            _ctx(
+                request,
+                ident_opcoes=idents,
+                dia=dia_str,
+                hora=hora_str,
+                fiscal=fiscal,
+                local=local,
+                freq=freq_str,
+                larg=larg_str,
+                faixa=faixa,
+                ident=ident,
+                interferente=interferente,
+                ute=ute,
+                proc=proc,
+                obs=obs,
+                situacao=situacao,
+                flash_error=str(exc),
+                flash_success=None,
+            ),
+        )
     if ok:
         msg = "Emissão inserida com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Registrar Emissão."
         if conflito:
@@ -219,7 +245,12 @@ async def api_inserir(request: Request):
     except Exception:
         return JSONResponse({"erro": "JSON inválido"}, status_code=400)
 
-    ok = inserir_emissao_I_W(evento_id=sp_id, dados_formulario=dados)
+    try:
+        ok = inserir_emissao_I_W(evento_id=sp_id, dados_formulario=dados)
+    except FrequenciaOcupadaError as exc:
+        return JSONResponse(
+            {"erro": str(exc), "codigo": "frequencia_ocupada"}, status_code=409
+        )
     if ok:
         return JSONResponse({"ok": True})
     return JSONResponse({"erro": "Falha ao inserir na planilha"}, status_code=500)

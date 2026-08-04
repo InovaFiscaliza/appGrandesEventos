@@ -4,21 +4,28 @@
 
 {% if flash_warning %}<div class="flash flash-warning">{{ flash_warning }}</div>{% endif %}
 
-<form method="post" action="/busca" class="font-semi-bold">
+<div class="form-card rf-entry-card">
+<form method="post" action="/busca" class="rf-entry-form font-semi-bold">
     <div class="form-group">
         <label>Buscar texto (mín 3 chars):</label>
-        <input type="text" name="termo" value="{{ termo or '' }}" placeholder="Digite para buscar...">
+        <input class="form-control" type="text" name="termo" value="{{ termo or '' }}" placeholder="Digite para buscar...">
     </div>
     <div class="form-group">
         <label>Abas:</label>
-        <select name="abas" multiple>
+        <div class="select-shell">
+        <select class="form-control" name="abas" multiple>
             {% for aba in abas_opcoes %}
             <option value="{{ aba }}" {% if aba in abas_sel %}selected{% endif %}>{{ aba }}</option>
             {% endfor %}
         </select>
+        </div>
     </div>
-    <button type="submit" class="btn btn-submit" style="margin-bottom:0.75rem">🔎 Consultar</button>
+    <div class="inserir-acoes">
+        <button type="submit" class="btn btn-submit">🔎 Consultar</button>
+        <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
+    </div>
 </form>
+</div>
 
 {% if resultados is not none %}
     {% if resultados | length == 0 %}
@@ -44,7 +51,4 @@
     {% endif %}
 {% endif %}
 
-<div class="btn-col menu-voltar">
-    <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
-</div>
 {% endblock %}

@@ -5,12 +5,12 @@
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
-<div class="form-card font-semi-bold">
+<div class="form-card rf-entry-card font-semi-bold">
     <h5 style="margin-bottom:0.75rem">Registrar Jammer ou ERB Fake</h5>
     <div id="offline-aviso-bsr" class="flash flash-error" style="display:none">
       ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
     </div>
-    <form method="post" action="/bsr-erb" id="form-bsr-erb">
+    <form method="post" action="/bsr-erb" id="form-bsr-erb" class="rf-entry-form">
         <div class="form-group">
             <label>Tipo <span class="required">*</span></label>
             <div class="radio-group">
@@ -20,30 +20,27 @@
         </div>
         <div class="form-group">
             <label>Local <span class="required">*</span></label>
-            <input type="text" name="regiao" value="{{ regiao or '' }}">
+            <input class="form-control" type="text" name="regiao" value="{{ regiao or '' }}">
         </div>
         <div class="form-cols">
             <div class="form-group">
                 <label>Latitude (-90 a 90)</label>
-                <input type="text" inputmode="decimal" name="lat" value="{{ lat or '' }}"
+                <input class="form-control" type="number" step="any" name="lat" value="{{ lat or '' }}"
                        placeholder="-23.550520"
-                       pattern="^[+-]?\d+([.,]\d+)?$"
                        title="Número entre -90 e 90. Use ponto ou vírgula como decimal.">
             </div>
             <div class="form-group">
                 <label>Longitude (-180 a 180)</label>
-                <input type="text" inputmode="decimal" name="lon" value="{{ lon or '' }}"
+                <input class="form-control" type="number" step="any" name="lon" value="{{ lon or '' }}"
                        placeholder="-46.633309"
-                       pattern="^[+-]?\d+([.,]\d+)?$"
                        title="Número entre -180 e 180. Use ponto ou vírgula como decimal.">
             </div>
         </div>
-        <button type="submit" class="btn btn-submit">Registrar</button>
+        <div class="inserir-acoes">
+            <button type="submit" class="btn btn-submit">Registrar</button>
+            <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
+        </div>
     </form>
-</div>
-
-<div class="btn-col menu-voltar">
-    <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
 </div>
 
 <script src="/static/db.js"></script>

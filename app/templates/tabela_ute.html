@@ -2,26 +2,40 @@
 {% block content %}
 {% include "partials/header.html" %}
 
-<h4 class="font-semi-bold" style="text-align:center; margin-bottom:0.25rem">Atos de UTE - {{ evento_nome }}</h4>
+<h5 class="font-semi-bold" style="text-align:left; margin-bottom:0.25rem">Atos de UTE - {{ evento_nome }}</h5>
 <p class="table-hint">(gire o celular ⟳)</p>
 
 {% if rows %}
-<form method="get" action="/ute" style="margin-bottom:0.75rem">
+<form method="get" action="/ute" class="rf-entry-form" style="margin-bottom:0.75rem">
     <div class="form-cols">
         <div class="form-group">
             <label>Ordenar por:</label>
-            <select name="sort">
+            <div class="select-shell">
+            <select class="form-control" name="sort">
                 {% for col in sort_cols %}
                 <option value="{{ col }}" {% if sort == col %}selected{% endif %}>{{ col }}</option>
                 {% endfor %}
             </select>
+            </div>
         </div>
         <div class="form-group">
             <label>Direção:</label>
-            <select name="dir">
+            <div class="select-shell">
+            <select class="form-control" name="dir">
                 <option value="asc" {% if dir == "asc" %}selected{% endif %}>Crescente</option>
                 <option value="desc" {% if dir == "desc" %}selected{% endif %}>Decrescente</option>
             </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Itens por página:</label>
+            <div class="select-shell">
+            <select class="form-control" name="page_size" id="ute-page-size">
+                {% for option in [10, 20, 30, 40, 50, 100, 200] %}
+                <option value="{{ option }}" {% if page_size == option %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+            </select>
+            </div>
         </div>
     </div>
     <button type="submit" class="btn" style="max-width:200px;margin-bottom:0.5rem">Ordenar</button>
@@ -49,15 +63,16 @@
     </tbody>
 </table>
 </div>
+<div id="ute-pagination" class="pendencias-pagination ute-pagination" aria-label="Paginação dos atos de UTE"></div>
 {% else %}
 <div class="flash flash-info">Sem dados de UTE.</div>
 {% endif %}
 
-<div class="btn-col menu-voltar">
+<div class="inserir-acoes menu-voltar">
     <a href="https://sei.anatel.gov.br" target="_blank" class="btn">SEI Interno</a>
     <a href="https://sei.anatel.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=0" target="_blank" class="btn">SEI Público</a>
     <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
 </div>
 
-<script src="/static/tabela_ute.js"></script>
+<script src="/static/tabela_ute.js?v=4"></script>
 {% endblock %}

@@ -9,6 +9,7 @@ from app.services.postgres import (
     inserir_teste_etiquetagem,
     listar_testes_etiquetagem,
     obter_teste_etiquetagem,
+    verificar_etiqueta_existente,
     verificar_frequencia_etiquetagem,
 )
 from app.utils.formatters import _img_b64
@@ -247,6 +248,22 @@ async def post_teste_etiquetagem(request: Request):
             values,
             "Preencha os campos corretamente: " + ", ".join(dict.fromkeys(erros)) + ".",
             invalid_fields,
+        )
+
+    etiqueta_existente = verificar_etiqueta_existente(
+        numero_etiqueta=values["numero_etiqueta"],
+        excluir_id=registro_id,
+    )
+    if etiqueta_existente:
+        return _render_form(
+            request,
+            values,
+            "Etiqueta já cadastrada no evento "
+            f"{etiqueta_existente['evento']} em {etiqueta_existente['data']}. "
+            "Utilizada por: "
+            f"{etiqueta_existente['entidade'] or 'Nome não informado'} "
+            f"(CPF/CNPJ: {etiqueta_existente['cpf_cnpj'] or 'não informado'}).",
+            ["numero_etiqueta"],
         )
 
     conflito = (
