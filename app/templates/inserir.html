@@ -5,86 +5,94 @@
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
-<div class="form-card inserir-form font-semi-bold">
-    <form method="post" action="/inserir" id="form-inserir" class="font-semi-bold">
+<div class="form-card inserir-form rf-entry-card font-semi-bold">
+    <form method="post" action="/inserir" id="form-inserir" class="rf-entry-form font-semi-bold">
         <div id="offline-aviso-inserir" class="flash flash-error" style="display:none">
           ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
         </div>
         <div class="form-cols">
             <div class="form-group">
                 <label>Data <span class="required">*</span></label>
-                <input type="date" name="dia" value="{{ dia or '' }}" required>
+                <input class="form-control" type="date" name="dia" value="{{ dia or '' }}" required>
             </div>
             <div class="form-group">
                 <label>Hora <span class="required">*</span></label>
-                <input type="time" name="hora" value="{{ hora or '' }}" required>
+                <input class="form-control" type="time" name="hora" value="{{ hora or '' }}" required>
             </div>
         </div>
         <div class="form-group">
             <label>Fiscal <span class="required">*</span></label>
-            <input type="text" name="fiscal" value="{{ fiscal or '' }}">
+            <input class="form-control" type="text" name="fiscal" value="{{ fiscal or '' }}">
         </div>
         <div class="form-group">
             <label>Local/Região</label>
-            <input type="text" name="local" value="{{ local or '' }}">
+            <input class="form-control" type="text" name="local" value="{{ local or '' }}">
         </div>
         <div class="form-cols">
             <div class="form-group">
                 <label>Frequência (MHz) <span class="required">*</span></label>
-                <input type="number" name="freq" id="freq" value="{{ freq or '' }}" step="0.001" min="0" placeholder="0.000">
+                <input class="form-control" type="number" name="freq" id="freq" value="{{ freq or '' }}" step="0.001" min="0" placeholder="0.000">
             </div>
             <div class="form-group">
                 <label>Largura (kHz)</label>
-                <input type="number" name="larg" value="{{ larg or '' }}" step="0.1" min="0" placeholder="0.0">
+                <input class="form-control" type="number" name="larg" value="{{ larg or '' }}" step="0.1" min="0" placeholder="0.0">
             </div>
         </div>
         <div id="freq-warning" class="freq-warning"></div>
         <div class="form-group">
             <label>Faixa relacionada <span class="required">*</span></label>
-            <select name="faixa">
+            <div class="select-shell">
+            <select class="form-control" name="faixa">
                 <option value=""></option>
                 {% for op in faixa_opcoes %}
                 <option value="{{ op }}" {% if op == faixa %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
+            </div>
         </div>
         <div class="form-group">
             <label>Identificação <span class="required">*</span></label>
-            <select name="ident">
+            <div class="select-shell">
+            <select class="form-control" name="ident">
                 <option value=""></option>
                 {% for op in ident_opcoes %}
                 <option value="{{ op }}" {% if op == ident %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
+            </div>
         </div>
         <div class="form-group">
             <label>Interferente? <span class="required">*</span></label>
-            <select name="interferente">
+            <div class="select-shell">
+            <select class="form-control" name="interferente">
                 <option value=""></option>
                 {% for op in ["Sim", "Não", "Indefinido"] %}
                 <option value="{{ op }}" {% if op == interferente %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
+            </div>
         </div>
         <div class="form-group">
             <label><input type="checkbox" name="ute" value="1" {% if ute %}checked{% endif %}> UTE?</label>
         </div>
         <div class="form-group">
             <label>Processo SEI ou Ato UTE</label>
-            <input type="text" name="proc" value="{{ proc or '' }}">
+            <input class="form-control" type="text" name="proc" value="{{ proc or '' }}">
         </div>
         <div class="form-group">
             <label>Entidade Resp./Contato/Observações <span class="required">*</span></label>
-            <textarea name="obs" rows="3">{{ obs or '' }}</textarea>
+            <textarea class="form-control" name="obs" rows="3">{{ obs or '' }}</textarea>
         </div>
         <div class="form-group">
             <label>Status desta emissão <span class="required">*</span></label>
-            <select name="situacao">
+            <div class="select-shell">
+            <select class="form-control" name="situacao">
                 <option value=""></option>
                 {% for op in ["Pendente", "Concluído"] %}
                 <option value="{{ op }}" {% if op == situacao %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
+            </div>
         </div>
         <div class="inserir-acoes">
             <button type="submit" class="btn btn-submit font-semi-bold">Registrar Emissão</button>

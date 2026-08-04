@@ -11,6 +11,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 SORT_COLS = ["Frequência (MHz)", "País/Entidade", "Local", "Processo SEI"]
+PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 50, 100, 200]
 
 
 def _ctx(request: Request, **kwargs):
@@ -25,10 +26,18 @@ def _ctx(request: Request, **kwargs):
 
 
 @router.get("/ute", response_class=HTMLResponse)
-async def get_ute(request: Request, sort: str = "Frequência (MHz)", dir: str = "asc"):
+async def get_ute(
+    request: Request,
+    sort: str = "Frequência (MHz)",
+    dir: str = "asc",
+    page_size: int = 10,
+):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+
+    if page_size not in PAGE_SIZE_OPTIONS:
+        page_size = 10
 
     df = carregar_dados_ute(evento_id=sp_id)
 
@@ -54,5 +63,7 @@ async def get_ute(request: Request, sort: str = "Frequência (MHz)", dir: str = 
             sort_cols=SORT_COLS,
             sort=sort,
             dir=dir,
+            page_size=page_size,
+            page_size_options=PAGE_SIZE_OPTIONS,
         ),
     )

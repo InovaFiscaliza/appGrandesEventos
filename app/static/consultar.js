@@ -38,6 +38,7 @@ function preencherForm(row) {
   setSelect("f-interf", row.interferente || "");
   setSelect("f-situ", row.situacao || "");
   document.getElementById("bloco-form").style.display = "block";
+  document.getElementById("consultar-voltar").style.display = "none";
 }
 
 function textoSeguro(valor) {
@@ -141,6 +142,7 @@ function popularTabela(lista) {
   paginaAtual = 1;
   document.getElementById("bloco-select").style.display = lista.length ? "block" : "none";
   document.getElementById("msg-vazio").style.display = lista.length ? "none" : "block";
+  document.getElementById("consultar-voltar").style.display = "block";
   if (!lista.length) return;
   document.getElementById("progresso-pendencias").textContent = `${lista.length} pendência(s) aguardando tratamento.`;
   renderizarTabela(lista);
@@ -209,6 +211,7 @@ document
             "📥 Alteração salva localmente. Será enviada ao reconectar."
           );
           document.getElementById("bloco-form").style.display = "none";
+          document.getElementById("consultar-voltar").style.display = "block";
         })
         .catch((err) =>
           AppOfflineUI.mostrarErro("Erro ao salvar localmente: " + err)

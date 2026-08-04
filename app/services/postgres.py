@@ -20,6 +20,10 @@ from app.services.db import get_engine
 logger = logging.getLogger(__name__)
 
 
+class FrequenciaOcupadaError(Exception):
+    """Indica que a frequência já está cadastrada no evento selecionado."""
+
+
 # =========================================================================
 # Utilitários internos
 # =========================================================================
@@ -404,6 +408,40 @@ def carregar_opcoes_identificacao(_client=None, evento_id=None) -> list:
 # =========================================================================
 
 
+def verificar_etiqueta_existente(
+    _client=None, numero_etiqueta=None, excluir_id=None
+) -> Optional[dict]:
+    """Retorna evento e data do primeiro cadastro da etiqueta, se houver."""
+    numero = str(numero_etiqueta or "").strip()
+    if not numero:
+        return None
+    try:
+        with get_engine().connect() as conn:
+            row = (
+                conn.execute(
+                    text("""
+                          SELECT e.nome AS evento,
+                              to_char(t.criado_em, 'DD/MM/YYYY') AS data,
+                              t.entidade,
+                              t.cpf_cnpj
+                    FROM testes_etiquetagem t
+                    JOIN eventos e ON e.id = t.evento_id
+                    WHERE trim(t.numero_etiqueta) = trim(:numero)
+                      AND (:excluir_id IS NULL OR t.id <> :excluir_id)
+                    ORDER BY t.criado_em, t.id
+                    LIMIT 1
+                """),
+                    {"numero": numero, "excluir_id": excluir_id},
+                )
+                .mappings()
+                .first()
+            )
+        return dict(row) if row else None
+    except Exception as e:
+        logger.error(f"Erro verificar_etiqueta_existente: {e}", exc_info=True)
+        return None
+
+
 def verificar_frequencia_etiquetagem(
     _client=None, evento_id=None, freq_digitada=None, excluir_id=None
 ) -> Optional[str]:
@@ -657,6 +695,13 @@ def inserir_emissao_I_W(
     if evento_id is None or dados_formulario is None:
         return False
     try:
+        freq = float(dados_formulario.get("Frequência em MHz", 0))
+        conflito = verificar_frequencia_global(evento_id=evento_id, freq_digitada=freq)
+        if conflito:
+            raise FrequenciaOcupadaError(
+                f"A frequência {freq:.3f} MHz já está ocupada: {conflito}."
+            )
+
         dia = dados_formulario.get("Dia")
         if hasattr(dia, "strftime"):
             dia = dia.strftime("%Y-%m-%d")
@@ -686,7 +731,7 @@ def inserir_emissao_I_W(
                     "fiscal": dados_formulario.get("Fiscal", ""),
                     "data": dia,
                     "hora": hora,
-                    "freq": float(dados_formulario.get("Frequência em MHz", 0)),
+                    "freq": freq,
                     "bw": float(dados_formulario.get("Largura em kHz", 0)),
                     "faixa": dados_formulario.get("Faixa de Frequência", ""),
                     "ident": dados_formulario.get("Identificação", ""),
@@ -699,6 +744,8 @@ def inserir_emissao_I_W(
                 },
             )
         return True
+    except FrequenciaOcupadaError:
+        raise
     except Exception as e:
         logger.error(f"Erro inserir_emissao_I_W: {e}", exc_info=True)
         return False

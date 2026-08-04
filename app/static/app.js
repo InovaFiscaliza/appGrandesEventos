@@ -169,6 +169,11 @@ const AppOffline = (() => {
         e.preventDefault();
         const fd = new FormData(form);
 
+        if (opcoes.beforeSubmit) {
+          const permitido = await opcoes.beforeSubmit(fd);
+          if (!permitido) return;
+        }
+
         // Tenta enviar para o servidor primeiro
         try {
           const resp = await fetch(url, {

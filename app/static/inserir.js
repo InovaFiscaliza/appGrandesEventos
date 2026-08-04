@@ -83,5 +83,27 @@ AppOffline.interceptarSubmit(
     "Responsável pela emissão": "",
     "Interferente?": fd.get("interferente") || "",
     "Situação": fd.get("situacao") || "Pendente",
-  })
+  }),
+  {
+    beforeSubmit: async (fd) => {
+      const valor = parseFloat(fd.get("freq"));
+      const warn = document.getElementById("freq-warning");
+      if (!(valor > 0) || !navigator.onLine || window.APP_OFFLINE === true) {
+        return true;
+      }
+      try {
+        const resp = await fetch("/check-freq?freq=" + encodeURIComponent(valor));
+        const data = await resp.json();
+        if (!data.conflito) return true;
+        warn.textContent =
+          "⚠️ Não é possível inserir: essa frequência já está ocupada (" +
+          data.conflito + ").";
+        warn.style.display = "block";
+        document.getElementById("freq").focus();
+        return false;
+      } catch (e) {
+        return true;
+      }
+    },
+  }
 );
