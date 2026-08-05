@@ -2,6 +2,11 @@
 DATABASE_URL = "postgresql+psycopg://appeventos:appeventos@localhost:5432/appeventos"
 # ================================================================
 
+# Usuário institucional atualmente utilizado como valor provisório.
+# Quando o login real estiver disponível, substituir este valor pelo
+# usuário autenticado da ANATEL ou carregá-lo da sessão de autenticação.
+USR_FISCAL_ANATEL = "andrerezende"
+
 # ================= AJUSTES RÁPIDOS (estilo) =================
 BTN_HEIGHT = "3.8em"
 BTN_GAP = "0px"

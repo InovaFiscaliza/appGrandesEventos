@@ -14,7 +14,7 @@ from typing import Dict, List, Optional
 import pandas as pd
 from sqlalchemy import text
 
-from app.config import IDENT_OPCOES
+from app.config import IDENT_OPCOES, USR_FISCAL_ANATEL
 from app.services.db import get_engine
 
 logger = logging.getLogger(__name__)
@@ -800,6 +800,7 @@ def atualizar_campos_na_aba_mae(
     estacao_raw="",
     id_ocorrencia="",
     novos_valores: dict = None,
+    usuario_fiscal: str = USR_FISCAL_ANATEL,
 ) -> str:
     """Atualiza campos de uma ocorrência (qualquer fonte)."""
     if evento_id is None or novos_valores is None:
@@ -820,16 +821,47 @@ def atualizar_campos_na_aba_mae(
                 "Situação": "situacao",
             }
 
+            campos = list(field_map.values())
+            atual = (
+                conn.execute(
+                    text(f"""
+                    SELECT {', '.join(campos)}
+                    FROM ocorrencias
+                    WHERE evento_id = :ev AND id = :id
+                    FOR UPDATE
+                """),
+                    params,
+                )
+                .mappings()
+                .first()
+            )
+            if atual is None:
+                return f"ERRO: ID {id_ocorrencia} não encontrado no evento {evento_id}."
+
+            alteracoes = []
+
             for key, col in field_map.items():
                 if key in novos_valores:
-                    val = novos_valores[key]
                     if key == "UTE?":
-                        val = str(val).lower() in ["sim", "true", "1", "ok"]
-                        updates.append(f"{col} = :v_{col}")
-                        params[f"v_{col}"] = val
+                        novo_valor = str(novos_valores[key]).lower() in [
+                            "sim",
+                            "true",
+                            "1",
+                            "ok",
+                        ]
                     else:
+                        novo_valor = str(novos_valores[key])
+
+                    valor_atual = atual[col]
+                    comparavel_atual = (
+                        bool(valor_atual)
+                        if key == "UTE?"
+                        else "" if valor_atual is None else str(valor_atual)
+                    )
+                    if comparavel_atual != novo_valor:
                         updates.append(f"{col} = :v_{col}")
-                        params[f"v_{col}"] = str(val)
+                        params[f"v_{col}"] = novo_valor
+                        alteracoes.append((key, valor_atual, novo_valor))
 
             if not updates:
                 return "Nada a atualizar."
@@ -842,18 +874,85 @@ def atualizar_campos_na_aba_mae(
             result = conn.execute(text(sql), params)
             if result.rowcount == 0:
                 return f"ERRO: ID {id_ocorrencia} não encontrado no evento {evento_id}."
+
+            for campo, valor_anterior, valor_novo in alteracoes:
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal, :campo,
+                            :valor_anterior, :valor_novo
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(id_ocorrencia),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "campo": campo,
+                        "valor_anterior": (
+                            None if valor_anterior is None else str(valor_anterior)
+                        ),
+                        "valor_novo": str(valor_novo),
+                    },
+                )
         return f"Atualizado no banco (ID {id_ocorrencia})."
     except Exception as e:
         return f"ERRO ao atualizar: {e}"
 
 
 def atualizar_campos_abordagem_por_id(
-    _client=None, evento_id=None, id_h="", novos_valores: dict = None
+    _client=None,
+    evento_id=None,
+    id_h="",
+    novos_valores: dict = None,
+    usuario_fiscal: str = USR_FISCAL_ANATEL,
 ) -> str:
     """Atualiza campos de uma ocorrência da Abordagem (alias para atualizar_campos_na_aba_mae)."""
     return atualizar_campos_na_aba_mae(
-        _client, evento_id, "Abordagem", id_h, novos_valores
+        _client,
+        evento_id,
+        "Abordagem",
+        id_h,
+        novos_valores,
+        usuario_fiscal,
     )
+
+
+def consultar_historico_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[dict]:
+    """Retorna o histórico de alterações de uma ocorrência, do mais recente ao mais antigo."""
+    if evento_id is None or ocorrencia_id is None:
+        return []
+    try:
+        with get_engine().connect() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                    SELECT
+                        usuario_fiscal,
+                        campo,
+                        valor_anterior,
+                        valor_novo,
+                        to_char(modificado_em AT TIME ZONE 'America/Sao_Paulo',
+                                'DD/MM/YYYY HH24:MI:SS') AS modificado_em
+                    FROM auditoria_ocorrencias
+                    WHERE evento_id = :evento_id
+                      AND ocorrencia_id = :ocorrencia_id
+                    ORDER BY modificado_em DESC, id DESC
+                """),
+                    {
+                        "evento_id": int(evento_id),
+                        "ocorrencia_id": int(ocorrencia_id),
+                    },
+                )
+                .mappings()
+                .all()
+            )
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error("Erro ao consultar histórico da ocorrência: %s", e, exc_info=True)
+        return []
 
 
 # =========================================================================

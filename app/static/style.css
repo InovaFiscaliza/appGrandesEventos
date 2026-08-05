@@ -126,6 +126,13 @@ button.btn { font-family: inherit; }
 .consultar-voltar .btn-back { margin-left: 0; margin-right: 0; }
 .consultar-acoes { flex-direction: row; justify-content: flex-end; max-width: none; margin-left: auto; margin-right: 0; }
 .consultar-acoes .btn { width: auto; }
+
+.historico-tabela-wrap { overflow-x: auto; border: 1px solid #dbe3ec; border-radius: 8px; background: #fff; }
+.historico-tabela { width: 100%; border-collapse: collapse; color: #111827; font-size: .9rem; }
+.historico-tabela th, .historico-tabela td { padding: .7rem .8rem; border-bottom: 1px solid #e8edf2; text-align: left; vertical-align: top; }
+.historico-tabela th { background: #f1f3f6; color: #24466f; font-weight: 600; white-space: nowrap; }
+.historico-tabela tr:last-child td { border-bottom: 0; }
+.historico-vazio { margin: 0; padding: 1rem; color: #526273; background: #fff; border: 1px solid #dbe3ec; border-radius: 8px; }
 .menu-voltar { align-items: flex-end; margin-left: auto; margin-right: 0; }
 .menu-voltar .btn-back { margin-left: 0; margin-right: 0; }
 .teq-actions .teq-btn-back { flex: 0 0 auto; margin-left: auto !important; }

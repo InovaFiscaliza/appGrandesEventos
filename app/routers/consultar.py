@@ -13,10 +13,11 @@ from app.services.postgres import (
     carregar_pendencias_abordagem_pendentes,
     carregar_pendencias_painel_mapeadas,
     carregar_pendencias_todas_estacoes,
+    consultar_historico_ocorrencia,
 )
 from app.utils.formatters import _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
-from app.config import IDENT_OPCOES, TITULO_PRINCIPAL
+from app.config import IDENT_OPCOES, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -94,6 +95,34 @@ async def get_consultar(request: Request, key: str = ""):
     )
 
 
+@router.get("/consultar/historico", response_class=HTMLResponse)
+async def get_historico_ocorrencia(request: Request, id: int | None = None):
+    """Exibe o histórico de alterações da ocorrência selecionada."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    if id is None:
+        request.session["flash_error"] = (
+            "Selecione uma ocorrência para consultar o histórico."
+        )
+        return RedirectResponse("/consultar", status_code=303)
+
+    historico = consultar_historico_ocorrencia(evento_id=evento_id, ocorrencia_id=id)
+    return templates.TemplateResponse(
+        request,
+        "consultar_historico.html",
+        {
+            "request": request,
+            "titulo": TITULO_PRINCIPAL,
+            "img_b64_esq": _img_b64("anatel.png"),
+            "img_b64_dir": _img_b64("anatelS.png"),
+            "evento_nome": request.session.get("evento_nome", ""),
+            "ocorrencia_id": id,
+            "historico": historico,
+        },
+    )
+
+
 @router.post("/consultar/salvar")
 async def post_consultar_salvar(request: Request):
     sp_id = request.session.get("spreadsheet_id")
@@ -145,6 +174,7 @@ async def post_consultar_salvar(request: Request):
                 estacao_raw="PAINEL",
                 id_ocorrencia=id_val,
                 novos_valores=pac,
+                usuario_fiscal=USR_FISCAL_ANATEL,
             )
         elif fonte == "ESTACAO":
             res = atualizar_campos_na_aba_mae(
@@ -152,10 +182,14 @@ async def post_consultar_salvar(request: Request):
                 estacao_raw=estacao_raw,
                 id_ocorrencia=id_val,
                 novos_valores=pac,
+                usuario_fiscal=USR_FISCAL_ANATEL,
             )
         else:
             res = atualizar_campos_abordagem_por_id(
-                evento_id=sp_id, id_h=id_val, novos_valores=pac
+                evento_id=sp_id,
+                id_h=id_val,
+                novos_valores=pac,
+                usuario_fiscal=USR_FISCAL_ANATEL,
             )
     except Exception as e:
         logging.error(f"Falha ao salvar edição (offline?): {e}")
@@ -267,6 +301,7 @@ async def api_consultar_salvar(request: Request):
             estacao_raw="PAINEL",
             id_ocorrencia=id_val,
             novos_valores=pac,
+            usuario_fiscal=USR_FISCAL_ANATEL,
         )
     elif fonte == "ESTACAO":
         res = atualizar_campos_na_aba_mae(
@@ -274,10 +309,14 @@ async def api_consultar_salvar(request: Request):
             estacao_raw=estacao_raw,
             id_ocorrencia=id_val,
             novos_valores=pac,
+            usuario_fiscal=USR_FISCAL_ANATEL,
         )
     else:
         res = atualizar_campos_abordagem_por_id(
-            evento_id=sp_id, id_h=id_val, novos_valores=pac
+            evento_id=sp_id,
+            id_h=id_val,
+            novos_valores=pac,
+            usuario_fiscal=USR_FISCAL_ANATEL,
         )
 
     if res.startswith("ERRO") or res.startswith("Erro"):

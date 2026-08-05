@@ -62,6 +62,23 @@ CREATE INDEX IF NOT EXISTS idx_ocorr_evento_situacao ON ocorrencias (evento_id, 
 CREATE INDEX IF NOT EXISTS idx_ocorr_frequencia      ON ocorrencias (evento_id, frequencia_mhz);
 CREATE INDEX IF NOT EXISTS idx_ocorr_busca_trgm      ON ocorrencias USING gin (observacoes gin_trgm_ops);
 
+-- Histórico de alterações das ocorrências para auditoria do sistema.
+CREATE TABLE IF NOT EXISTS auditoria_ocorrencias (
+    id              BIGSERIAL PRIMARY KEY,
+    ocorrencia_id   BIGINT NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    evento_id       BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    usuario_fiscal  TEXT NOT NULL,
+    campo           TEXT NOT NULL,
+    valor_anterior  TEXT,
+    valor_novo      TEXT,
+    modificado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_ocorrencia_data
+    ON auditoria_ocorrencias (ocorrencia_id, modificado_em DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_evento_data
+    ON auditoria_ocorrencias (evento_id, modificado_em DESC);
+
 -- Tabela UTE
 CREATE TABLE IF NOT EXISTS tabela_ute (
     id              BIGSERIAL PRIMARY KEY,

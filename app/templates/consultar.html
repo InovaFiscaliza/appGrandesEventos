@@ -2,7 +2,7 @@
 {% block content %}
 {% include "partials/header.html" %}
 
-<h5 class="consultar-orientacao">Consulte as emissões pendentes de identificação.</h5>
+<h5 class="consultar-orientacao">Consulte as emissões pendentes de identificação e histórico de modificações.</h5>
 
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
@@ -116,6 +116,7 @@
             </div>
         </div>
         <div class="btn-col consultar-acoes">
+            <a href="/consultar" id="btn-consultar-historico" class="btn consultar-historico" aria-label="Consultar histórico de modificações">Consultar histórico de modificações</a>
             <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
             <button type="submit" class="btn" name="acao" value="salvar_proxima">Salvar e próxima</button>
             <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
@@ -133,6 +134,6 @@
 {% if offline_salvo %}
 <script type="application/json" id="offline-edicao-data">{{ offline_dados|tojson }}</script>
 {% endif %}
-<script src="/static/consultar.js?v=3"></script>
+<script src="/static/consultar.js?v=5"></script>
 {% endblock %}
 
