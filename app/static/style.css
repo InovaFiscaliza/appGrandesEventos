@@ -1168,6 +1168,13 @@ form > .btn-submit { margin-left: auto; }
     font-size: .88rem;
     font-weight: 700;
 }
+.rf-entry-form .teq-label.teq-checkbox-title {
+    font-size: .92rem;
+}
+.form-group > label,
+.form-group > .teq-label {
+    font-size: .92rem !important;
+}
 .rf-entry-form .form-control,
 .rf-entry-form input:not([type="checkbox"]):not([type="radio"]),
 .rf-entry-form select,
