@@ -11,11 +11,10 @@ AppGrandesEventos é um sistema de monitoração de espectro eletromagnético pa
 
 ## Stack Tecnológica
 
-- **Backend**: Python 3.13+, FastAPI + Jinja2 (primário), Streamlit (legado)
+- **Backend**: Python 3.13+, FastAPI + Jinja2
 - **Banco**: PostgreSQL 16 via SQLAlchemy + psycopg (binary)
 - **Frontend**: FastAPI com Jinja2 Templates e arquivos estáticos (CSS/JS)
 - **Autenticação**: N/A (aplicação local/institucional)
-- **Google Sheets**: Integração via `gspread` (leitura de dados legados)
 - **PWA**: Service Worker para funcionalidade offline parcial (`app/static/sw.js`)
 - **Dependências**: gerenciadas via `pyproject.toml` + `uv`
 - **Gerenciador de pacotes**: `uv` — usar `uv add <pacote>` para instalar, `uv sync` para sincronizar, `uv run <script.py>` para executar scripts (não usar `pip install`)
@@ -26,8 +25,6 @@ AppGrandesEventos é um sistema de monitoração de espectro eletromagnético pa
 app/
     __init__.py
     config.py              # Constantes e configurações centralizadas
-    router.py              # Roteador Streamlit (legado)
-    components/            # Componentes reutilizáveis Streamlit (header, botoes)
     routers/               # Rotas FastAPI (menu, consultar, inserir, bsr_erb, etc.)
         menu.py            #   Rota principal /menu
         consultar.py       #   Rota /consultar
@@ -38,8 +35,7 @@ app/
         tabela_ute.py      #   Rota /tabela_ute
     services/
         db.py              # Engine SQLAlchemy central
-        google_sheets.py   # Serviço legado de acesso ao Google Sheets
-        postgres.py        # Serviço de dados via PostgreSQL (substituto)
+        postgres.py        # Serviço de dados via PostgreSQL
     static/                # CSS, JS, Service Worker, manifest
     templates/             # Jinja2 templates HTML
         base.html          # Template base com layout padronizado
@@ -47,12 +43,9 @@ app/
     utils/
         formatters.py      # Funções utilitárias (imagens, normalização, coordenadas)
         offline.py         # Utilitários para modo offline
-    views/                 # Views Streamlit (legado)
 db/
     schema.sql             # Schema completo do PostgreSQL
 scripts/
-    migrar_sheets_to_pg.py # Migração Google Sheets → PostgreSQL
-    validar_migracao.py    # Validação de consistência dos dados
     executa_schema.py      # Script para executar schema.sql no banco
 requisitos/                # Documentação de requisitos
 ```
@@ -77,12 +70,6 @@ requisitos/                # Documentação de requisitos
 - Rotas sempre assíncronas (`async def`)
 - Flash messages via `request.session.pop("flash_success/error", None)`
 
-### Streamlit (legado)
-- Views recebem `(client, spread_id)` como parâmetros
-- Navegação via `st.session_state.view`
-- Componentes em `app/components/` e views em `app/views/`
-- `st.rerun()` após alterar `st.session_state.view`
-
 ### Frontend (HTML/CSS/JS)
 - HTML com Jinja2 (herança via `{% extends "base.html" %}`)
 - CSS em `app/static/style.css`
@@ -101,17 +88,8 @@ requisitos/                # Documentação de requisitos
 
 ## Regras de Estilo para Frontend
 
-- Botões devem usar `use_container_width=True` no Streamlit
 - No FastAPI, botões e links seguem design consistente via `base.html`
 - Cores institucionais (ANATEL): azul escuro predominante
 - Interface responsiva e mobile-first (app usado em campo com celular)
 - Ícones: emojis (📋, 📝, 📵, etc.) nos botões
 - Flash messages para feedback ao usuário
-
-## Regras para Migração (Google Sheets → PostgreSQL)
-
-- Funções `_parse_float`, `_parse_date`, `_parse_time` para normalizar dados
-- Vírgula como separador decimal, ponto como separador de milhar
-- Scripts idempotentes (`ON CONFLICT`, `DELETE` antes de reinserir)
-- Dados do Sheets lidos via `gspread` com intervalo de colunas (ex: `"H1:W"`)
-- Tabelas: `eventos`, `estacoes`, `ocorrencias`, `tabela_ute`, `bsr_erb`, `opcoes_identificacao`
