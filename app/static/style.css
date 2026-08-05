@@ -289,7 +289,12 @@ body {
 .btn:hover, button.btn:hover { background: #1d5f87 !important; border-color: #16a3b7 !important; }
 .btn-red { background: #a8323e; border-color: #8e2934; }
 .btn-green, .btn-submit { background: #177c78; border-color: #12615e; }
-.form-card { border: var(--border); border-radius: 3px; box-shadow: var(--shadow); }
+.form-card {
+    border: var(--border);
+    border-radius: 3px;
+    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
+    box-shadow: var(--shadow);
+}
 .form-group label { color: #405363; font-size: .92rem; }
 .form-group input, .form-group select, .form-group textarea { border-color: #b8c6d1; border-radius: 3px; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--blue-accent); box-shadow: 0 0 0 2px rgba(22, 163, 183, .14); outline: none; }
@@ -367,11 +372,11 @@ body {
     max-width: 840px;
     margin: 0 auto 1rem;
     padding: 0.65rem 0.75rem 0.75rem;
-    background: #fff;
+    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
     border-color: #ddd;
 }
 .teq-page {
-    background: #fff;
+    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
     border: 1px solid #ddd;
     padding: 0.5rem 0.75rem 0.75rem;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
@@ -1146,7 +1151,7 @@ form > .btn-submit { margin-left: auto; }
     padding: 1.25rem;
     border: 1px solid #dce7ef;
     border-radius: 8px;
-    background: #fff;
+    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
     box-shadow: 0 1px 6px rgba(0, 0, 0, .1);
 }
 .rf-entry-form {
