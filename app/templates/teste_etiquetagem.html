@@ -24,17 +24,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="teq-label{% if 'entidade' in values.invalid_fields %} teq-label-invalid{% endif %}" for="entidade">Entidade</label>
+                    <label class="teq-label teq-checkbox-title{% if 'entidade' in values.invalid_fields %} teq-label-invalid{% endif %}" for="entidade">Entidade</label>
                     <input id="entidade" name="entidade" class="form-control teq-control{% if 'entidade' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.entidade }}" required>
                 </div>
 
                 <div class="form-group">
-                    <label class="teq-label" for="contato">Contato</label>
+                    <label class="teq-label teq-checkbox-title" for="contato">Contato</label>
                     <input id="contato" name="contato" class="form-control teq-control" type="text" value="{{ values.contato }}">
                 </div>
 
                 <div class="form-group teq-search">
-                    <label class="teq-label{% if 'local' in values.invalid_fields %} teq-label-invalid{% endif %}" for="local">Local</label>
+                    <label class="teq-label teq-checkbox-title{% if 'local' in values.invalid_fields %} teq-label-invalid{% endif %}" for="local">Local</label>
                     <input id="local" name="local" class="form-control teq-control{% if 'local' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.local }}" aria-describedby="btn-local" required>
                     <button id="btn-local" class="teq-search-btn" type="button" aria-label="Pesquisar local">⌕</button>
                 </div>
@@ -64,11 +64,11 @@
             <div class="teq-col">
                 <div class="teq-frequency-row">
                     <div class="form-group">
-                        <label class="teq-label{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
+                        <label class="teq-label teq-checkbox-title{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
                         <input id="frequencia" name="frequencia_mhz" class="form-control teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="number" step="any" min="0" value="{{ values.frequencia_mhz }}">
                     </div>
                     <div class="form-group">
-                        <label class="teq-label{% if 'passo' in values.invalid_fields %} teq-label-invalid{% endif %}" for="passo">Banda</label>
+                        <label class="teq-label teq-checkbox-title{% if 'passo' in values.invalid_fields %} teq-label-invalid{% endif %}" for="passo">Banda</label>
                         <div class="select-shell">
                         <select id="passo" name="passo" class="form-control teq-control{% if 'passo' in values.invalid_fields %} teq-invalid{% endif %}">
                             <option value="" {% if not values.passo %}selected{% endif %}></option>
@@ -79,7 +79,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="teq-label{% if 'faixa' in values.invalid_fields %} teq-label-invalid{% endif %}" for="faixa">Faixa</label>
+                        <label class="teq-label teq-checkbox-title{% if 'faixa' in values.invalid_fields %} teq-label-invalid{% endif %}" for="faixa">Faixa</label>
                         <div class="select-shell">
                         <select id="faixa" name="faixa" class="form-control teq-control{% if 'faixa' in values.invalid_fields %} teq-invalid{% endif %}">
                             <option value="" {% if not values.faixa %}selected{% endif %}></option>
@@ -93,7 +93,7 @@
 
                 <div class="form-group teq-frequency-list-group">
                     <div class="teq-list-header">
-                        <label class="teq-label" for="frequencias">Frequências</label>
+                        <label class="teq-label teq-checkbox-title" for="frequencias">Frequências</label>
                         <div class="teq-list-actions" aria-label="Gerenciar frequências">
                             <button id="adicionar-frequencia" class="teq-list-btn" type="button" aria-label="Adicionar frequência" title="Adicionar frequência">+</button>
                             <button id="remover-frequencia" class="teq-list-btn" type="button" aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
@@ -107,13 +107,13 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="teq-label{% if 'cpf_cnpj' in values.invalid_fields %} teq-label-invalid{% endif %}" for="cpfcnpj">CPF/CNPJ</label>
+                    <label class="teq-label teq-checkbox-title{% if 'cpf_cnpj' in values.invalid_fields %} teq-label-invalid{% endif %}" for="cpfcnpj">CPF/CNPJ</label>
                     <input id="cpfcnpj" name="cpf_cnpj" class="form-control teq-control{% if 'cpf_cnpj' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="numeric" maxlength="18" value="{{ values.cpf_cnpj }}" aria-describedby="cpfcnpj-ajuda">
                     <small id="cpfcnpj-ajuda" class="teq-field-help">Informe um CPF ou CNPJ válido, se necessário.</small>
                 </div>
 
                 <div class="form-group">
-                    <label class="teq-label{% if 'tipo_equipamento' in values.invalid_fields %} teq-label-invalid{% endif %}" for="tipo-equipamento">Tipo do equipamento</label>
+                    <label class="teq-label teq-checkbox-title{% if 'tipo_equipamento' in values.invalid_fields %} teq-label-invalid{% endif %}" for="tipo-equipamento">Tipo do equipamento</label>
                     <div class="select-shell">
                     <select id="tipo-equipamento" name="tipo_equipamento" class="form-control teq-control{% if 'tipo_equipamento' in values.invalid_fields %} teq-invalid{% endif %}" required>
                         <option value="" {% if not values.tipo_equipamento %}selected{% endif %}></option>
@@ -125,14 +125,14 @@
                 </div>
 
                 <div class="form-group teq-number-box">
-                    <label class="teq-label{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-etiqueta">Número da etiqueta</label>
+                    <label class="teq-label teq-checkbox-title{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-etiqueta">Número da etiqueta</label>
                     <input id="numero-etiqueta" name="numero_etiqueta" class="form-control teq-control{% if 'numero_etiqueta' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.numero_etiqueta }}" required>
                 </div>
             </div>
         </div>
 
         <div class="form-group">
-            <label class="teq-label" for="observacoes">Observações</label>
+            <label class="teq-label teq-checkbox-title" for="observacoes">Observações</label>
             <textarea id="observacoes" name="observacoes" class="form-control teq-control teq-textarea" rows="4">{{ values.observacoes }}</textarea>
         </div>
 
