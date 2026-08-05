@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+<h5 class="consultar-orientacao">Histórico de modificações da ocorrência #{{ ocorrencia_id }}</h5>
+<p class="table-hint">Registro de auditoria do evento {{ evento_nome }}.</p>
+
+{% if historico %}
+<div class="historico-tabela-wrap">
+    <table class="historico-tabela">
+        <thead>
+            <tr>
+                <th scope="col">Data e hora</th>
+                <th scope="col">Fiscal/usuário</th>
+                <th scope="col">Campo editado</th>
+                <th scope="col">Valor anterior</th>
+                <th scope="col">Novo valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in historico %}
+            <tr>
+                <td>{{ registro.modificado_em }}</td>
+                <td>{{ registro.usuario_fiscal }}</td>
+                <td>{{ registro.campo }}</td>
+                <td>{{ registro.valor_anterior if registro.valor_anterior is not none else "(vazio)" }}</td>
+                <td>{{ registro.valor_novo if registro.valor_novo is not none else "(vazio)" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="historico-vazio">Nenhuma modificação registrada para esta ocorrência.</p>
+{% endif %}
+
+<div class="btn-col consultar-acoes">
+    <a href="/consultar" class="btn btn-back">Voltar para consulta</a>
+</div>
+{% endblock %}

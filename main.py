@@ -36,6 +36,11 @@ app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
 @app.middleware("http")
 async def carregar_eventos_no_request(request: Request, call_next):
     """Disponibiliza a lista de eventos para o cabeçalho compartilhado."""
+    # A tela de histórico já possui o evento na sessão. Não bloqueie sua
+    # abertura com a consulta síncrona da lista completa de eventos.
+    if request.url.path == "/consultar/historico":
+        request.state.eventos = {}
+        return await call_next(request)
     request.state.eventos = buscar_planilhas()
     return await call_next(request)
 

@@ -134,6 +134,10 @@ function selecionarPendencia(row) {
     progresso.textContent = `${pendencias.length} pendência(s) aguardando tratamento.`;
   }
   preencherForm(row);
+  const historico = document.getElementById("btn-consultar-historico");
+  if (historico) {
+    historico.href = `/consultar/historico?id=${encodeURIComponent(row.id || "")}`;
+  }
   document.getElementById("bloco-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
