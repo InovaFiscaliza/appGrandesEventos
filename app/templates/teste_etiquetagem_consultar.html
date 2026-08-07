@@ -30,7 +30,7 @@
                 {% for registro in registros %}
                 <tr>
                     <td class="teq-row-actions">
-                        <a class="btn teq-action-btn" href="/teste_etiquetagem?edit_id={{ registro.id }}" aria-label="Editar registro" title="Editar registro">+</a>
+                        <a class="btn teq-action-btn" href="/teste_etiquetagem?edit_id={{ registro.id }}&consultar=1" aria-label="Editar registro" title="Editar registro">+</a>
                     </td>
                     <td data-label="Etiqueta">{{ registro.numero_etiqueta }}</td>
                     <td data-label="Entidade">{{ registro.entidade }}</td>

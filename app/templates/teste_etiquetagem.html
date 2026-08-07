@@ -3,14 +3,58 @@
 {% include "partials/header.html" %}
 
 <div class="form-card teq-card font-semi-bold">
-    <h5 class="teq-title">Teste e etiquetagem</h5>
+    <h5 class="teq-title">{% if modo_consulta %}Consultar registros de teste e etiquetagem{% else %}Teste e etiquetagem{% endif %}</h5>
 
     {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
     {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
+    {% if modo_consulta %}
+    {% set registros = registros | default([]) %}
+    {% if registros %}
+    <section class="teq-edit-records" aria-labelledby="teq-edit-records-title">
+        <h6 id="teq-edit-records-title">Registros do evento</h6>
+        <div class="teq-table-wrap">
+            <table class="teq-table teq-edit-records-table">
+                <colgroup>
+                    <col class="teq-actions-col">
+                    <col span="5">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th class="teq-row-actions-header"><span class="sr-only">Editar</span></th>
+                        <th>Etiqueta</th>
+                        <th>Entidade</th>
+                        <th>Local</th>
+                        <th>Tipo</th>
+                        <th>Atualizado em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for registro in registros %}
+                    <tr{% if registro.id == values.registro_id %} class="teq-editing-row"{% endif %}>
+                        <td class="teq-row-actions">
+                            <a class="btn teq-action-btn" href="/teste_etiquetagem?edit_id={{ registro.id }}&consultar=1" aria-label="Editar registro" title="Editar registro">+</a>
+                        </td>
+                        <td>{{ registro.numero_etiqueta }}</td>
+                        <td>{{ registro.entidade }}</td>
+                        <td>{{ registro.local }}</td>
+                        <td>{{ registro.tipo_equipamento }}</td>
+                        <td>{{ registro.atualizado_em.strftime('%d/%m/%Y %H:%M') if registro.atualizado_em else '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% else %}
+    <div class="flash flash-success">Nenhum registro de etiquetagem cadastrado neste evento.</div>
+    {% endif %}
+    {% endif %}
+
     {% if values.registro_id %}<div class="teq-editing-note">Editando registro #{{ values.registro_id }}</div>{% endif %}
 
     <form class="teq-form rf-entry-form" method="post" action="/teste_etiquetagem" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
+        {% if modo_consulta %}<input type="hidden" name="modo_consulta" value="1">{% endif %}
         {% if values.registro_id %}<input type="hidden" name="registro_id" value="{{ values.registro_id }}">{% endif %}
         <div class="teq-grid">
             <div class="teq-col">
@@ -143,7 +187,7 @@
         </div>
 
         <div class="teq-actions">
-            <a href="/teste_etiquetagem/consultar" class="btn teq-btn teq-btn-secondary">Consultar registros</a>
+            <a href="/teste_etiquetagem?consultar=1" class="btn teq-btn teq-btn-secondary">Consultar registros</a>
             <button class="btn teq-btn" type="submit">{% if values.registro_id %}Salvar alterações{% else %}Inserir teste{% endif %}</button>
             <button class="btn teq-btn" type="reset">Limpar formulário</button>
             <a href="/menu" class="btn teq-btn teq-btn-back">Voltar ao Menu</a>

@@ -275,7 +275,7 @@ body {
 
 .app-shell { min-height: 100vh; border-top: 4px solid #12345b; background: #fff; }
 .container { max-width: 1180px; padding: 0 1.25rem 2.5rem; }
-.app-header { background: #fff; border: 0; box-shadow: 0 1px 4px rgba(15, 35, 55, .16); margin-bottom: 1.5rem; }
+.app-header { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); background: #fff; border: 0; box-shadow: 0 1px 4px rgba(15, 35, 55, .16); margin-bottom: 1.5rem; }
 .rf-topbar { display: flex; align-items: center; gap: .5rem; min-height: 56px; padding: 0 1rem; background: #07569a; color: #fff; font-size: var(--font-size-h5); }
 .rf-brand { display: inline-flex; align-items: center; gap: .45rem; font-size: 1rem; font-weight: 700; line-height: 1; }
 .rf-brand { font-size: var(--font-size-h5); font-weight: var(--font-semi-bold); }
@@ -286,6 +286,55 @@ body {
 .evento-switcher select { width: 240px; min-height: 2.1rem; padding: .3rem .5rem; border: 1px solid #b8d6e8; border-radius: 3px; background: #fff; color: #234; font-size: .88rem; }
 .evento-switcher button { min-height: 2.1rem; padding: .25rem .65rem; border: 1px solid #8bc8e6; border-radius: 3px; background: #0b6fb3; color: #fff; cursor: pointer; font-size: .84rem; }
 .evento-switcher button:hover { background: #1688cb; }
+.rf-nav {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-height: 30px;
+    padding: 0 1rem;
+    overflow-x: auto;
+    background: #fff;
+    scrollbar-width: none;
+}
+.rf-nav a {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 .35rem;
+    border: 0;
+    color: #526b88;
+    font-family: Rawline, Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.rf-nav span[aria-current="page"] {
+    font-family: Rawline, Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+}
+.rf-nav a:not(:last-child)::after {
+    content: "›";
+    margin-left: .7rem;
+    color: #a7b5c3;
+    font-size: .95rem;
+}
+.rf-nav a:hover,
+.rf-nav a:focus-visible,
+.rf-nav span[aria-current="page"] {
+    color: #07569a;
+    outline: none;
+}
+.rf-nav span[aria-current="page"] {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 .35rem;
+}
 .header { min-height: 74px; padding: .65rem 1rem .35rem; margin-bottom: 0; }
 .header-img { height: 42px; }
 .header-title { color: #12345b; font-size: 1.28rem; letter-spacing: .01em; text-shadow: none; text-transform: uppercase; }
@@ -376,7 +425,8 @@ body {
 
 /* ---- Teste de Etiquetagem ---- */
 .teq-card {
-    max-width: 840px;
+    width: 100%;
+    max-width: none;
     margin: 0 auto 1rem;
     padding: 0.65rem 0.75rem 0.75rem;
     background: linear-gradient(135deg, #f9fcff 0%, #f3f8fc 58%, #e6f0f8 100%);
@@ -474,6 +524,27 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
+}
+.teq-edit-records {
+    margin-bottom: 1rem;
+}
+.teq-edit-records h6 {
+    margin: 0 0 .45rem;
+    color: #243746;
+    font-size: .9rem;
+}
+.teq-edit-records-table {
+    font-size: .8rem;
+}
+.teq-edit-records-table .teq-row-actions,
+.teq-edit-records-table .teq-row-actions-header {
+    width: 3rem;
+    min-width: 3rem;
+    max-width: 3rem;
+    padding: 10px !important;
+}
+.teq-editing-row {
+    background: #edf4fc;
 }
 .teq-radio-panels {
     display: grid;
@@ -1017,7 +1088,10 @@ textarea { font-family: Arial, Helvetica, sans-serif; }
 .evento-switcher label { color: #fff; font-size: var(--font-size-h5); font-weight: var(--font-semi-bold); }
 
 /* Proporcoes do painel de modulos conforme a referencia RF.Fusion */
-.container { max-width: 1400px; }
+.container {
+    width: 100%;
+    max-width: none;
+}
 .rf-topbar { min-height: 48px; }
 .module-section { padding-top: .9rem; }
 .section-heading { padding-bottom: .65rem; margin-bottom: .85rem; }
@@ -1422,6 +1496,23 @@ a.btn {
     .rf-topbar-context {
         font-size: .95rem;
         overflow-wrap: anywhere;
+    }
+
+    .rf-nav {
+        min-height: 28px;
+        padding: 0 .7rem;
+    }
+
+    .rf-nav a {
+        min-height: 28px;
+        padding: 0 .25rem;
+        font-size: 12px;
+    }
+
+    .rf-nav span[aria-current="page"] {
+        min-height: 28px;
+        padding: 0 .25rem;
+        font-size: 12px;
     }
 
     .evento-switcher {

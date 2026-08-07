@@ -17,4 +17,27 @@
     </form>
     {% endif %}
 </div>
+<nav class="rf-nav" aria-label="Navegação estrutural">
+    {% set caminho_atual = request.url.path %}
+    <a href="/menu">Início</a>
+    {% if caminho_atual == '/menu' %}
+
+    {% elif caminho_atual.startswith('/inserir') %}
+    <span aria-current="page">Inserir emissão</span>
+    {% elif caminho_atual.startswith('/consultar/historico') %}
+    <a href="/consultar">Pendências</a><span aria-current="page">Histórico</span>
+    {% elif caminho_atual.startswith('/consultar') %}
+    <span aria-current="page">Pendências</span>
+    {% elif caminho_atual.startswith('/teste_etiquetagem/consultar') %}
+    <a href="/teste_etiquetagem">Etiquetagem</a><span aria-current="page">Registros</span>
+    {% elif caminho_atual.startswith('/teste_etiquetagem') %}
+    <span aria-current="page">Etiquetagem</span>
+    {% elif caminho_atual.startswith('/bsr-erb') %}
+    <span aria-current="page">Interferências</span>
+    {% elif caminho_atual.startswith('/busca') %}
+    <span aria-current="page">Pesquisar</span>
+    {% elif caminho_atual.startswith('/ute') %}
+    <span aria-current="page">UTE</span>
+    {% endif %}
+</nav>
 </header>

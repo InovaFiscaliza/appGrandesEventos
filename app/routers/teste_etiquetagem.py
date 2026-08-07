@@ -148,6 +148,14 @@ def _render_form(
         _ctx(
             request,
             values=values,
+            modo_consulta=bool(values.get("modo_consulta")),
+            registros=(
+                listar_testes_etiquetagem(
+                    evento_id=request.session.get("spreadsheet_id")
+                )
+                if values.get("modo_consulta")
+                else []
+            ),
             flash_error=error,
             flash_success=None,
         ),
@@ -155,7 +163,9 @@ def _render_form(
 
 
 @router.get("/teste_etiquetagem", response_class=HTMLResponse)
-async def get_teste_etiquetagem(request: Request, edit_id: int | None = None):
+async def get_teste_etiquetagem(
+    request: Request, edit_id: int | None = None, consultar: bool = False
+):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
@@ -178,6 +188,7 @@ async def get_teste_etiquetagem(request: Request, edit_id: int | None = None):
         "numero_etiqueta": "",
         "observacoes": "",
         "invalid_fields": [],
+        "modo_consulta": consultar,
     }
     if edit_id is not None:
         registro = obter_teste_etiquetagem(evento_id=sp_id, registro_id=edit_id)
@@ -191,6 +202,8 @@ async def get_teste_etiquetagem(request: Request, edit_id: int | None = None):
         _ctx(
             request,
             values=values,
+            modo_consulta=consultar,
+            registros=(listar_testes_etiquetagem(evento_id=sp_id) if consultar else []),
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -220,6 +233,7 @@ async def post_teste_etiquetagem(request: Request):
 
     form = await request.form()
     values = _form_values(form)
+    values["modo_consulta"] = bool(form.get("modo_consulta"))
     registro_id = form.get("registro_id")
     erros = []
     invalid_fields = []
@@ -378,25 +392,29 @@ async def post_teste_etiquetagem(request: Request):
         return _render_form(request, values, resultado)
 
     request.session["flash_success"] = resultado
-    return RedirectResponse("/teste_etiquetagem", status_code=303)
+    if registro_id:
+        consulta_query = "&consultar=1" if values["modo_consulta"] else ""
+        return RedirectResponse(
+            f"/teste_etiquetagem?edit_id={registro_id}{consulta_query}",
+            status_code=303,
+        )
+    return RedirectResponse(
+        (
+            "/teste_etiquetagem?consultar=1"
+            if values["modo_consulta"]
+            else "/teste_etiquetagem"
+        ),
+        status_code=303,
+    )
 
 
 @router.get("/teste_etiquetagem/consultar", response_class=HTMLResponse)
 async def consultar_testes_etiquetagem(request: Request):
-    """Exibe os registros de etiquetagem do evento atual."""
+    """Abre a consulta com a lista e o formulário no mesmo momento."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse(
-        request,
-        "teste_etiquetagem_consultar.html",
-        _ctx(
-            request,
-            registros=listar_testes_etiquetagem(evento_id=evento_id),
-            flash_success=request.session.pop("flash_success", None),
-            flash_error=request.session.pop("flash_error", None),
-        ),
-    )
+    return await get_teste_etiquetagem(request, consultar=True)
 
 
 @router.post("/teste_etiquetagem/excluir")
