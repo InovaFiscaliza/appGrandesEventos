@@ -11,33 +11,33 @@
     {% if registros %}
     <div class="teq-table-wrap">
         <table class="teq-table">
+            <colgroup>
+                <col class="teq-actions-col">
+                <col span="6">
+            </colgroup>
             <thead>
                 <tr>
+                    <th class="teq-row-actions-header"><span class="sr-only">Ações</span></th>
                     <th>Etiqueta</th>
                     <th>Entidade</th>
                     <th>Local</th>
                     <th>Tipo</th>
                     <th>Frequências</th>
                     <th>Atualizado em</th>
-                    <th>Ações</th>
                 </tr>
             </thead>
             <tbody>
                 {% for registro in registros %}
                 <tr>
+                    <td class="teq-row-actions">
+                        <a class="btn teq-action-btn" href="/teste_etiquetagem?edit_id={{ registro.id }}" aria-label="Editar registro" title="Editar registro">+</a>
+                    </td>
                     <td data-label="Etiqueta">{{ registro.numero_etiqueta }}</td>
                     <td data-label="Entidade">{{ registro.entidade }}</td>
                     <td data-label="Local">{{ registro.local }}</td>
                     <td data-label="Tipo">{{ registro.tipo_equipamento }}</td>
                     <td data-label="Frequências">{{ (registro.frequencias_selecionadas or []) | join('; ') }}</td>
                     <td data-label="Atualizado em">{{ registro.atualizado_em.strftime('%d/%m/%Y %H:%M') if registro.atualizado_em else '' }}</td>
-                    <td class="teq-row-actions" data-label="Ações">
-                        <a class="btn teq-action-btn" href="/teste_etiquetagem?edit_id={{ registro.id }}">Editar</a>
-                        <form method="post" action="/teste_etiquetagem/excluir" onsubmit="return confirm('Excluir este registro de etiquetagem?');">
-                            <input type="hidden" name="registro_id" value="{{ registro.id }}">
-                            <button class="btn teq-action-btn teq-delete-btn" type="submit">Excluir</button>
-                        </form>
-                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

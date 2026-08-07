@@ -96,14 +96,20 @@
                         <label class="teq-label teq-checkbox-title" for="frequencias">Frequências</label>
                         <div class="teq-list-actions" aria-label="Gerenciar frequências">
                             <button id="adicionar-frequencia" class="teq-list-btn" type="button" aria-label="Adicionar frequência" title="Adicionar frequência">+</button>
-                            <button id="remover-frequencia" class="teq-list-btn" type="button" aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
+                            <button id="remover-frequencia" class="teq-list-btn" type="button" disabled aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
                         </div>
                     </div>
-                    <select id="frequencias" name="frequencias_selecionadas" class="form-control teq-control teq-listbox{% if 'frequencias_selecionadas' in values.invalid_fields %} teq-invalid{% endif %}" size="8" multiple required>
+                    <select id="frequencias" class="form-control teq-control teq-listbox{% if 'frequencias_selecionadas' in values.invalid_fields %} teq-invalid{% endif %}" size="8" multiple required>
                         {% for freq in values.frequencias_disponiveis %}
                         <option value="{{ freq }}" {% if freq in values.frequencias_selecionadas %}selected{% endif %}>{{ freq }}</option>
                         {% endfor %}
                     </select>
+                    <div id="frequencias-enviadas">
+                        {% for freq in values.frequencias_disponiveis %}
+                        <input type="hidden" name="frequencias_selecionadas" value="{{ freq }}">
+                        {% endfor %}
+                    </div>
+                    <div id="frequencia-consulta" class="teq-frequency-check" role="status" aria-live="polite"></div>
                 </div>
 
                 <div class="form-group">
@@ -144,5 +150,5 @@
         </div>
     </form>
 </div>
-<script src="/static/teste_etiquetagem.js"></script>
+<script src="/static/teste_etiquetagem.js?v=5"></script>
 {% endblock %}

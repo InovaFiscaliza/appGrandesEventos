@@ -490,21 +490,100 @@ def verificar_frequencia_etiquetagem(
                     FROM testes_etiquetagem t
                     CROSS JOIN LATERAL unnest(t.frequencias_selecionadas) AS selecionada
                     WHERE t.evento_id = :ev
-                      AND selecionada LIKE :prefixo
-                                            AND (:excluir_id IS NULL OR t.id <> :excluir_id)
+                      AND round(
+                            replace(split_part(selecionada, ' MHz', 1), ',', '.')::numeric,
+                            3
+                          ) = :freq
+                      AND (:excluir_id IS NULL OR t.id <> :excluir_id)
                     LIMIT 1
                 """),
-                {
-                    "ev": int(evento_id),
-                    "prefixo": f"{frequencia:.3f}".replace(".", ",") + " MHz ⌂%",
-                    "excluir_id": excluir_id,
-                },
+                {"ev": int(evento_id), "freq": frequencia, "excluir_id": excluir_id},
             ).first()
             if row:
                 return row[0]
     except Exception as e:
         logger.error(f"Erro verificar_frequencia_etiquetagem: {e}", exc_info=True)
     return None
+
+
+def consultar_equipamentos_frequencia(
+    _client=None, evento_id=None, freq_digitada=None, excluir_id=None
+) -> dict:
+    """Consulta equipamentos e referências cadastrados na frequência do evento."""
+    resultado = {"equipamentos": [], "referencias": []}
+    if evento_id is None or freq_digitada is None:
+        return resultado
+    try:
+        frequencia = round(float(freq_digitada), 3)
+    except (TypeError, ValueError):
+        return resultado
+    if frequencia <= 0:
+        return resultado
+
+    try:
+        with get_engine().connect() as conn:
+            equipamentos = (
+                conn.execute(
+                    text("""
+                    SELECT t.id, t.entidade, t.cpf_cnpj, t.contato, t.local,
+                           t.tipo_equipamento, t.numero_etiqueta,
+                           t.equipamento_homologado, selecionada AS frequencia
+                    FROM testes_etiquetagem t
+                    CROSS JOIN LATERAL unnest(t.frequencias_selecionadas) AS selecionada
+                    WHERE t.evento_id = :ev
+                                            AND round(
+                                                        replace(split_part(selecionada, ' MHz', 1), ',', '.')::numeric,
+                                                        3
+                                                    ) = :freq
+                      AND (:excluir_id IS NULL OR t.id <> :excluir_id)
+                    ORDER BY t.id
+                """),
+                    {
+                        "ev": int(evento_id),
+                        "freq": frequencia,
+                        "excluir_id": excluir_id,
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            resultado["equipamentos"] = [dict(row) for row in equipamentos]
+
+            ocorrencias = (
+                conn.execute(
+                    text("""
+                    SELECT 'Ocorrência' AS origem,
+                           COALESCE(e.nome, o.local_regiao, 'Local não informado') AS detalhe
+                    FROM ocorrencias o
+                    LEFT JOIN estacoes e ON e.id = o.estacao_id
+                    WHERE o.evento_id = :ev
+                      AND round(o.frequencia_mhz, 3) = :freq
+                    LIMIT 5
+                """),
+                    {"ev": int(evento_id), "freq": frequencia},
+                )
+                .mappings()
+                .all()
+            )
+            ute = (
+                conn.execute(
+                    text("""
+                    SELECT 'Tabela UTE' AS origem,
+                           COALESCE(pais_entidade, 'Entidade não informada') AS detalhe
+                    FROM tabela_ute
+                    WHERE evento_id = :ev
+                      AND round(frequencia_mhz, 3) = :freq
+                    LIMIT 5
+                """),
+                    {"ev": int(evento_id), "freq": frequencia},
+                )
+                .mappings()
+                .all()
+            )
+            resultado["referencias"] = [dict(row) for row in [*ocorrencias, *ute]]
+    except Exception as e:
+        logger.error(f"Erro consultar_equipamentos_frequencia: {e}", exc_info=True)
+    return resultado
 
 
 def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) -> str:

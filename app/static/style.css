@@ -229,9 +229,9 @@ button.btn { font-family: inherit; }
 .pendencias-table tbody tr { cursor: pointer; }
 .pendencias-table tbody tr:hover, .pendencias-table tbody tr.pendencia-selecionada { background: #edf4fc; }
 .pendencias-table tbody tr:last-child td { border-bottom: 0; }
-.pendencia-action-col { width: 3.4rem; text-align: center !important; }
-.pendencia-expandir { width: 2.2rem; height: 2.2rem; padding: 0; border: 1px solid #bfd0e3; border-radius: 8px; background: #fff; color: #155aa1; cursor: pointer; font-size: 1.1rem; line-height: 1; }
-.pendencia-expandir:hover, .pendencia-expandir:focus-visible { border-color: #155aa1; background: #eaf3fd; outline: none; }
+.pendencia-action-col { width: 4rem; min-width: 4rem; text-align: left !important; }
+.pendencia-expandir { display: inline-flex; align-items: center; justify-content: center; width: 2.35rem; height: 2.35rem; padding: 0; border: 1px solid #d4dbe0; border-radius: 3px; background: #eaf0f4; color: #243746; cursor: pointer; font-size: 1.1rem; font-weight: 700; line-height: 1; }
+.pendencia-expandir:hover, .pendencia-expandir:focus-visible { border-color: #b8c3cc; background: #dce5eb; color: #243746; outline: none; }
 .pendencia-id { color: #111827; font-weight: 600; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 640px) {
@@ -299,7 +299,7 @@ body {
 .form-card {
     border: var(--border);
     border-radius: 3px;
-    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
+    background: linear-gradient(135deg, #f9fcff 0%, #f3f8fc 58%, #e6f0f8 100%);
     box-shadow: var(--shadow);
 }
 .form-group label { color: #405363; font-size: .92rem; }
@@ -379,11 +379,11 @@ body {
     max-width: 840px;
     margin: 0 auto 1rem;
     padding: 0.65rem 0.75rem 0.75rem;
-    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
+    background: linear-gradient(135deg, #f9fcff 0%, #f3f8fc 58%, #e6f0f8 100%);
     border-color: #ddd;
 }
 .teq-page {
-    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
+    background: linear-gradient(135deg, #f9fcff 0%, #f3f8fc 58%, #e6f0f8 100%);
     border: 1px solid #ddd;
     padding: 0.5rem 0.75rem 0.75rem;
     box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
@@ -413,9 +413,11 @@ body {
 .teq-table-wrap { overflow-x: auto; }
 .teq-table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: 0.9rem;
 }
+.teq-actions-col { width: 3rem; }
 .teq-table th,
 .teq-table td {
     padding: 0.45rem 0.4rem;
@@ -425,43 +427,48 @@ body {
 }
 .teq-table th { background: #eaf0f4; color: #243746; white-space: nowrap; }
 .teq-row-actions {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.4rem;
-    min-width: 12.6rem;
+    display: table-cell;
+    text-align: left;
+    width: 0;
+    min-width: 0;
+    min-width: 3rem;
+    max-width: 3rem;
+    padding: 0 0 0 10px !important;
     white-space: nowrap;
 }
-.teq-row-actions form {
-    display: inline-flex;
-    margin: 0;
+.teq-row-actions-header {
+    width: 0;
+    min-width: 0;
+    min-width: 3rem;
+    max-width: 3rem;
+    padding: 0 0 0 10px !important;
 }
 .teq-action-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 5.8rem;
+    width: 2.35rem;
     min-height: 2.35rem;
+    box-sizing: border-box;
     padding: 0.35rem 0.55rem;
-    border: 1px solid #355c7d;
+    border: 1px solid #d4dbe0;
     border-radius: 3px;
-    background: #527d9f;
-    color: #fff !important;
+    background: #eaf0f4;
+    color: #243746 !important;
     text-decoration: none;
     font-size: 0.84rem;
     font-weight: 700;
     cursor: pointer;
 }
-.teq-delete-btn { background: #c62828; border-color: #8e1b1b; }
 
 @media (max-width: 640px) {
     .teq-row-actions {
         flex-direction: column;
         align-items: stretch;
-        min-width: 6.8rem;
+        min-width: 2.35rem;
+        justify-content: flex-start;
     }
-    .teq-row-actions form,
-    .teq-action-btn { width: 100%; }
+    .teq-action-btn { width: 2.35rem; align-self: flex-start; }
 }
 .teq-form {
     display: flex;
@@ -548,6 +555,8 @@ body {
 .teq-field-help { display: block; margin-top: 0.2rem; font-size: 0.8rem; }
 .teq-field-help.teq-valid { color: #2e7d32; }
 .teq-field-help.teq-invalid { color: #c62828; }
+.teq-frequency-check { display: none; margin-top: 0.45rem; padding: 0.55rem 0.7rem; border-left: 3px solid #c62828; color: #7f1d1d; background: #fff1f2; font-size: 0.82rem; line-height: 1.45; }
+.teq-frequency-check.teq-frequency-check-warning { display: block; }
 .teq-search .teq-control { padding-right: 2.2rem; }
 .teq-search-btn {
     position: absolute;
@@ -593,6 +602,12 @@ body {
 .teq-list-btn:focus-visible {
     color: #1b5e20;
     outline: 1px solid #1b5e20;
+}
+.teq-list-btn:disabled {
+    color: #aeb8c2;
+    cursor: not-allowed;
+    opacity: .45;
+    pointer-events: none;
 }
 .teq-inline {
     display: grid;
@@ -783,8 +798,7 @@ select[multiple] { min-height: 100px; }
         min-width: 0;
     }
     .teq-table .teq-row-actions::before { align-self: center; }
-    .teq-table .teq-row-actions form,
-    .teq-table .teq-action-btn { width: 5.8rem; }
+    .teq-table .teq-action-btn { width: 2.35rem; }
     .ute-table { min-width: 620px; }
     .table-hint { font-size: 0.78rem; }
     details summary { padding: 0.75rem; }
@@ -866,14 +880,12 @@ textarea:disabled {
     border-color: #12615e;
 }
 
-.btn-red,
-.teq-delete-btn {
+.btn-red {
     background: #a8323e;
     border-color: #8e2934;
 }
 
-.btn-red:hover,
-.teq-delete-btn:hover {
+.btn-red:hover {
     background: #c04a55;
     border-color: #8e2934;
 }
@@ -1158,7 +1170,7 @@ form > .btn-submit { margin-left: auto; }
     padding: 1.25rem;
     border: 1px solid #dce7ef;
     border-radius: 8px;
-    background: linear-gradient(135deg, #fff 0%, #f8fbfe 58%, #eef5fb 100%);
+    background: linear-gradient(135deg, #f9fcff 0%, #f3f8fc 58%, #e6f0f8 100%);
     box-shadow: 0 1px 6px rgba(0, 0, 0, .1);
 }
 .rf-entry-form {
@@ -1317,6 +1329,23 @@ a.btn {
     .form-control {
         min-height: 2.8rem;
     }
+}
+
+/* Ações de edição seguem a cor do cabeçalho da tabela. */
+.teq-action-btn,
+.pendencia-expandir {
+    border: 1px solid #d4dbe0;
+    border-radius: 3px;
+    background: #eaf0f4;
+    color: #243746 !important;
+}
+.teq-action-btn:hover,
+.teq-action-btn:focus-visible,
+.pendencia-expandir:hover,
+.pendencia-expandir:focus-visible {
+    border-color: #b8c3cc;
+    background: #dce5eb !important;
+    color: #243746 !important;
 }
 
 /* Tabela de etiquetagem no padrao RF.Fusion */

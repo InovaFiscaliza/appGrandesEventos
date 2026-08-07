@@ -3,13 +3,15 @@
   const passo = document.querySelector('#passo');
   const faixa = document.querySelector('#faixa');
   const lista = document.querySelector('#frequencias');
+  const frequenciasEnviadas = document.querySelector('#frequencias-enviadas');
+  const frequenciaConsulta = document.querySelector('#frequencia-consulta');
   const cpfCnpj = document.querySelector('#cpfcnpj');
   const cpfCnpjAjuda = document.querySelector('#cpfcnpj-ajuda');
   const form = document.querySelector('.teq-form');
   const adicionar = document.querySelector('#adicionar-frequencia');
   const remover = document.querySelector('#remover-frequencia');
 
-  if (!frequencia || !passo || !faixa || !lista || !cpfCnpj || !cpfCnpjAjuda || !form || !adicionar || !remover) return;
+  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !form || !adicionar || !remover) return;
 
   const invalidosServidor = new Set(
     JSON.parse(form.dataset.invalidFields || '[]')
@@ -43,9 +45,86 @@
   }
 
   function formatarFrequencia(valor) {
-    const numero = Number(valor.trim().replace(',', '.'));
+    const numero = Number(String(valor ?? '').trim().replace(',', '.'));
     if (!Number.isFinite(numero) || numero <= 0) return null;
     return numero.toFixed(3).replace('.', ',');
+  }
+
+  function atualizarEstadoRemover() {
+    remover.disabled = lista.selectedOptions.length === 0;
+  }
+
+  function manterUmaSelecao() {
+    const selecionadas = [...lista.selectedOptions];
+    if (selecionadas.length > 1) {
+      selecionadas.slice(0, -1).forEach((opcao) => {
+        opcao.selected = false;
+      });
+    }
+    atualizarEstadoRemover();
+  }
+
+  function atualizarFrequenciasEnviadas() {
+    frequenciasEnviadas.replaceChildren(
+      ...[...lista.options].map((opcao) => {
+        const campo = document.createElement('input');
+        campo.type = 'hidden';
+        campo.name = 'frequencias_selecionadas';
+        campo.value = opcao.value;
+        return campo;
+      })
+    );
+  }
+
+  function frequenciaJaNaLista(valor) {
+    const numero = Number(String(valor ?? '').trim().replace(',', '.'));
+    if (!Number.isFinite(numero) || numero <= 0) return false;
+    return [...lista.options].some((opcao) => {
+      const encontrada = opcao.value.match(/^\s*([\d.,]+)\s+MHz\b/);
+      return encontrada
+        && Number(encontrada[1].replace(',', '.')).toFixed(3) === numero.toFixed(3);
+    });
+  }
+
+  function exibirConsulta(data, mensagemLocal = '') {
+    const linhas = [];
+    if (mensagemLocal) linhas.push(mensagemLocal);
+    data.equipamentos.forEach((equipamento) => {
+      linhas.push(`Equipamento já cadastrado: ${equipamento.entidade || 'Nome não informado'} | CPF/CNPJ: ${equipamento.cpf_cnpj || 'não informado'} | Tipo: ${equipamento.tipo_equipamento || 'não informado'} | Etiqueta: ${equipamento.numero_etiqueta || 'não informada'} | Local: ${equipamento.local || 'não informado'}`);
+    });
+    data.referencias.forEach((referencia) => {
+      linhas.push(`Referência no banco: ${referencia.origem} | ${referencia.detalhe}`);
+    });
+    frequenciaConsulta.replaceChildren(
+      ...linhas.flatMap((linha, indice) => {
+        const texto = document.createTextNode(linha);
+        return indice === 0 ? [texto] : [document.createElement('br'), texto];
+      })
+    );
+    frequenciaConsulta.classList.toggle('teq-frequency-check-warning', linhas.length > 0);
+  }
+
+  async function consultarFrequencia(valor) {
+    const numero = Number(String(valor ?? '').trim().replace(',', '.'));
+    const mensagemLocal = frequenciaJaNaLista(numero) ? 'Esta frequência já está na lista.' : '';
+    if (!Number.isFinite(numero) || numero <= 0) {
+      frequenciaConsulta.replaceChildren();
+      frequenciaConsulta.classList.remove('teq-frequency-check-warning');
+      return null;
+    }
+    try {
+      const registro = form.querySelector('input[name="registro_id"]')?.value;
+      const parametros = new URLSearchParams({ frequencia: String(numero) });
+      if (registro) parametros.set('excluir_id', registro);
+      const resposta = await fetch(`/api/teste-etiquetagem/verificar-frequencia?${parametros}`);
+      if (!resposta.ok) return null;
+      const data = await resposta.json();
+      exibirConsulta(data, mensagemLocal);
+      return data;
+    } catch (erro) {
+      exibirConsulta({ equipamentos: [], referencias: [] }, mensagemLocal);
+      return null;
+    }
   }
 
   function validarCpfCnpj(valor) {
@@ -139,6 +218,7 @@
     const numero = Number(frequencia.value.trim().replace(',', '.'));
     limparErroSePreenchido('frequencia_mhz', Number.isFinite(numero) && numero > 0);
   });
+  frequencia.addEventListener('change', () => consultarFrequencia(frequencia.value));
   passo.addEventListener('change', () => {
     limparErroSePreenchido('passo', passo.value.trim().length > 0);
   });
@@ -146,6 +226,7 @@
     limparErroSePreenchido('faixa', faixa.value.trim().length > 0);
   });
   lista.addEventListener('change', () => {
+    manterUmaSelecao();
     limparErroSePreenchido('frequencias_selecionadas', lista.options.length > 0);
   });
   document.querySelector('#tipo-equipamento')?.addEventListener('change', (event) => {
@@ -155,7 +236,7 @@
     limparErroSePreenchido('numero_etiqueta', event.target.value.trim().length > 0);
   });
 
-  adicionar.addEventListener('click', () => {
+  adicionar.addEventListener('click', async () => {
     const valor = formatarFrequencia(frequencia.value);
     if (!valor) {
       frequencia.setCustomValidity('Informe uma frequência válida.');
@@ -164,21 +245,60 @@
       return;
     }
 
-    const texto = `${valor} MHz ⌂ ${passo.value} • ${faixa.value}`;
-    const existente = [...lista.options].some((opcao) => opcao.value === texto);
-    if (existente) {
-      lista.querySelector(`option[value="${CSS.escape(texto)}"]`).selected = true;
+    if (!passo.value.trim()) {
+      passo.setCustomValidity('Selecione a Banda.');
+      passo.reportValidity();
+      passo.setCustomValidity('');
       return;
     }
 
+    if (!faixa.value.trim()) {
+      faixa.setCustomValidity('Selecione a Faixa.');
+      faixa.reportValidity();
+      faixa.setCustomValidity('');
+      return;
+    }
+
+    const consulta = await consultarFrequencia(valor);
+    if (consulta && (consulta.equipamentos.length > 0 || consulta.referencias.length > 0)) {
+      return;
+    }
+
+    if (frequenciaJaNaLista(valor)) {
+      exibirConsulta(
+        consulta || { equipamentos: [], referencias: [] },
+        `A frequência ${valor} MHz já está na lista. A banda não altera o conflito.`
+      );
+      return;
+    }
+
+    const texto = `${valor} MHz ⌂ ${passo.value} • ${faixa.value}`;
+    const existente = [...lista.options].some((opcao) => opcao.value === texto);
+    if (existente) {
+      [...lista.options].forEach((opcao) => { opcao.selected = false; });
+      lista.querySelector(`option[value="${CSS.escape(texto)}"]`).selected = true;
+      manterUmaSelecao();
+      consultarFrequencia(valor);
+      return;
+    }
+
+    [...lista.options].forEach((opcao) => { opcao.selected = false; });
     const opcao = new Option(texto, texto, true, true);
     lista.add(opcao);
+    manterUmaSelecao();
+    atualizarFrequenciasEnviadas();
     limparErroSePreenchido('frequencias_selecionadas', lista.options.length > 0);
     frequencia.value = '';
     frequencia.focus();
   });
 
   remover.addEventListener('click', () => {
+    if (remover.disabled || lista.selectedOptions.length === 0) return;
     [...lista.selectedOptions].forEach((opcao) => opcao.remove());
+    atualizarEstadoRemover();
+    atualizarFrequenciasEnviadas();
   });
+
+  manterUmaSelecao();
+  atualizarFrequenciasEnviadas();
 })();
