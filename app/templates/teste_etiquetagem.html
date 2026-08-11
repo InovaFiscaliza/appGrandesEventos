@@ -17,16 +17,26 @@
             <table class="teq-table teq-edit-records-table">
                 <colgroup>
                     <col class="teq-actions-col">
-                    <col span="5">
+                    <col span="15">
                 </colgroup>
                 <thead>
                     <tr>
                         <th class="teq-row-actions-header"><span class="sr-only">Editar</span></th>
-                        <th>Etiqueta</th>
+                        <th>Seletor</th>
+                        <th>CPF/CNPJ</th>
                         <th>Entidade</th>
+                        <th>Contato</th>
                         <th>Local</th>
-                        <th>Tipo</th>
-                        <th>Atualizado em</th>
+                        <th>Licença</th>
+                        <th>Equipamento Homologado</th>
+                        <th>Permissão</th>
+                        <th>Frequência (MHz)</th>
+                        <th>Banda</th>
+                        <th>Faixa</th>
+                        <th>Frequências</th>
+                        <th>Tipo do equipamento</th>
+                        <th>Número da etiqueta</th>
+                        <th>Observações</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -35,11 +45,27 @@
                         <td class="teq-row-actions">
                             <a class="btn teq-action-btn" href="/teste_etiquetagem?edit_id={{ registro.id }}&consultar=1" aria-label="Editar registro" title="Editar registro">+</a>
                         </td>
-                        <td>{{ registro.numero_etiqueta }}</td>
-                        <td>{{ registro.entidade }}</td>
-                        <td>{{ registro.local }}</td>
-                        <td>{{ registro.tipo_equipamento }}</td>
-                        <td>{{ registro.atualizado_em.strftime('%d/%m/%Y %H:%M') if registro.atualizado_em else '' }}</td>
+                        <td data-label="Seletor">
+                            {% if registro.perfil == 'pf' %}Pessoa Física{% elif registro.perfil == 'pj' %}Pessoa Jurídica{% else %}Estrangeiro{% endif %}
+                        </td>
+                        <td data-label="CPF/CNPJ">{{ registro.cpf_cnpj }}</td>
+                        <td data-label="Entidade">{{ registro.entidade }}</td>
+                        <td data-label="Contato">{{ registro.contato }}</td>
+                        <td data-label="Local">{{ registro.local }}</td>
+                        <td data-label="Licença">
+                            {% if registro.licenca == 'ute' %}UTE{% elif registro.licenca == 'outorgado' %}Outorgado{% elif registro.licenca == 'nao_outorgado' %}Não Outorgado{% else %}Radiação Restrita{% endif %}
+                        </td>
+                        <td data-label="Equipamento Homologado">{{ 'Sim' if registro.equipamento_homologado else 'Não' }}</td>
+                        <td data-label="Permissão">
+                            {% if registro.permissao == 'permitido' %}Permitido{% elif registro.permissao == 'todos' %}Permitido em todos{% else %}Não permitido{% endif %}
+                        </td>
+                        <td data-label="Frequência (MHz)">{{ registro.frequencias_selecionadas[0].split(' MHz')[0] if registro.frequencias_selecionadas else '' }}</td>
+                        <td data-label="Banda">{{ registro.frequencias_selecionadas[0].split(' ⌂ ')[1].split(' • ')[0] if registro.frequencias_selecionadas and ' ⌂ ' in registro.frequencias_selecionadas[0] else '' }}</td>
+                        <td data-label="Faixa">{{ registro.frequencias_selecionadas[0].split(' • ')[1] if registro.frequencias_selecionadas and ' • ' in registro.frequencias_selecionadas[0] else '' }}</td>
+                        <td data-label="Frequências">{{ (registro.frequencias_selecionadas or []) | join('; ') }}</td>
+                        <td data-label="Tipo do equipamento">{{ registro.tipo_equipamento }}</td>
+                        <td data-label="Número da etiqueta">{{ registro.numero_etiqueta }}</td>
+                        <td data-label="Observações">{{ registro.observacoes }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -58,7 +84,7 @@
         {% if values.registro_id %}<input type="hidden" name="registro_id" value="{{ values.registro_id }}">{% endif %}
         <div class="teq-grid">
             <div class="teq-col">
-                <div class="teq-panel">
+                <div class="teq-panel teq-order-6">
                     <div class="teq-radio-row">
                         <label class="teq-radio-item"><input type="radio" name="licenca" value="ute" {% if values.licenca == "ute" %}checked{% endif %}>UTE</label>
                         <label class="teq-radio-item"><input type="radio" name="licenca" value="outorgado" {% if values.licenca == "outorgado" %}checked{% endif %}>Outorgado</label>
@@ -67,28 +93,28 @@
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group teq-order-3">
                     <label class="teq-label teq-checkbox-title{% if 'entidade' in values.invalid_fields %} teq-label-invalid{% endif %}" for="entidade">Entidade</label>
                     <input id="entidade" name="entidade" class="form-control teq-control{% if 'entidade' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.entidade }}" required>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group teq-order-4">
                     <label class="teq-label teq-checkbox-title" for="contato">Contato</label>
                     <input id="contato" name="contato" class="form-control teq-control" type="text" value="{{ values.contato }}">
                 </div>
 
-                <div class="form-group teq-search">
+                <div class="form-group teq-search teq-order-5">
                     <label class="teq-label teq-checkbox-title{% if 'local' in values.invalid_fields %} teq-label-invalid{% endif %}" for="local">Local</label>
                     <input id="local" name="local" class="form-control teq-control{% if 'local' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.local }}" aria-describedby="btn-local" required>
                     <button id="btn-local" class="teq-search-btn" type="button" aria-label="Pesquisar local">⌕</button>
                 </div>
 
-                <div class="teq-checkbox-line">
+                <div class="teq-checkbox-line teq-order-7">
                     <span class="teq-checkbox-title">Equipamento Homologado</span>
                     <label class="teq-checkbox"><input name="equipamento_homologado" type="checkbox" {% if values.equipamento_homologado %}checked{% endif %}> </label>
                 </div>
 
-                <div class="teq-subpanel">
+                <div class="teq-subpanel teq-order-8">
                     <div class="teq-radio-row">
                         <label class="teq-radio-item"><input type="radio" name="permissao" value="permitido" {% if values.permissao == "permitido" %}checked{% endif %}>Permitido</label>
                         <label class="teq-radio-item"><input type="radio" name="permissao" value="todos" {% if values.permissao == "todos" %}checked{% endif %}>Permitido em todos</label>
@@ -96,7 +122,7 @@
                     </div>
                 </div>
 
-                <div class="teq-panel teq-profile-panel">
+                <div class="teq-panel teq-profile-panel teq-order-1">
                     <div class="teq-radio-row">
                         <label class="teq-radio-item"><input type="radio" name="perfil" value="pf" {% if values.perfil == "pf" %}checked{% endif %}>Pessoa Física</label>
                         <label class="teq-radio-item"><input type="radio" name="perfil" value="pj" {% if values.perfil == "pj" %}checked{% endif %}>Pessoa Jurídica</label>
@@ -106,7 +132,7 @@
             </div>
 
             <div class="teq-col">
-                <div class="teq-frequency-row">
+                <div class="teq-frequency-row teq-order-9">
                     <div class="form-group">
                         <label class="teq-label teq-checkbox-title{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
                         <input id="frequencia" name="frequencia_mhz" class="form-control teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="number" step="any" min="0" value="{{ values.frequencia_mhz }}">
@@ -135,7 +161,7 @@
                     </div>
                 </div>
 
-                <div class="form-group teq-frequency-list-group">
+                <div class="form-group teq-frequency-list-group teq-order-10">
                     <div class="teq-list-header">
                         <label class="teq-label teq-checkbox-title" for="frequencias">Frequências</label>
                         <div class="teq-list-actions" aria-label="Gerenciar frequências">
@@ -156,13 +182,13 @@
                     <div id="frequencia-consulta" class="teq-frequency-check" role="status" aria-live="polite"></div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group teq-order-2">
                     <label class="teq-label teq-checkbox-title{% if 'cpf_cnpj' in values.invalid_fields %} teq-label-invalid{% endif %}" for="cpfcnpj">CPF/CNPJ</label>
                     <input id="cpfcnpj" name="cpf_cnpj" class="form-control teq-control{% if 'cpf_cnpj' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="numeric" maxlength="18" value="{{ values.cpf_cnpj }}" aria-describedby="cpfcnpj-ajuda">
                     <small id="cpfcnpj-ajuda" class="teq-field-help">Informe um CPF ou CNPJ válido, se necessário.</small>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group teq-order-11">
                     <label class="teq-label teq-checkbox-title{% if 'tipo_equipamento' in values.invalid_fields %} teq-label-invalid{% endif %}" for="tipo-equipamento">Tipo do equipamento</label>
                     <div class="select-shell">
                     <select id="tipo-equipamento" name="tipo_equipamento" class="form-control teq-control{% if 'tipo_equipamento' in values.invalid_fields %} teq-invalid{% endif %}" required>
@@ -174,7 +200,7 @@
                     </div>
                 </div>
 
-                <div class="form-group teq-number-box">
+                <div class="form-group teq-number-box teq-order-12">
                     <label class="teq-label teq-checkbox-title{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-etiqueta">Número da etiqueta</label>
                     <input id="numero-etiqueta" name="numero_etiqueta" class="form-control teq-control{% if 'numero_etiqueta' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.numero_etiqueta }}" required>
                 </div>
@@ -194,5 +220,5 @@
         </div>
     </form>
 </div>
-<script src="/static/teste_etiquetagem.js?v=5"></script>
+<script src="/static/teste_etiquetagem.js?v=6"></script>
 {% endblock %}

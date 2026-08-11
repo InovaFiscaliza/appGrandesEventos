@@ -133,6 +133,8 @@ button.btn { font-family: inherit; }
 .historico-tabela th { background: #f1f3f6; color: #24466f; font-weight: 600; white-space: nowrap; }
 .historico-tabela tr:last-child td { border-bottom: 0; }
 .historico-vazio { margin: 0; padding: 1rem; color: #526273; background: #fff; border: 1px solid #dbe3ec; border-radius: 8px; }
+.historico-imagem { display: block; width: 72px; height: 54px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 4px; }
+.historico-imagem-nome { display: block; margin-top: .25rem; max-width: 180px; overflow-wrap: anywhere; font-size: .8rem; color: #526273; }
 .menu-voltar { align-items: flex-end; margin-left: auto; margin-right: 0; }
 .menu-voltar .btn-back { margin-left: 0; margin-right: 0; }
 .teq-actions .teq-btn-back { flex: 0 0 auto; margin-left: auto !important; }
@@ -583,16 +585,27 @@ body {
     accent-color: #30485b;
 }
 .teq-grid {
-    display: grid;
-    grid-template-columns: 1.08fr 0.92fr;
+    display: flex;
+    flex-direction: column;
     gap: 0.8rem;
     align-items: start;
 }
 .teq-col {
-    display: flex;
-    flex-direction: column;
-    gap: 0.55rem;
+    display: contents;
 }
+.teq-grid > .teq-col > * { width: 100%; order: 99; }
+.teq-grid > .teq-col > .teq-order-1 { order: 1; }
+.teq-grid > .teq-col > .teq-order-2 { order: 2; }
+.teq-grid > .teq-col > .teq-order-3 { order: 3; }
+.teq-grid > .teq-col > .teq-order-4 { order: 4; }
+.teq-grid > .teq-col > .teq-order-5 { order: 5; }
+.teq-grid > .teq-col > .teq-order-6 { order: 6; }
+.teq-grid > .teq-col > .teq-order-7 { order: 7; }
+.teq-grid > .teq-col > .teq-order-8 { order: 8; }
+.teq-grid > .teq-col > .teq-order-9 { order: 9; }
+.teq-grid > .teq-col > .teq-order-10 { order: 10; }
+.teq-grid > .teq-col > .teq-order-11 { order: 11; }
+.teq-grid > .teq-col > .teq-order-12 { order: 12; }
 .teq-field { position: relative; }
 .teq-label {
     display: block;
@@ -1156,6 +1169,113 @@ textarea { font-family: Arial, Helvetica, sans-serif; }
 .btn { width: max-content; }
 button.btn-submit { margin-left: auto; }
 
+.imagem-upload input[type="file"] {
+    width: 100%;
+    min-height: var(--btn-height, 2.5rem);
+    padding: .25rem;
+    border: 1px solid #b8c6d1;
+    border-radius: 3px;
+    background: #fff;
+    color: #405363;
+    font: inherit;
+}
+.imagem-upload input[type="file"]::file-selector-button {
+    min-height: 2.1rem;
+    margin-right: .6rem;
+    padding: .35rem .85rem;
+    border: 1px solid var(--blue-dark, #1d5f87);
+    border-radius: 3px;
+    background: linear-gradient(to bottom, var(--blue-dark, #1d5f87), var(--blue-light, #1688cb));
+    color: #fff;
+    cursor: pointer;
+    font: inherit;
+    font-weight: var(--font-semi-bold, 600);
+}
+.imagem-upload input[type="file"]::file-selector-button:hover {
+    background: #1d5f87;
+    border-color: #16a3b7;
+}
+.lista-imagens {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: .45rem 0 0;
+    padding: 0;
+    color: #405363;
+    font-size: .86rem;
+    list-style: none;
+}
+.imagem-preview-item img {
+    display: block;
+    width: 72px;
+    height: 56px;
+    object-fit: cover;
+    border: 1px solid #b8c6d1;
+    border-radius: 3px;
+    background: #f3f6f8;
+    cursor: zoom-in;
+}
+.imagem-preview-item {
+    position: relative;
+}
+.imagem-preview-excluir {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid #fff;
+    border-radius: 50%;
+    background: #fff;
+    color: #a62d2d;
+    cursor: pointer;
+    line-height: 20px;
+    font-size: .85rem;
+}
+.imagem-zoom-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(0, 0, 0, .78);
+}
+.imagem-zoom-modal.aberto {
+    display: flex;
+}
+.imagem-zoom-conteudo {
+    max-width: min(92vw, 1100px);
+    max-height: 90vh;
+    object-fit: contain;
+    border: 3px solid #fff;
+    border-radius: 4px;
+    background: #fff;
+}
+.imagem-zoom-fechar {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #fff;
+    border-radius: 50%;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+/* Formulários de entrada: campos sempre empilhados, inclusive em telas largas. */
+.form-cols,
+.teq-grid,
+.teq-frequency-row {
+    grid-template-columns: 1fr;
+}
+
 @media (max-width: 640px) {
     .btn-col {
         width: auto;
@@ -1459,6 +1579,33 @@ a.btn {
 .teq-table tbody tr { transition: background-color .12s ease; }
 .teq-table tbody tr:hover { background: #edf4fc; }
 .teq-table tbody tr:last-child td { border-bottom: 0; }
+.teq-edit-records-table {
+    width: max-content;
+    min-width: 1900px;
+    table-layout: auto;
+}
+.teq-edit-records-table th,
+.teq-edit-records-table td {
+    min-width: 7rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    line-height: 1.3;
+}
+.teq-edit-records-table th:first-child,
+.teq-edit-records-table td:first-child {
+    width: 3rem;
+    min-width: 3rem;
+    max-width: 3rem;
+}
+.teq-edit-records-table td {
+    vertical-align: top;
+}
+.teq-edit-records-table td:nth-child(5),
+.teq-edit-records-table td:nth-child(12),
+.teq-edit-records-table td:nth-child(16) {
+    min-width: 12rem;
+}
 .teq-row-actions {
     justify-content: flex-end;
     min-width: 12rem;

@@ -62,6 +62,20 @@ CREATE INDEX IF NOT EXISTS idx_ocorr_evento_situacao ON ocorrencias (evento_id, 
 CREATE INDEX IF NOT EXISTS idx_ocorr_frequencia      ON ocorrencias (evento_id, frequencia_mhz);
 CREATE INDEX IF NOT EXISTS idx_ocorr_busca_trgm      ON ocorrencias USING gin (observacoes gin_trgm_ops);
 
+-- Imagens anexadas às emissões/ocorrências.
+CREATE TABLE IF NOT EXISTS ocorrencia_imagens (
+    id              BIGSERIAL PRIMARY KEY,
+    ocorrencia_id   BIGINT NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    nome_arquivo    TEXT NOT NULL,
+    tipo_mime       TEXT NOT NULL,
+    tamanho_bytes   INTEGER NOT NULL,
+    conteudo        BYTEA NOT NULL,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ocorrencia_imagens_ocorrencia
+    ON ocorrencia_imagens (ocorrencia_id, id);
+
 -- Histórico de alterações das ocorrências para auditoria do sistema.
 CREATE TABLE IF NOT EXISTS auditoria_ocorrencias (
     id              BIGSERIAL PRIMARY KEY,

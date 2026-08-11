@@ -7,6 +7,7 @@
   const frequenciaConsulta = document.querySelector('#frequencia-consulta');
   const cpfCnpj = document.querySelector('#cpfcnpj');
   const cpfCnpjAjuda = document.querySelector('#cpfcnpj-ajuda');
+  const perfis = [...document.querySelectorAll('input[name="perfil"]')];
   const form = document.querySelector('.teq-form');
   const adicionar = document.querySelector('#adicionar-frequencia');
   const remover = document.querySelector('#remover-frequencia');
@@ -205,8 +206,29 @@
     }
   }
 
+  function atualizarCpfParaPerfil() {
+    const estrangeiro = perfis.find((radio) => radio.checked)?.value === 'estrangeiro';
+    cpfCnpj.disabled = estrangeiro;
+    cpfCnpj.setAttribute('aria-disabled', String(estrangeiro));
+    if (estrangeiro) {
+      cpfCnpj.value = '';
+      cpfCnpj.setCustomValidity('');
+      cpfCnpj.classList.remove('teq-valid', 'teq-invalid');
+      cpfCnpjAjuda.classList.remove('teq-valid', 'teq-invalid');
+      cpfCnpjAjuda.textContent = 'CPF/CNPJ não se aplica a estrangeiro.';
+    } else {
+      cpfCnpjAjuda.textContent = 'Informe um CPF ou CNPJ válido, se necessário.';
+      atualizarValidacaoCpfCnpj();
+    }
+  }
+
   cpfCnpj.addEventListener('input', atualizarValidacaoCpfCnpj);
-  atualizarValidacaoCpfCnpj();
+  form.addEventListener('change', (event) => {
+    if (event.target.matches('input[name="perfil"]')) {
+      atualizarCpfParaPerfil();
+    }
+  });
+  atualizarCpfParaPerfil();
 
   document.querySelector('#entidade')?.addEventListener('input', (event) => {
     limparErroSePreenchido('entidade', event.target.value.trim().length > 0);

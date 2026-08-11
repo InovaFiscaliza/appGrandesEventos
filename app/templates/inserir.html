@@ -7,7 +7,7 @@
 
 <div class="form-card inserir-form rf-entry-card font-semi-bold">
     <h5 class="teq-title">Inserir emissão</h5>
-    <form method="post" action="/inserir" id="form-inserir" class="rf-entry-form font-semi-bold">
+    <form method="post" action="/inserir" id="form-inserir" class="rf-entry-form font-semi-bold" enctype="multipart/form-data">
         <div id="offline-aviso-inserir" class="flash flash-error" style="display:none">
           ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
         </div>
@@ -95,6 +95,11 @@
             </select>
             </div>
         </div>
+        <div class="form-group imagem-upload">
+            <label for="imagens-inserir">Imagens da emissão</label>
+            <input id="imagens-inserir" name="imagens" type="file" accept=".jpeg,.jpg,.png,image/jpeg,image/png" multiple>
+            <ul id="lista-imagens-inserir" class="lista-imagens" aria-live="polite"></ul>
+        </div>
         <div class="inserir-acoes">
             <button type="submit" class="btn btn-submit font-semi-bold">Registrar Emissão</button>
             <a href="/menu" class="btn btn-back font-semi-bold">Voltar ao Menu</a>
@@ -109,4 +114,5 @@
 <script type="application/json" id="offline-inserir-data" data-store="{{ offline_store|default('fila_envio') }}">{{ offline_dados|tojson }}</script>
 {% endif %}
 <script src="/static/inserir.js"></script>
+<script src="/static/upload-imagens.js?v=2"></script>
 {% endblock %}

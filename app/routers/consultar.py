@@ -4,12 +4,15 @@ import logging
 
 import pandas as pd
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import UploadFile
 
 from app.services.postgres import (
     atualizar_campos_abordagem_por_id,
     atualizar_campos_na_aba_mae,
+    carregar_imagens_ocorrencia,
+    carregar_imagem_ocorrencia,
     carregar_pendencias_abordagem_pendentes,
     carregar_pendencias_painel_mapeadas,
     carregar_pendencias_todas_estacoes,
@@ -21,6 +24,41 @@ from app.config import IDENT_OPCOES, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+EXTENSOES_IMAGEM = {".jpeg", ".jpg", ".png"}
+TIPOS_IMAGEM = {"image/jpeg", "image/png"}
+TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
+
+
+async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
+    """Lê os anexos de imagem e valida extensão, MIME e tamanho."""
+    imagens = []
+    erros = []
+    for arquivo in form.getlist("imagens"):
+        if not isinstance(arquivo, UploadFile) or not getattr(
+            arquivo, "filename", None
+        ):
+            continue
+        nome = arquivo.filename
+        extensao = "." + nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
+        if extensao not in EXTENSOES_IMAGEM or arquivo.content_type not in TIPOS_IMAGEM:
+            erros.append(f"Imagem inválida: {nome}. Use JPEG, JPG ou PNG.")
+            continue
+        conteudo = await arquivo.read()
+        if not conteudo:
+            erros.append(f"Imagem vazia: {nome}.")
+            continue
+        if len(conteudo) > TAMANHO_MAXIMO_IMAGEM:
+            erros.append(f"Imagem muito grande: {nome}. Limite de 10 MB.")
+            continue
+        imagens.append(
+            {
+                "nome_arquivo": nome,
+                "tipo_mime": arquivo.content_type,
+                "tamanho_bytes": len(conteudo),
+                "conteudo": conteudo,
+            }
+        )
+    return imagens, erros
 
 
 def _ctx(request: Request, **kwargs):
@@ -123,6 +161,18 @@ async def get_historico_ocorrencia(request: Request, id: int | None = None):
     )
 
 
+@router.get("/consultar/historico/imagem/{imagem_id}")
+async def get_imagem_historico(request: Request, imagem_id: int, ocorrencia_id: int):
+    """Entrega uma imagem do histórico validando evento e ocorrência da sessão."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return Response(status_code=401)
+    imagem = carregar_imagem_ocorrencia(evento_id, ocorrencia_id, imagem_id)
+    if not imagem:
+        return Response(status_code=404)
+    return Response(content=bytes(imagem["conteudo"]), media_type=imagem["tipo_mime"])
+
+
 @router.post("/consultar/salvar")
 async def post_consultar_salvar(request: Request):
     sp_id = request.session.get("spreadsheet_id")
@@ -130,6 +180,12 @@ async def post_consultar_salvar(request: Request):
         return RedirectResponse("/", status_code=302)
 
     form = await request.form()
+    imagens, erros_imagens = await _ler_imagens(form)
+    imagens_excluir = [
+        int(valor)
+        for valor in form.get("imagens_excluir", "").split(",")
+        if valor.strip().isdigit()
+    ]
     fonte = form.get("fonte", "")
     id_val = form.get("id_val", "")
     estacao_raw = form.get("estacao_raw", "")
@@ -144,7 +200,7 @@ async def post_consultar_salvar(request: Request):
     situ_edit = form.get("situ_edit", "")
     acao = form.get("acao", "salvar")
 
-    erros = []
+    erros = list(erros_imagens)
     if not ident_edit:
         erros.append("Identificação")
     if ute_check and not proc_edit:
@@ -175,6 +231,8 @@ async def post_consultar_salvar(request: Request):
                 id_ocorrencia=id_val,
                 novos_valores=pac,
                 usuario_fiscal=USR_FISCAL_ANATEL,
+                imagens=imagens,
+                imagens_excluir=imagens_excluir,
             )
         elif fonte == "ESTACAO":
             res = atualizar_campos_na_aba_mae(
@@ -183,6 +241,8 @@ async def post_consultar_salvar(request: Request):
                 id_ocorrencia=id_val,
                 novos_valores=pac,
                 usuario_fiscal=USR_FISCAL_ANATEL,
+                imagens=imagens,
+                imagens_excluir=imagens_excluir,
             )
         else:
             res = atualizar_campos_abordagem_por_id(
@@ -190,6 +250,8 @@ async def post_consultar_salvar(request: Request):
                 id_h=id_val,
                 novos_valores=pac,
                 usuario_fiscal=USR_FISCAL_ANATEL,
+                imagens=imagens,
+                imagens_excluir=imagens_excluir,
             )
     except Exception as e:
         logging.error(f"Falha ao salvar edição (offline?): {e}")
@@ -268,6 +330,15 @@ async def api_pendencias(request: Request):
             }
         )
     return JSONResponse(records)
+
+
+@router.get("/api/ocorrencia-imagens")
+async def api_ocorrencia_imagens(request: Request, id: int):
+    """Retorna as imagens da ocorrência selecionada para exibição em miniatura."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    return JSONResponse(carregar_imagens_ocorrencia(evento_id, id))
 
 
 @router.post("/api/consultar-salvar")

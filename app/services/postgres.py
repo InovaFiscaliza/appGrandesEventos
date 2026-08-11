@@ -8,6 +8,7 @@ O parâmetro _client é ignorado (mantido apenas para compatibilidade de assinat
 O parâmetro spreadsheet_id é tratado como evento_id (inteiro).
 """
 
+import base64
 import logging
 from typing import Dict, List, Optional
 
@@ -32,6 +33,57 @@ class FrequenciaOcupadaError(Exception):
 def _escape_like(s: str) -> str:
     """Escapa caracteres especiais LIKE do PostgreSQL."""
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def carregar_imagens_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[dict]:
+    """Retorna imagens da ocorrência como data URLs para previews no navegador."""
+    with get_engine().connect() as conn:
+        registros = conn.execute(
+            text("""
+                SELECT oi.id, oi.nome_arquivo, oi.tipo_mime, oi.conteudo
+                FROM ocorrencia_imagens oi
+                JOIN ocorrencias o ON o.id = oi.ocorrencia_id
+                WHERE o.evento_id = :evento_id AND o.id = :ocorrencia_id
+                ORDER BY oi.id
+            """),
+            {"evento_id": evento_id, "ocorrencia_id": ocorrencia_id},
+        ).mappings()
+        return [
+            {
+                "id": registro["id"],
+                "nome_arquivo": registro["nome_arquivo"],
+                "url": (
+                    f"data:{registro['tipo_mime']};base64,"
+                    f"{base64.b64encode(bytes(registro['conteudo'])).decode('ascii')}"
+                ),
+            }
+            for registro in registros
+        ]
+
+
+def carregar_imagem_ocorrencia(evento_id=None, ocorrencia_id=None, imagem_id=None):
+    """Retorna o conteúdo de uma imagem somente dentro da ocorrência informada."""
+    with get_engine().connect() as conn:
+        registro = (
+            conn.execute(
+                text("""
+                SELECT oi.tipo_mime, oi.conteudo
+                FROM ocorrencia_imagens oi
+                JOIN ocorrencias o ON o.id = oi.ocorrencia_id
+                WHERE o.evento_id = :evento_id
+                  AND o.id = :imagem_id
+                  AND oi.ocorrencia_id = :ocorrencia_id
+            """),
+                {
+                    "evento_id": int(evento_id),
+                    "ocorrencia_id": int(ocorrencia_id),
+                    "imagem_id": int(imagem_id),
+                },
+            )
+            .mappings()
+            .first()
+        )
+    return registro
 
 
 # =========================================================================
@@ -768,8 +820,11 @@ def excluir_teste_etiquetagem(_client=None, evento_id=None, registro_id=None) ->
 
 
 def inserir_emissao_I_W(
-    _client=None, evento_id=None, dados_formulario: dict = None
-) -> bool:
+    _client=None,
+    evento_id=None,
+    dados_formulario: dict = None,
+    imagens: list[dict] | None = None,
+) -> int | bool:
     """Insere nova ocorrência (emissão) no banco."""
     if evento_id is None or dados_formulario is None:
         return False
@@ -789,7 +844,7 @@ def inserir_emissao_I_W(
             hora = hora.strftime("%H:%M")
 
         with get_engine().begin() as conn:
-            conn.execute(
+            resultado = conn.execute(
                 text("""
                     INSERT INTO ocorrencias
                         (evento_id, local_regiao, fiscal, data, hora,
@@ -802,7 +857,8 @@ def inserir_emissao_I_W(
                          :freq, :bw, :faixa,
                          :ident, :autz, :ute,
                          :proc, :obs,
-                         :inter, :situ, 'ABORDAGEM')
+                        :inter, :situ, 'ABORDAGEM')
+                    RETURNING id
                 """),
                 {
                     "ev": int(evento_id),
@@ -822,7 +878,24 @@ def inserir_emissao_I_W(
                     "situ": dados_formulario.get("Situação", "Pendente"),
                 },
             )
-        return True
+            ocorrencia_id = resultado.scalar_one()
+            for imagem in imagens or []:
+                conn.execute(
+                    text("""
+                        INSERT INTO ocorrencia_imagens
+                            (ocorrencia_id, nome_arquivo, tipo_mime,
+                             tamanho_bytes, conteudo)
+                        VALUES (:ocorrencia_id, :nome, :tipo, :tamanho, :conteudo)
+                    """),
+                    {
+                        "ocorrencia_id": ocorrencia_id,
+                        "nome": imagem["nome_arquivo"],
+                        "tipo": imagem["tipo_mime"],
+                        "tamanho": imagem["tamanho_bytes"],
+                        "conteudo": imagem["conteudo"],
+                    },
+                )
+        return ocorrencia_id
     except FrequenciaOcupadaError:
         raise
     except Exception as e:
@@ -880,6 +953,8 @@ def atualizar_campos_na_aba_mae(
     id_ocorrencia="",
     novos_valores: dict = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
+    imagens: list[dict] | None = None,
+    imagens_excluir: list[int] | None = None,
 ) -> str:
     """Atualiza campos de uma ocorrência (qualquer fonte)."""
     if evento_id is None or novos_valores is None:
@@ -942,17 +1017,104 @@ def atualizar_campos_na_aba_mae(
                         params[f"v_{col}"] = novo_valor
                         alteracoes.append((key, valor_atual, novo_valor))
 
-            if not updates:
+            if not updates and not imagens and not imagens_excluir:
                 return "Nada a atualizar."
 
-            sql = f"""
-                UPDATE ocorrencias
-                SET {', '.join(updates)}
-                WHERE evento_id = :ev AND id = :id
-            """
-            result = conn.execute(text(sql), params)
-            if result.rowcount == 0:
-                return f"ERRO: ID {id_ocorrencia} não encontrado no evento {evento_id}."
+            if updates:
+                sql = f"""
+                    UPDATE ocorrencias
+                    SET {', '.join(updates)}
+                    WHERE evento_id = :ev AND id = :id
+                """
+                result = conn.execute(text(sql), params)
+                if result.rowcount == 0:
+                    return f"ERRO: ID {id_ocorrencia} não encontrado no evento {evento_id}."
+
+            imagens_remover = []
+            if imagens_excluir:
+                imagens_remover = (
+                    conn.execute(
+                        text("""
+                            SELECT id, nome_arquivo
+                            FROM ocorrencia_imagens
+                            WHERE ocorrencia_id = :ocorrencia_id
+                              AND id = ANY(:imagem_ids)
+                        """),
+                        {
+                            "ocorrencia_id": int(id_ocorrencia),
+                            "imagem_ids": imagens_excluir,
+                        },
+                    )
+                    .mappings()
+                    .all()
+                )
+
+            for imagem in imagens or []:
+                conn.execute(
+                    text("""
+                        INSERT INTO ocorrencia_imagens
+                            (ocorrencia_id, nome_arquivo, tipo_mime,
+                             tamanho_bytes, conteudo)
+                        VALUES (:ocorrencia_id, :nome, :tipo, :tamanho, :conteudo)
+                    """),
+                    {
+                        "ocorrencia_id": int(id_ocorrencia),
+                        "nome": imagem["nome_arquivo"],
+                        "tipo": imagem["tipo_mime"],
+                        "tamanho": imagem["tamanho_bytes"],
+                        "conteudo": imagem["conteudo"],
+                    },
+                )
+
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Imagem anexada', NULL, :valor_novo
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(id_ocorrencia),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "valor_novo": imagem["nome_arquivo"],
+                    },
+                )
+
+            if imagens_excluir:
+                conn.execute(
+                    text("""
+                        DELETE FROM ocorrencia_imagens
+                        WHERE ocorrencia_id = :ocorrencia_id
+                          AND id = ANY(:imagem_ids)
+                    """),
+                    {
+                        "ocorrencia_id": int(id_ocorrencia),
+                        "imagem_ids": imagens_excluir,
+                    },
+                )
+
+                for imagem in imagens_remover:
+                    conn.execute(
+                        text("""
+                            INSERT INTO auditoria_ocorrencias (
+                                ocorrencia_id, evento_id, usuario_fiscal, campo,
+                                valor_anterior, valor_novo
+                            ) VALUES (
+                                :ocorrencia_id, :evento_id, :usuario_fiscal,
+                                'Imagem excluída', :valor_anterior, NULL
+                            )
+                        """),
+                        {
+                            "ocorrencia_id": int(id_ocorrencia),
+                            "evento_id": int(evento_id),
+                            "usuario_fiscal": usuario_fiscal,
+                            "valor_anterior": imagem["nome_arquivo"],
+                        },
+                    )
 
             for campo, valor_anterior, valor_novo in alteracoes:
                 conn.execute(
@@ -987,6 +1149,8 @@ def atualizar_campos_abordagem_por_id(
     id_h="",
     novos_valores: dict = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
+    imagens: list[dict] | None = None,
+    imagens_excluir: list[int] | None = None,
 ) -> str:
     """Atualiza campos de uma ocorrência da Abordagem (alias para atualizar_campos_na_aba_mae)."""
     return atualizar_campos_na_aba_mae(
@@ -996,6 +1160,8 @@ def atualizar_campos_abordagem_por_id(
         id_h,
         novos_valores,
         usuario_fiscal,
+        imagens,
+        imagens_excluir,
     )
 
 
@@ -1008,17 +1174,31 @@ def consultar_historico_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[d
             rows = (
                 conn.execute(
                     text("""
-                    SELECT
-                        usuario_fiscal,
-                        campo,
-                        valor_anterior,
-                        valor_novo,
-                        to_char(modificado_em AT TIME ZONE 'America/Sao_Paulo',
+                                        SELECT
+                                                auditoria.usuario_fiscal,
+                                                auditoria.campo,
+                                                auditoria.valor_anterior,
+                                                auditoria.valor_novo,
+                        CASE
+                                                        WHEN auditoria.campo = 'Imagem anexada' THEN imagem.id
+                        END AS imagem_id,
+                        imagem.tipo_mime AS imagem_tipo_mime,
+                        imagem.conteudo AS imagem_conteudo,
+                                                to_char(auditoria.modificado_em AT TIME ZONE 'America/Sao_Paulo',
                                 'DD/MM/YYYY HH24:MI:SS') AS modificado_em
-                    FROM auditoria_ocorrencias
-                    WHERE evento_id = :evento_id
-                      AND ocorrencia_id = :ocorrencia_id
-                    ORDER BY modificado_em DESC, id DESC
+                                        FROM auditoria_ocorrencias auditoria
+                                        LEFT JOIN LATERAL (
+                                                SELECT oi.id, oi.tipo_mime, oi.conteudo
+                                                FROM ocorrencia_imagens oi
+                                                WHERE oi.ocorrencia_id = auditoria.ocorrencia_id
+                                                    AND oi.nome_arquivo = auditoria.valor_novo
+                                                    AND auditoria.campo = 'Imagem anexada'
+                                                ORDER BY oi.id
+                                                LIMIT 1
+                                        ) imagem ON TRUE
+                                        WHERE auditoria.evento_id = :evento_id
+                                            AND auditoria.ocorrencia_id = :ocorrencia_id
+                                        ORDER BY auditoria.modificado_em DESC, auditoria.id DESC
                 """),
                     {
                         "evento_id": int(evento_id),
@@ -1028,7 +1208,18 @@ def consultar_historico_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[d
                 .mappings()
                 .all()
             )
-        return [dict(row) for row in rows]
+        historico = []
+        for row in rows:
+            registro = dict(row)
+            conteudo = registro.pop("imagem_conteudo", None)
+            tipo_mime = registro.pop("imagem_tipo_mime", None)
+            registro["imagem_url"] = (
+                f"data:{tipo_mime};base64,{base64.b64encode(bytes(conteudo)).decode('ascii')}"
+                if conteudo and tipo_mime
+                else None
+            )
+            historico.append(registro)
+        return historico
     except Exception as e:
         logger.error("Erro ao consultar histórico da ocorrência: %s", e, exc_info=True)
         return []

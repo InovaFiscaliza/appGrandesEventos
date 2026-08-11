@@ -24,7 +24,16 @@
                 <td>{{ registro.usuario_fiscal }}</td>
                 <td>{{ registro.campo }}</td>
                 <td>{{ registro.valor_anterior if registro.valor_anterior is not none else "(vazio)" }}</td>
-                <td>{{ registro.valor_novo if registro.valor_novo is not none else "(vazio)" }}</td>
+                <td>
+                    {% if registro.imagem_id %}
+                    <a href="{{ registro.imagem_url }}" target="_blank" rel="noopener" title="Abrir imagem anexada">
+                        <img class="historico-imagem" src="{{ registro.imagem_url }}" alt="{{ registro.valor_novo }}">
+                    </a>
+                    <span class="historico-imagem-nome">{{ registro.valor_novo }}</span>
+                    {% else %}
+                    {{ registro.valor_novo if registro.valor_novo is not none else "(vazio)" }}
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>

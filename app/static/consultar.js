@@ -37,8 +37,52 @@ function preencherForm(row) {
   setSelect("f-autz", row.autorizado || "");
   setSelect("f-interf", row.interferente || "");
   setSelect("f-situ", row.situacao || "");
+  document.getElementById("f-imagens-excluir").value = "";
+  carregarImagensOcorrencia(row.id);
   document.getElementById("bloco-form").style.display = "block";
   document.getElementById("consultar-voltar").style.display = "none";
+}
+
+async function carregarImagensOcorrencia(id) {
+  const lista = document.getElementById("lista-imagens-salvas");
+  if (!lista) return;
+  lista.replaceChildren();
+  try {
+    const resposta = await fetch(`/api/ocorrencia-imagens?id=${encodeURIComponent(id)}`);
+    if (!resposta.ok) throw new Error(`Falha HTTP ${resposta.status}`);
+    const imagens = await resposta.json();
+    imagens.forEach((imagem) => {
+      const item = document.createElement("li");
+      item.className = "imagem-preview-item";
+      const preview = document.createElement("img");
+      preview.src = imagem.url;
+      preview.alt = imagem.nome_arquivo;
+      preview.title = imagem.nome_arquivo;
+      preview.addEventListener("click", () => {
+        if (window.abrirZoomImagem) {
+          window.abrirZoomImagem(imagem.url, imagem.nome_arquivo);
+        }
+      });
+      item.appendChild(preview);
+      const excluir = document.createElement("button");
+      excluir.type = "button";
+      excluir.className = "imagem-preview-excluir";
+      excluir.setAttribute("aria-label", `Excluir ${imagem.nome_arquivo}`);
+      excluir.title = "Excluir imagem";
+      excluir.textContent = "🗑️";
+      excluir.addEventListener("click", () => {
+        const campo = document.getElementById("f-imagens-excluir");
+        const ids = campo.value ? campo.value.split(",") : [];
+        if (!ids.includes(String(imagem.id))) ids.push(String(imagem.id));
+        campo.value = ids.filter(Boolean).join(",");
+        item.remove();
+      });
+      item.appendChild(excluir);
+      lista.appendChild(item);
+    });
+  } catch (erro) {
+    console.warn("Não foi possível carregar as imagens da ocorrência:", erro);
+  }
 }
 
 function textoSeguro(valor) {
@@ -203,8 +247,11 @@ function extrairDadosEdicao() {
 document
   .getElementById("form-consultar")
   .addEventListener("submit", function (e) {
+    const possuiImagens = document.getElementById("imagens-edicao")?.files?.length > 0;
     // Offline real (placa desligada): enfileira direto, sem esperar timeout do servidor
-    if (window.APP_OFFLINE === true || !navigator.onLine) {
+    // Arquivos não podem ser serializados na fila JSON; com anexos, deixe o
+    // navegador enviar o multipart diretamente ao endpoint.
+    if ((window.APP_OFFLINE === true || !navigator.onLine) && !possuiImagens) {
       e.preventDefault();
       const dados = extrairDadosEdicao();
       AppOffline.enfileirar("fila_edicoes", dados)

@@ -39,11 +39,12 @@
 <div id="bloco-form" class="font-semi-bold" style="display:none">
 <h5 style="margin:0.75rem 0 0.5rem">Editar ocorrência</h5>
 <div class="form-card rf-entry-card font-semi-bold">
-    <form method="post" action="/consultar/salvar" id="form-consultar" class="rf-entry-form">
+    <form method="post" action="/consultar/salvar" id="form-consultar" class="rf-entry-form" enctype="multipart/form-data">
         <input type="hidden" name="row_key" id="f-row_key">
         <input type="hidden" name="fonte" id="f-fonte">
         <input type="hidden" name="id_val" id="f-id_val">
         <input type="hidden" name="estacao_raw" id="f-estacao_raw">
+        <input type="hidden" name="imagens_excluir" id="f-imagens-excluir">
 
         <div class="form-cols">
             <div class="form-group"><label>ID</label><input class="form-control" type="text" id="f-id" disabled></div>
@@ -115,6 +116,12 @@
             </select>
             </div>
         </div>
+        <div class="form-group imagem-upload">
+            <ul id="lista-imagens-salvas" class="lista-imagens" aria-live="polite"></ul>
+            <label for="imagens-edicao">Imagens da emissão</label>
+            <input id="imagens-edicao" name="imagens" type="file" accept=".jpeg,.jpg,.png,image/jpeg,image/png" multiple>
+            <ul id="lista-imagens-edicao" class="lista-imagens" aria-live="polite"></ul>
+        </div>
         <div class="btn-col consultar-acoes">
             <a href="/consultar" id="btn-consultar-historico" class="btn consultar-historico" aria-label="Consultar histórico de modificações">Consultar histórico de modificações</a>
             <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
@@ -134,6 +141,7 @@
 {% if offline_salvo %}
 <script type="application/json" id="offline-edicao-data">{{ offline_dados|tojson }}</script>
 {% endif %}
-<script src="/static/consultar.js?v=5"></script>
+<script src="/static/consultar.js?v=9"></script>
+<script src="/static/upload-imagens.js?v=1"></script>
 {% endblock %}
 

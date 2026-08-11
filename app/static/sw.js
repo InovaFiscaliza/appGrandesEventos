@@ -1,4 +1,4 @@
-const CACHE = "appEventos-v88";
+const CACHE = "appEventos-v96";
 const SHELL = [
   "/static/style.css",
   "/static/app.js",
@@ -14,6 +14,7 @@ const SHELL = [
   "/static/tabela_ute.js",
   "/static/selecao.js",
   "/static/teste_etiquetagem.js",
+  "/static/upload-imagens.js",
 ];
 
 // Instalação: pré-carrega os assets essenciais

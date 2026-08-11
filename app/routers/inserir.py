@@ -4,6 +4,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import UploadFile
 
 from app.services.postgres import (
     carregar_opcoes_identificacao,
@@ -21,6 +22,41 @@ from app.config import FAIXA_OPCOES, TITULO_PRINCIPAL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+EXTENSOES_IMAGEM = {".jpeg", ".jpg", ".png"}
+TIPOS_IMAGEM = {"image/jpeg", "image/png"}
+TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
+
+
+async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
+    """Lê os anexos de imagem e valida extensão, MIME e tamanho."""
+    imagens = []
+    erros = []
+    for arquivo in form.getlist("imagens"):
+        if not isinstance(arquivo, UploadFile) or not getattr(
+            arquivo, "filename", None
+        ):
+            continue
+        nome = arquivo.filename
+        extensao = "." + nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
+        if extensao not in EXTENSOES_IMAGEM or arquivo.content_type not in TIPOS_IMAGEM:
+            erros.append(f"Imagem inválida: {nome}. Use JPEG, JPG ou PNG.")
+            continue
+        conteudo = await arquivo.read()
+        if not conteudo:
+            erros.append(f"Imagem vazia: {nome}.")
+            continue
+        if len(conteudo) > TAMANHO_MAXIMO_IMAGEM:
+            erros.append(f"Imagem muito grande: {nome}. Limite de 10 MB.")
+            continue
+        imagens.append(
+            {
+                "nome_arquivo": nome,
+                "tipo_mime": arquivo.content_type,
+                "tamanho_bytes": len(conteudo),
+                "conteudo": conteudo,
+            }
+        )
+    return imagens, erros
 
 
 def _ctx(request: Request, **kwargs):
@@ -77,6 +113,7 @@ async def post_inserir(request: Request):
         return RedirectResponse("/", status_code=302)
 
     form = await request.form()
+    imagens, erros_imagens = await _ler_imagens(form)
     fiscal = form.get("fiscal", "").strip()
     local = form.get("local", "").strip()
     dia_str = form.get("dia", "")
@@ -93,7 +130,7 @@ async def post_inserir(request: Request):
 
     idents = carregar_opcoes_identificacao(evento_id=sp_id)
 
-    erros = []
+    erros = list(erros_imagens)
     if not fiscal:
         erros.append("Fiscal")
     try:
@@ -165,7 +202,9 @@ async def post_inserir(request: Request):
     }
 
     try:
-        ok = inserir_emissao_I_W(evento_id=sp_id, dados_formulario=dados_submit)
+        ok = inserir_emissao_I_W(
+            evento_id=sp_id, dados_formulario=dados_submit, imagens=imagens
+        )
     except FrequenciaOcupadaError as exc:
         return templates.TemplateResponse(
             request,
