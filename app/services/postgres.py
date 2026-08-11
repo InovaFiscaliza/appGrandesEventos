@@ -42,25 +42,29 @@ def _nome_imagem_emissao(
     extensao = ""
     if "." in nome_original:
         extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
-    return f"ID_{ocorrencia_id}_ID{foto_sequencia:02d}{extensao}"
+    return f"ID_{ocorrencia_id}_{foto_sequencia:02d}{extensao}"
 
 
 def _proxima_sequencia_imagem(conn, ocorrencia_id: int) -> int:
     """Obtém a próxima sequência sem reutilizar nomes já usados na emissão."""
-    resultado = conn.execute(
-        text("""
+    resultado = (
+        conn.execute(
+            text("""
             SELECT COUNT(*) AS quantidade,
                    COALESCE(MAX(
                        NULLIF(
-                           substring(nome_arquivo FROM '^ID_[0-9]+_ID([0-9]+)'),
+                           substring(nome_arquivo FROM '^ID_[0-9]+_([0-9]+)'),
                            ''
                        )::integer
                    ), 0) AS maior_sequencia
             FROM ocorrencia_imagens
             WHERE ocorrencia_id = :ocorrencia_id
         """),
-        {"ocorrencia_id": ocorrencia_id},
-    ).mappings().one()
+            {"ocorrencia_id": ocorrencia_id},
+        )
+        .mappings()
+        .one()
+    )
     return max(resultado["quantidade"], resultado["maior_sequencia"]) + 1
 
 
