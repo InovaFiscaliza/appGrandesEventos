@@ -36,36 +36,15 @@ def _escape_like(s: str) -> str:
 
 
 def _nome_imagem_emissao(
-    ocorrencia_id: int, foto_sequencia: int, nome_original: str
+    ocorrencia_id: int, data_emissao, hora_emissao, nome_original: str
 ) -> str:
-    """Gera um nome vinculando a foto à emissão e à sua sequência."""
+    """Gera um nome vinculando a foto à emissão, data, hora e minuto."""
     extensao = ""
     if "." in nome_original:
         extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
-    return f"ID_{ocorrencia_id}_{foto_sequencia:02d}{extensao}"
-
-
-def _proxima_sequencia_imagem(conn, ocorrencia_id: int) -> int:
-    """Obtém a próxima sequência sem reutilizar nomes já usados na emissão."""
-    resultado = (
-        conn.execute(
-            text("""
-            SELECT COUNT(*) AS quantidade,
-                   COALESCE(MAX(
-                       NULLIF(
-                           substring(nome_arquivo FROM '^ID_[0-9]+_([0-9]+)'),
-                           ''
-                       )::integer
-                   ), 0) AS maior_sequencia
-            FROM ocorrencia_imagens
-            WHERE ocorrencia_id = :ocorrencia_id
-        """),
-            {"ocorrencia_id": ocorrencia_id},
-        )
-        .mappings()
-        .one()
-    )
-    return max(resultado["quantidade"], resultado["maior_sequencia"]) + 1
+    data_texto = data_emissao.strftime("%Y%m%d") if hasattr(data_emissao, "strftime") else str(data_emissao).replace("-", "")
+    hora_texto = hora_emissao.strftime("%H%M") if hasattr(hora_emissao, "strftime") else str(hora_emissao).replace(":", "")[:4]
+    return f"ID_{ocorrencia_id}_{data_texto}_{hora_texto}{extensao}"
 
 
 def carregar_imagens_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[dict]:
@@ -912,7 +891,6 @@ def inserir_emissao_I_W(
                 },
             )
             ocorrencia_id = resultado.scalar_one()
-            foto_sequencia = _proxima_sequencia_imagem(conn, ocorrencia_id)
             for imagem in imagens or []:
                 conn.execute(
                     text("""
@@ -924,14 +902,13 @@ def inserir_emissao_I_W(
                     {
                         "ocorrencia_id": ocorrencia_id,
                         "nome": _nome_imagem_emissao(
-                            ocorrencia_id, foto_sequencia, imagem["nome_arquivo"]
+                            ocorrencia_id, dia, hora, imagem["nome_arquivo"]
                         ),
                         "tipo": imagem["tipo_mime"],
                         "tamanho": imagem["tamanho_bytes"],
                         "conteudo": imagem["conteudo"],
                     },
                 )
-                foto_sequencia += 1
         return ocorrencia_id
     except FrequenciaOcupadaError:
         raise
@@ -1086,10 +1063,13 @@ def atualizar_campos_na_aba_mae(
                     .all()
                 )
 
-            foto_sequencia = _proxima_sequencia_imagem(conn, int(id_ocorrencia))
+            emissao = conn.execute(
+                text("SELECT data, hora FROM ocorrencias WHERE evento_id = :ev AND id = :id"),
+                {"ev": int(evento_id), "id": int(id_ocorrencia)},
+            ).mappings().one()
             for imagem in imagens or []:
                 nome_imagem = _nome_imagem_emissao(
-                    int(id_ocorrencia), foto_sequencia, imagem["nome_arquivo"]
+                    int(id_ocorrencia), emissao["data"], emissao["hora"], imagem["nome_arquivo"]
                 )
                 conn.execute(
                     text("""
@@ -1106,8 +1086,6 @@ def atualizar_campos_na_aba_mae(
                         "conteudo": imagem["conteudo"],
                     },
                 )
-                foto_sequencia += 1
-
                 conn.execute(
                     text("""
                         INSERT INTO auditoria_ocorrencias (
