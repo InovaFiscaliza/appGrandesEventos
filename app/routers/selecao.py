@@ -15,7 +15,9 @@ async def get_selecao(request: Request):
     if request.session.get("spreadsheet_id"):
         return RedirectResponse("/menu", status_code=302)
 
-    eventos = buscar_planilhas()
+    eventos = getattr(request.state, "eventos", None)
+    if eventos is None:
+        eventos = buscar_planilhas()
 
     return templates.TemplateResponse(
         request,

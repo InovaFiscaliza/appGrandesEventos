@@ -33,7 +33,7 @@ def _get_database_url() -> str:
         if url:
             return url
     # 3. Fallback para desenvolvimento local
-    return "postgresql+psycopg://appeventos:appeventos@localhost:5432/appeventos"
+    return "postgresql+psycopg://appeventos:appeventos@127.0.0.1:5432/appeventos"
 
 
 _engine = create_engine(
@@ -41,6 +41,7 @@ _engine = create_engine(
     pool_pre_ping=True,  # verifica conexão antes de usar
     pool_size=5,
     max_overflow=10,
+    connect_args={"connect_timeout": 5},
     future=True,
 )
 

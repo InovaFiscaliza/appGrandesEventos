@@ -58,7 +58,11 @@ async def carregar_eventos_no_request(request: Request, call_next):
     inicio_requisicao = time.perf_counter()
     caminho = request.url.path
 
-    if caminho.startswith("/static/") or caminho == "/sw.js":
+    if (
+        caminho.startswith("/static/")
+        or caminho == "/sw.js"
+        or caminho.startswith("/api/")
+    ):
         resposta = await call_next(request)
         return resposta
 
