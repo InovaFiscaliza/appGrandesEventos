@@ -35,12 +35,33 @@ def _escape_like(s: str) -> str:
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def _nome_imagem_sequencial(imagem_id: int, nome_original: str) -> str:
-    """Gera um nome previsível usando o ID sequencial da imagem."""
+def _nome_imagem_emissao(
+    ocorrencia_id: int, foto_sequencia: int, nome_original: str
+) -> str:
+    """Gera um nome vinculando a foto à emissão e à sua sequência."""
     extensao = ""
     if "." in nome_original:
         extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
-    return f"ID{imagem_id:04d}{extensao}"
+    return f"ID_{ocorrencia_id}_ID{foto_sequencia:02d}{extensao}"
+
+
+def _proxima_sequencia_imagem(conn, ocorrencia_id: int) -> int:
+    """Obtém a próxima sequência sem reutilizar nomes já usados na emissão."""
+    resultado = conn.execute(
+        text("""
+            SELECT COUNT(*) AS quantidade,
+                   COALESCE(MAX(
+                       NULLIF(
+                           substring(nome_arquivo FROM '^ID_[0-9]+_ID([0-9]+)'),
+                           ''
+                       )::integer
+                   ), 0) AS maior_sequencia
+            FROM ocorrencia_imagens
+            WHERE ocorrencia_id = :ocorrencia_id
+        """),
+        {"ocorrencia_id": ocorrencia_id},
+    ).mappings().one()
+    return max(resultado["quantidade"], resultado["maior_sequencia"]) + 1
 
 
 def carregar_imagens_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[dict]:
@@ -887,30 +908,26 @@ def inserir_emissao_I_W(
                 },
             )
             ocorrencia_id = resultado.scalar_one()
+            foto_sequencia = _proxima_sequencia_imagem(conn, ocorrencia_id)
             for imagem in imagens or []:
-                imagem_id = conn.execute(
+                conn.execute(
                     text("""
                         INSERT INTO ocorrencia_imagens
                             (ocorrencia_id, nome_arquivo, tipo_mime,
                              tamanho_bytes, conteudo)
                         VALUES (:ocorrencia_id, :nome, :tipo, :tamanho, :conteudo)
-                        RETURNING id
                     """),
                     {
                         "ocorrencia_id": ocorrencia_id,
-                        "nome": _nome_imagem_sequencial(0, imagem["nome_arquivo"]),
+                        "nome": _nome_imagem_emissao(
+                            ocorrencia_id, foto_sequencia, imagem["nome_arquivo"]
+                        ),
                         "tipo": imagem["tipo_mime"],
                         "tamanho": imagem["tamanho_bytes"],
                         "conteudo": imagem["conteudo"],
                     },
-                ).scalar_one()
-                nome_imagem = _nome_imagem_sequencial(imagem_id, imagem["nome_arquivo"])
-                conn.execute(
-                    text(
-                        "UPDATE ocorrencia_imagens SET nome_arquivo = :nome WHERE id = :id"
-                    ),
-                    {"id": imagem_id, "nome": nome_imagem},
                 )
+                foto_sequencia += 1
         return ocorrencia_id
     except FrequenciaOcupadaError:
         raise
@@ -1065,30 +1082,27 @@ def atualizar_campos_na_aba_mae(
                     .all()
                 )
 
+            foto_sequencia = _proxima_sequencia_imagem(conn, int(id_ocorrencia))
             for imagem in imagens or []:
-                imagem_id = conn.execute(
+                nome_imagem = _nome_imagem_emissao(
+                    int(id_ocorrencia), foto_sequencia, imagem["nome_arquivo"]
+                )
+                conn.execute(
                     text("""
                         INSERT INTO ocorrencia_imagens
                             (ocorrencia_id, nome_arquivo, tipo_mime,
                              tamanho_bytes, conteudo)
                         VALUES (:ocorrencia_id, :nome, :tipo, :tamanho, :conteudo)
-                        RETURNING id
                     """),
                     {
                         "ocorrencia_id": int(id_ocorrencia),
-                        "nome": _nome_imagem_sequencial(0, imagem["nome_arquivo"]),
+                        "nome": nome_imagem,
                         "tipo": imagem["tipo_mime"],
                         "tamanho": imagem["tamanho_bytes"],
                         "conteudo": imagem["conteudo"],
                     },
-                ).scalar_one()
-                nome_imagem = _nome_imagem_sequencial(imagem_id, imagem["nome_arquivo"])
-                conn.execute(
-                    text(
-                        "UPDATE ocorrencia_imagens SET nome_arquivo = :nome WHERE id = :id"
-                    ),
-                    {"id": imagem_id, "nome": nome_imagem},
                 )
+                foto_sequencia += 1
 
                 conn.execute(
                     text("""
