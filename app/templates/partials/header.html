@@ -22,6 +22,10 @@
     <a href="/menu">Início</a>
     {% if caminho_atual == '/menu' %}
 
+    {% elif caminho_atual.startswith('/criar-evento') %}
+    <span aria-current="page">Gerenciar eventos</span>
+    {% elif caminho_atual.startswith('/estacoes') %}
+    <span aria-current="page">Cadastro de estações</span>
     {% elif caminho_atual.startswith('/inserir') %}
     <span aria-current="page">Inserir emissão</span>
     {% elif caminho_atual.startswith('/consultar/historico') %}
