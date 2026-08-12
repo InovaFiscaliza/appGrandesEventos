@@ -306,6 +306,12 @@ async def api_pendencias(request: Request):
         return JSONResponse([])
     records = []
     for _, row in df.iterrows():
+        id_ocorrencia = str(row.get("ID", ""))
+        imagens = []
+        if id_ocorrencia.isdigit():
+            imagens = carregar_imagens_ocorrencia(
+                evento_id=sp_id, ocorrencia_id=int(id_ocorrencia)
+            )[:2]
         records.append(
             {
                 "row_key": _make_row_key(row),
@@ -329,6 +335,7 @@ async def api_pendencias(request: Request):
                 "situacao": str(row.get("Situação", "")),
                 "estacao_raw": str(row.get("EstacaoRaw", "")),
                 "estacao_id": str(row.get("EstacaoID", "")),
+                "imagens": imagens,
             }
         )
     return JSONResponse(records)

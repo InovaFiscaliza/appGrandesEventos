@@ -191,6 +191,35 @@ ALTER TABLE testes_etiquetagem DROP COLUMN IF EXISTS faixa;
 CREATE INDEX IF NOT EXISTS idx_etiquetagem_evento_entidade
     ON testes_etiquetagem (evento_id, entidade);
 
+-- Imagens dos equipamentos registrados no teste de etiquetagem.
+CREATE TABLE IF NOT EXISTS teste_etiquetagem_imagens (
+    id                    BIGSERIAL PRIMARY KEY,
+    teste_etiquetagem_id  BIGINT NOT NULL REFERENCES testes_etiquetagem(id) ON DELETE CASCADE,
+    nome_arquivo          TEXT NOT NULL,
+    tipo_mime             TEXT NOT NULL,
+    tamanho_bytes         INTEGER NOT NULL,
+    conteudo              BYTEA NOT NULL,
+    criado_em             TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_teste_etiquetagem_imagens_teste
+    ON teste_etiquetagem_imagens (teste_etiquetagem_id, id);
+
+-- Auditoria das imagens anexadas aos equipamentos etiquetados.
+CREATE TABLE IF NOT EXISTS auditoria_testes_etiquetagem (
+    id                    BIGSERIAL PRIMARY KEY,
+    teste_etiquetagem_id  BIGINT NOT NULL REFERENCES testes_etiquetagem(id) ON DELETE CASCADE,
+    evento_id             BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    usuario_fiscal        TEXT NOT NULL,
+    campo                 TEXT NOT NULL,
+    valor_anterior        TEXT,
+    valor_novo            TEXT,
+    modificado_em         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_teste_etiquetagem_data
+    ON auditoria_testes_etiquetagem (teste_etiquetagem_id, modificado_em DESC);
+
 -- ============================================================
 -- Trigger para atualizar atualizado_em automaticamente
 -- ============================================================

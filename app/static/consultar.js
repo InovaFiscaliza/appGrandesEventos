@@ -135,6 +135,22 @@ function renderizarTabela(lista) {
       if (indice === 0) celula.className = "pendencia-id";
       tr.appendChild(celula);
     });
+    const fotos = document.createElement("td");
+    fotos.dataset.label = "Fotos";
+    (row.imagens || []).slice(0, 2).forEach((imagem) => {
+      const miniatura = document.createElement("img");
+      miniatura.className = "historico-imagem pendencia-imagem-miniatura";
+      miniatura.src = imagem.url;
+      miniatura.alt = imagem.nome_arquivo || "Foto da emissão";
+      miniatura.title = miniatura.alt;
+      miniatura.addEventListener("click", (evento) => {
+        evento.stopPropagation();
+        window.abrirZoomImagem?.(imagem.url, miniatura.alt);
+      });
+      fotos.appendChild(miniatura);
+    });
+    if (!fotos.childElementCount) fotos.textContent = "Sem foto";
+    tr.appendChild(fotos);
     tr.addEventListener("click", () => selecionarPendencia(row));
     tbody.appendChild(tr);
   });

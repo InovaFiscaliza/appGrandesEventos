@@ -3,10 +3,12 @@ import re
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from starlette.datastructures import UploadFile
 
 from app.config import TITULO_PRINCIPAL
 from app.services.postgres import (
     atualizar_teste_etiquetagem,
+    carregar_imagens_teste_etiquetagem,
     excluir_teste_etiquetagem,
     inserir_teste_etiquetagem,
     listar_testes_etiquetagem,
@@ -23,6 +25,9 @@ templates = Jinja2Templates(directory="app/templates")
 LICENCAS = {"ute", "outorgado", "nao_outorgado", "radiacao_restrita"}
 PERFIS = {"pf", "pj", "estrangeiro"}
 PERMISSOES = {"permitido", "todos", "nao"}
+EXTENSOES_IMAGEM = {".jpeg", ".jpg", ".png"}
+TIPOS_IMAGEM = {"image/jpeg", "image/png"}
+TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
 
 
 def _formatar_banda(valor: int) -> str:
@@ -76,8 +81,8 @@ def _validar_cpf_cnpj(documento: str) -> bool:
 
 
 def _frequencia_da_etiqueta(valor: str) -> float | None:
-    """Extrai a frequência numérica do texto exibido na lista."""
-    correspondencia = re.match(r"\s*([\d.,]+)\s+MHz\b", str(valor or ""))
+    """Extrai a frequência de etiquetas novas e de registros legados."""
+    correspondencia = re.match(r"\s*([\d.,]+)(?:\s+MHz\b|(?=\s|$))", str(valor or ""))
     if not correspondencia:
         return None
     try:
@@ -85,6 +90,38 @@ def _frequencia_da_etiqueta(valor: str) -> float | None:
     except ValueError:
         return None
     return frequencia if frequencia > 0 else None
+
+
+async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
+    """Lê e valida fotos anexadas ao equipamento."""
+    imagens = []
+    erros = []
+    for arquivo in form.getlist("imagens"):
+        if not isinstance(arquivo, UploadFile) or not getattr(
+            arquivo, "filename", None
+        ):
+            continue
+        nome = arquivo.filename
+        extensao = "." + nome.rsplit(".", 1)[-1].lower() if "." in nome else ""
+        if extensao not in EXTENSOES_IMAGEM or arquivo.content_type not in TIPOS_IMAGEM:
+            erros.append(f"Imagem inválida: {nome}. Use JPEG, JPG ou PNG.")
+            continue
+        conteudo = await arquivo.read()
+        if not conteudo:
+            erros.append(f"Imagem vazia: {nome}.")
+            continue
+        if len(conteudo) > TAMANHO_MAXIMO_IMAGEM:
+            erros.append(f"Imagem muito grande: {nome}. Limite de 10 MB.")
+            continue
+        imagens.append(
+            {
+                "nome_arquivo": nome,
+                "tipo_mime": arquivo.content_type,
+                "tamanho_bytes": len(conteudo),
+                "conteudo": conteudo,
+            }
+        )
+    return imagens, erros
 
 
 def _ctx(request: Request, **kwargs):
@@ -119,6 +156,9 @@ def _form_values(form) -> dict:
         "tipo_equipamento": form.get("tipo_equipamento", "").strip(),
         "numero_etiqueta": form.get("numero_etiqueta", "").strip(),
         "observacoes": form.get("observacoes", "").strip(),
+        "imagens": [],
+        "imagens_novas": [],
+        "imagens_excluir": [],
         "invalid_fields": [],
     }
 
@@ -187,6 +227,8 @@ async def get_teste_etiquetagem(
         "tipo_equipamento": "",
         "numero_etiqueta": "",
         "observacoes": "",
+        "imagens": [],
+        "imagens_excluir": [],
         "invalid_fields": [],
         "modo_consulta": consultar,
     }
@@ -195,6 +237,9 @@ async def get_teste_etiquetagem(
         if registro:
             values = _record_values(registro)
             values["registro_id"] = edit_id
+            values["imagens"] = carregar_imagens_teste_etiquetagem(
+                evento_id=sp_id, teste_id=edit_id
+            )
 
     return templates.TemplateResponse(
         request,
@@ -232,10 +277,19 @@ async def post_teste_etiquetagem(request: Request):
         return RedirectResponse("/", status_code=302)
 
     form = await request.form()
+    imagens, erros_imagens = await _ler_imagens(form)
     values = _form_values(form)
+    values["imagens_novas"] = imagens
+    values["imagens_excluir"] = [
+        int(valor) for valor in form.getlist("imagens_excluir") if str(valor).isdigit()
+    ]
     values["modo_consulta"] = bool(form.get("modo_consulta"))
     registro_id = form.get("registro_id")
-    erros = []
+    if registro_id and str(registro_id).isdigit():
+        values["imagens"] = carregar_imagens_teste_etiquetagem(
+            evento_id=evento_id, teste_id=registro_id
+        )
+    erros = list(erros_imagens)
     invalid_fields = []
 
     def adicionar_erro(mensagem: str, campo: str | None = None):
@@ -382,6 +436,7 @@ async def post_teste_etiquetagem(request: Request):
             )
 
     dados = values
+    dados["imagens"] = imagens
     if registro_id:
         resultado = atualizar_teste_etiquetagem(
             evento_id=evento_id, registro_id=registro_id, dados=dados

@@ -54,4 +54,5 @@ document.addEventListener("keydown", (evento) => {
 
   configurarUpload("imagens-inserir", "lista-imagens-inserir");
   configurarUpload("imagens-edicao", "lista-imagens-edicao");
+  configurarUpload("imagens-teste", "lista-imagens-teste");
 })();

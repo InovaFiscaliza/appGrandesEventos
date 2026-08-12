@@ -10,6 +10,7 @@ O parâmetro spreadsheet_id é tratado como evento_id (inteiro).
 
 import base64
 import logging
+import re
 from typing import Dict, List, Optional
 
 import pandas as pd
@@ -111,6 +112,46 @@ def carregar_imagem_ocorrencia(evento_id=None, ocorrencia_id=None, imagem_id=Non
             .first()
         )
     return registro
+
+
+def _nome_imagem_teste_etiquetagem(
+    teste_id: int, numero_etiqueta: str, imagem_id: int, nome_original: str
+) -> str:
+    """Gera um nome numerado e rastreável para a foto do equipamento."""
+    extensao = ""
+    if "." in nome_original:
+        extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
+    etiqueta = re.sub(r"[^A-Za-z0-9_-]+", "_", str(numero_etiqueta).strip())
+    return f"ETQ_{etiqueta}_ID_{teste_id}_FOTO_{imagem_id:02d}{extensao}"
+
+
+def carregar_imagens_teste_etiquetagem(evento_id=None, teste_id=None) -> list[dict]:
+    """Retorna as fotos de um equipamento como data URLs para o formulário."""
+    with get_engine().connect() as conn:
+        registros = conn.execute(
+            text("""
+                SELECT imagem.id, imagem.nome_arquivo, imagem.tipo_mime,
+                       imagem.conteudo
+                FROM teste_etiquetagem_imagens imagem
+                JOIN testes_etiquetagem teste
+                  ON teste.id = imagem.teste_etiquetagem_id
+                WHERE teste.evento_id = :evento_id
+                  AND teste.id = :teste_id
+                ORDER BY imagem.id
+            """),
+            {"evento_id": int(evento_id), "teste_id": int(teste_id)},
+        ).mappings()
+        return [
+            {
+                "id": registro["id"],
+                "nome_arquivo": registro["nome_arquivo"],
+                "url": (
+                    f"data:{registro['tipo_mime']};base64,"
+                    f"{base64.b64encode(bytes(registro['conteudo'])).decode('ascii')}"
+                ),
+            }
+            for registro in registros
+        ]
 
 
 # =========================================================================
@@ -802,13 +843,106 @@ def consultar_equipamentos_frequencia(
     return resultado
 
 
+def _salvar_imagens_teste_etiquetagem(
+    conn,
+    evento_id: int,
+    teste_id: int,
+    numero_etiqueta: str,
+    imagens: list[dict] | None = None,
+    imagens_excluir: list[int] | None = None,
+) -> None:
+    """Salva fotos do equipamento e registra anexos e exclusões na auditoria."""
+    if imagens_excluir:
+        removidas = (
+            conn.execute(
+                text("""
+                SELECT id, nome_arquivo
+                FROM teste_etiquetagem_imagens
+                WHERE teste_etiquetagem_id = :teste_id
+                  AND id = ANY(:imagem_ids)
+            """),
+                {"teste_id": teste_id, "imagem_ids": imagens_excluir},
+            )
+            .mappings()
+            .all()
+        )
+        conn.execute(
+            text("""
+                DELETE FROM teste_etiquetagem_imagens
+                WHERE teste_etiquetagem_id = :teste_id
+                  AND id = ANY(:imagem_ids)
+            """),
+            {"teste_id": teste_id, "imagem_ids": imagens_excluir},
+        )
+        for imagem in removidas:
+            conn.execute(
+                text("""
+                    INSERT INTO auditoria_testes_etiquetagem (
+                        teste_etiquetagem_id, evento_id, usuario_fiscal,
+                        campo, valor_anterior, valor_novo
+                    ) VALUES (:teste_id, :evento_id, :usuario_fiscal,
+                              'Imagem excluída', :nome, NULL)
+                """),
+                {
+                    "teste_id": teste_id,
+                    "evento_id": evento_id,
+                    "usuario_fiscal": USR_FISCAL_ANATEL,
+                    "nome": imagem["nome_arquivo"],
+                },
+            )
+
+    for imagem in imagens or []:
+        imagem_id = conn.execute(
+            text("""
+                INSERT INTO teste_etiquetagem_imagens
+                    (teste_etiquetagem_id, nome_arquivo, tipo_mime,
+                     tamanho_bytes, conteudo)
+                VALUES (:teste_id, :nome, :tipo, :tamanho, :conteudo)
+                RETURNING id
+            """),
+            {
+                "teste_id": teste_id,
+                "nome": imagem["nome_arquivo"],
+                "tipo": imagem["tipo_mime"],
+                "tamanho": imagem["tamanho_bytes"],
+                "conteudo": imagem["conteudo"],
+            },
+        ).scalar_one()
+        nome_imagem = _nome_imagem_teste_etiquetagem(
+            teste_id, numero_etiqueta, imagem_id, imagem["nome_arquivo"]
+        )
+        conn.execute(
+            text("""
+                UPDATE teste_etiquetagem_imagens
+                SET nome_arquivo = :nome
+                WHERE id = :imagem_id
+            """),
+            {"nome": nome_imagem, "imagem_id": imagem_id},
+        )
+        conn.execute(
+            text("""
+                INSERT INTO auditoria_testes_etiquetagem (
+                    teste_etiquetagem_id, evento_id, usuario_fiscal,
+                    campo, valor_anterior, valor_novo
+                ) VALUES (:teste_id, :evento_id, :usuario_fiscal,
+                          'Imagem anexada', NULL, :nome)
+            """),
+            {
+                "teste_id": teste_id,
+                "evento_id": evento_id,
+                "usuario_fiscal": USR_FISCAL_ANATEL,
+                "nome": nome_imagem,
+            },
+        )
+
+
 def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) -> str:
     """Insere um teste de etiquetagem vinculado ao evento selecionado."""
     if evento_id is None or dados is None:
         return "ERRO: parâmetros insuficientes."
     try:
         with get_engine().begin() as conn:
-            conn.execute(
+            resultado = conn.execute(
                 text("""
                     INSERT INTO testes_etiquetagem (
                         evento_id, licenca, perfil, entidade, contato, local,
@@ -822,6 +956,7 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
                         :homologado, :permissao, :frequencias,
                         :tipo_equipamento, :numero_etiqueta, :observacoes
                     )
+                    RETURNING id
                 """),
                 {
                     "ev": int(evento_id),
@@ -838,6 +973,14 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
                     "numero_etiqueta": dados["numero_etiqueta"],
                     "observacoes": dados.get("observacoes", ""),
                 },
+            )
+            teste_id = resultado.scalar_one()
+            _salvar_imagens_teste_etiquetagem(
+                conn,
+                int(evento_id),
+                teste_id,
+                dados["numero_etiqueta"],
+                dados.get("imagens"),
             )
         return "Teste de etiquetagem inserido com sucesso."
     except Exception as e:
@@ -870,7 +1013,12 @@ def listar_testes_etiquetagem(_client=None, evento_id=None) -> list[dict]:
                 .mappings()
                 .all()
             )
-        return [dict(row) for row in rows]
+        registros = [dict(row) for row in rows]
+        for registro in registros:
+            registro["imagens"] = carregar_imagens_teste_etiquetagem(
+                evento_id=evento_id, teste_id=registro["id"]
+            )
+        return registros
     except Exception as e:
         logger.error(f"Erro ao listar testes de etiquetagem: {e}", exc_info=True)
         return []
@@ -914,6 +1062,21 @@ def atualizar_teste_etiquetagem(
         return "ERRO: parâmetros insuficientes."
     try:
         with get_engine().begin() as conn:
+            atual = (
+                conn.execute(
+                    text("""
+                    SELECT numero_etiqueta
+                    FROM testes_etiquetagem
+                    WHERE id = :id AND evento_id = :ev
+                    FOR UPDATE
+                """),
+                    {"id": int(registro_id), "ev": int(evento_id)},
+                )
+                .mappings()
+                .first()
+            )
+            if atual is None:
+                return "ERRO: registro não encontrado."
             result = conn.execute(
                 text("""
                     UPDATE testes_etiquetagem
@@ -942,6 +1105,14 @@ def atualizar_teste_etiquetagem(
                     "numero_etiqueta": dados["numero_etiqueta"],
                     "observacoes": dados.get("observacoes", ""),
                 },
+            )
+            _salvar_imagens_teste_etiquetagem(
+                conn,
+                int(evento_id),
+                int(registro_id),
+                dados["numero_etiqueta"],
+                dados.get("imagens"),
+                dados.get("imagens_excluir"),
             )
         return (
             "Teste de etiquetagem atualizado com sucesso."

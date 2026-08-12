@@ -136,6 +136,7 @@ button.btn { font-family: inherit; }
 .historico-tabela tr:last-child td { border-bottom: 0; }
 .historico-vazio { margin: 0; padding: 1rem; color: #526273; background: #fff; border: 1px solid #dbe3ec; border-radius: 8px; }
 .historico-imagem { display: block; width: 72px; height: 54px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 4px; }
+.pendencia-imagem-miniatura { display: inline-block; width: 42px; height: 32px; margin-right: .25rem; vertical-align: middle; }
 .historico-imagem-nome { display: block; margin-top: .25rem; max-width: 180px; overflow-wrap: anywhere; font-size: .8rem; color: #526273; }
 .menu-voltar { align-items: flex-end; margin-left: auto; margin-right: 0; }
 .menu-voltar .btn-back { margin-left: 0; margin-right: 0; }
@@ -1232,6 +1233,9 @@ button.btn-submit { margin-left: auto; }
 .imagem-preview-item {
     position: relative;
 }
+.imagem-preview-nome {
+    font-size: 0.1em;
+}
 .imagem-preview-excluir {
     position: absolute;
     top: -6px;
@@ -1246,6 +1250,17 @@ button.btn-submit { margin-left: auto; }
     cursor: pointer;
     line-height: 20px;
     font-size: .85rem;
+}
+.imagem-preview-excluir:hover,
+.imagem-preview-excluir:focus-within {
+    background: #fff1f1;
+    border-color: #e5a3a3;
+    color: #8f1f1f;
+}
+.imagem-preview-excluir input:focus-visible + span {
+    outline: 2px solid #1688cb;
+    outline-offset: 2px;
+    border-radius: 3px;
 }
 .imagem-zoom-modal {
     position: fixed;

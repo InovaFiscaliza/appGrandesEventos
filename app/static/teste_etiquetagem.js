@@ -1,4 +1,16 @@
 (() => {
+  const imagensExcluir = document.querySelector('#imagens-teste-excluir');
+  document.querySelectorAll('.imagem-preview-excluir[data-imagem-id]').forEach((botao) => {
+    botao.addEventListener('click', () => {
+      const campo = document.createElement('input');
+      campo.type = 'hidden';
+      campo.name = 'imagens_excluir';
+      campo.value = botao.dataset.imagemId;
+      imagensExcluir?.appendChild(campo);
+      botao.closest('.imagem-preview-item')?.remove();
+    });
+  });
+
   const frequencia = document.querySelector('#frequencia');
   const passo = document.querySelector('#passo');
   const faixa = document.querySelector('#faixa');

@@ -29,6 +29,7 @@
                     <th scope="col">Largura (kHz)</th>
                     <th scope="col">Faixa envolvida</th>
                     <th scope="col">Situação</th>
+                    <th scope="col">Fotos</th>
                 </tr>
             </thead>
             <tbody id="pendencias-tbody"></tbody>
@@ -152,7 +153,7 @@
 {% if offline_salvo %}
 <script type="application/json" id="offline-edicao-data">{{ offline_dados|tojson }}</script>
 {% endif %}
-<script src="/static/consultar.js?v=12"></script>
+<script src="/static/consultar.js?v=13"></script>
 <script src="/static/upload-imagens.js?v=1"></script>
 {% endblock %}
 

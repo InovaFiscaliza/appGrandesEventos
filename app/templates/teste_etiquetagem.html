@@ -17,7 +17,7 @@
             <table class="teq-table teq-edit-records-table">
                 <colgroup>
                     <col class="teq-actions-col">
-                    <col span="15">
+                    <col span="16">
                 </colgroup>
                 <thead>
                     <tr>
@@ -36,6 +36,7 @@
                         <th>Frequências</th>
                         <th>Tipo do equipamento</th>
                         <th>Número da etiqueta</th>
+                        <th>Fotos</th>
                         <th>Observações</th>
                     </tr>
                 </thead>
@@ -65,6 +66,17 @@
                         <td data-label="Frequências">{{ (registro.frequencias_selecionadas or []) | join('; ') }}</td>
                         <td data-label="Tipo do equipamento">{{ registro.tipo_equipamento }}</td>
                         <td data-label="Número da etiqueta">{{ registro.numero_etiqueta }}</td>
+                        <td data-label="Fotos">
+                            {% if registro.imagens %}
+                            <div class="lista-imagens">
+                                {% for imagem in registro.imagens %}
+                                <img class="historico-imagem" src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span>Sem foto</span>
+                            {% endif %}
+                        </td>
                         <td data-label="Observações">{{ registro.observacoes }}</td>
                     </tr>
                     {% endfor %}
@@ -79,7 +91,7 @@
 
     {% if values.registro_id %}<div class="teq-editing-note">Editando registro #{{ values.registro_id }}</div>{% endif %}
 
-    <form class="teq-form rf-entry-form" method="post" action="/teste_etiquetagem" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
+    <form class="teq-form rf-entry-form" method="post" action="/teste_etiquetagem" enctype="multipart/form-data" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
         {% if modo_consulta %}<input type="hidden" name="modo_consulta" value="1">{% endif %}
         {% if values.registro_id %}<input type="hidden" name="registro_id" value="{{ values.registro_id }}">{% endif %}
         <div class="teq-grid">
@@ -212,6 +224,24 @@
             <textarea id="observacoes" name="observacoes" class="form-control teq-control teq-textarea" rows="4">{{ values.observacoes }}</textarea>
         </div>
 
+        <div class="form-group imagem-upload">
+            <label for="imagens-teste">Fotos do equipamento</label>
+            {% if values.imagens %}
+            <ul class="lista-imagens" aria-label="Fotos salvas do equipamento">
+                {% for imagem in values.imagens %}
+                <li class="imagem-preview-item imagem-salva-item">
+                    <img src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
+                    <button type="button" class="imagem-preview-excluir" data-imagem-id="{{ imagem.id }}" aria-label="Excluir {{ imagem.nome_arquivo }}" title="Excluir imagem">🗑️</button>
+                    <span class="imagem-preview-nome">ID: {{ imagem.id }} · {{ imagem.nome_arquivo }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <div id="imagens-teste-excluir"></div>
+            <input id="imagens-teste" name="imagens" type="file" accept=".jpeg,.jpg,.png,image/jpeg,image/png" multiple>
+            <ul id="lista-imagens-teste" class="lista-imagens" aria-live="polite"></ul>
+        </div>
+
         <div class="teq-actions">
             <a href="/teste_etiquetagem?consultar=1" class="btn teq-btn teq-btn-secondary">Consultar registros</a>
             <button class="btn teq-btn" type="submit">{% if values.registro_id %}Salvar alterações{% else %}Inserir teste{% endif %}</button>
@@ -220,5 +250,6 @@
         </div>
     </form>
 </div>
-<script src="/static/teste_etiquetagem.js?v=6"></script>
+<script src="/static/teste_etiquetagem.js?v=8"></script>
+<script src="/static/upload-imagens.js?v=2"></script>
 {% endblock %}
