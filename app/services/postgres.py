@@ -181,6 +181,9 @@ def criar_evento(
     acao_fiscalizacao: str | None = None,
     processo_sei: str | None = None,
     coordenador_responsavel: str | None = None,
+    periodo_inicio: str | None = None,
+    periodo_fim: str | None = None,
+    unidades_executantes: list[str] | None = None,
     observacoes: str | None = None,
     estacoes: list[str | dict] | None = None,
 ) -> int:
@@ -191,11 +194,11 @@ def criar_evento(
                 INSERT INTO eventos
                     (nome, latitude, longitude, fuso_horario, local,
                      acao_fiscalizacao, processo_sei, coordenador_responsavel,
-                     observacoes)
+                     periodo_inicio, periodo_fim, observacoes)
                 VALUES
                     (:nome, :latitude, :longitude, :fuso_horario, :local,
-                     :acao_fiscalizacao, :processo_sei, :coordenador_responsavel,
-                     :observacoes)
+                    :acao_fiscalizacao, :processo_sei, :coordenador_responsavel,
+                    :periodo_inicio, :periodo_fim, :observacoes)
                 RETURNING id
             """),
             {
@@ -207,6 +210,8 @@ def criar_evento(
                 "acao_fiscalizacao": acao_fiscalizacao,
                 "processo_sei": processo_sei,
                 "coordenador_responsavel": coordenador_responsavel,
+                "periodo_inicio": periodo_inicio,
+                "periodo_fim": periodo_fim,
                 "observacoes": observacoes,
             },
         ).scalar_one()
@@ -231,18 +236,83 @@ def criar_evento(
                     "local": dados.get("local"),
                 },
             )
+        for sigla in unidades_executantes or []:
+            conn.execute(
+                text("""
+                    INSERT INTO eventos_unidades_executantes (evento_id, unidade_sigla)
+                    VALUES (:evento_id, :unidade_sigla)
+                    ON CONFLICT DO NOTHING
+                """),
+                {"evento_id": evento_id, "unidade_sigla": sigla},
+            )
         return evento_id
 
 
-def listar_eventos_detalhes() -> list[dict]:
-    """Retorna os eventos cadastrados com seus dados de localização."""
+def listar_unidades_executantes() -> list[dict]:
+    """Retorna as GRs e UOs disponíveis para vincular a eventos."""
     with get_engine().connect() as conn:
         rows = conn.execute(text("""
-                  SELECT id, nome, latitude, longitude, fuso_horario, local,
+            SELECT sigla, nome
+            FROM unidades_executantes
+            ORDER BY CASE WHEN sigla LIKE 'GR%' THEN 0 ELSE 1 END, sigla
+        """)).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def listar_unidades_evento(evento_id: int) -> list[str]:
+    """Retorna as siglas das unidades executantes vinculadas ao evento."""
+    with get_engine().connect() as conn:
+        return list(
+            conn.execute(
+                text("""
+            SELECT unidade_sigla
+            FROM eventos_unidades_executantes
+            WHERE evento_id = :evento_id
+            ORDER BY unidade_sigla
+        """),
+                {"evento_id": int(evento_id)},
+            ).scalars()
+        )
+
+
+def atualizar_unidades_evento(evento_id: int, unidades: list[str]) -> None:
+    """Substitui as unidades executantes vinculadas ao evento."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text(
+                "DELETE FROM eventos_unidades_executantes WHERE evento_id = :evento_id"
+            ),
+            {"evento_id": int(evento_id)},
+        )
+        for sigla in unidades:
+            conn.execute(
+                text("""
+                INSERT INTO eventos_unidades_executantes (evento_id, unidade_sigla)
+                VALUES (:evento_id, :unidade_sigla)
+            """),
+                {"evento_id": int(evento_id), "unidade_sigla": sigla},
+            )
+
+
+def listar_eventos_detalhes() -> list[dict]:
+    """Retorna os eventos cadastrados com seus dados e vínculos resumidos."""
+    with get_engine().connect() as conn:
+        rows = conn.execute(text("""
+                  SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.local,
                       acao_fiscalizacao, processo_sei, coordenador_responsavel,
-                      observacoes
-                FROM eventos
-                ORDER BY nome
+                      periodo_inicio, periodo_fim, observacoes,
+                      COALESCE((
+                          SELECT string_agg(eu.unidade_sigla, ', ' ORDER BY eu.unidade_sigla)
+                          FROM eventos_unidades_executantes eu
+                          WHERE eu.evento_id = e.id
+                      ), '') AS unidades_executantes,
+                      COALESCE((
+                          SELECT string_agg(est.nome, ', ' ORDER BY est.nome)
+                          FROM estacoes est
+                          WHERE est.evento_id = e.id
+                      ), '') AS estacoes
+                  FROM eventos e
+                ORDER BY e.nome
             """)).mappings().all()
     return [dict(row) for row in rows]
 
@@ -255,7 +325,7 @@ def obter_evento(evento_id: int) -> dict | None:
                 text("""
                   SELECT id, nome, latitude, longitude, fuso_horario, local,
                       acao_fiscalizacao, processo_sei, coordenador_responsavel,
-                      observacoes
+                      periodo_inicio, periodo_fim, observacoes
                 FROM eventos
                 WHERE id = :id
             """),
@@ -348,6 +418,9 @@ def atualizar_evento(
     acao_fiscalizacao: str | None = None,
     processo_sei: str | None = None,
     coordenador_responsavel: str | None = None,
+    periodo_inicio: str | None = None,
+    periodo_fim: str | None = None,
+    unidades_executantes: list[str] | None = None,
     observacoes: str | None = None,
 ) -> None:
     """Atualiza o nome e a localização de um evento."""
@@ -362,6 +435,8 @@ def atualizar_evento(
                     acao_fiscalizacao = :acao_fiscalizacao,
                     processo_sei = :processo_sei,
                     coordenador_responsavel = :coordenador_responsavel,
+                    periodo_inicio = :periodo_inicio,
+                    periodo_fim = :periodo_fim,
                     observacoes = :observacoes
                 WHERE id = :id
             """),
@@ -374,6 +449,8 @@ def atualizar_evento(
                 "acao_fiscalizacao": acao_fiscalizacao,
                 "processo_sei": processo_sei,
                 "coordenador_responsavel": coordenador_responsavel,
+                "periodo_inicio": periodo_inicio,
+                "periodo_fim": periodo_fim,
                 "observacoes": observacoes,
             },
         )

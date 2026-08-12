@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -9,6 +11,9 @@ from app.services.postgres import (
     listar_estacoes_evento,
     listar_eventos_detalhes,
     obter_evento,
+    atualizar_unidades_evento,
+    listar_unidades_evento,
+    listar_unidades_executantes,
 )
 from app.utils.formatters import _img_b64
 from app.config import TITULO_PRINCIPAL
@@ -36,6 +41,7 @@ async def get_criar_evento(request: Request):
     if editar_id and editar_id.isdigit():
         evento = obter_evento(int(editar_id))
         if evento:
+            evento["unidades_executantes"] = listar_unidades_evento(int(editar_id))
             estacoes = listar_estacoes_evento(int(editar_id))
     if editar_id and evento is None:
         request.session["flash_error"] = "Evento não encontrado."
@@ -49,6 +55,7 @@ async def get_criar_evento(request: Request):
             evento=evento,
             estacoes=estacoes,
             eventos=listar_eventos_detalhes(),
+            unidades_executantes=listar_unidades_executantes(),
             flash_error=request.session.pop("flash_error", None),
         ),
     )
@@ -62,6 +69,9 @@ async def post_criar_evento(request: Request):
     acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
     processo_sei = str(form.get("processo_sei", "")).strip()
     coordenador_responsavel = str(form.get("coordenador_responsavel", "")).strip()
+    periodo_inicio = str(form.get("periodo_inicio", "")).strip()
+    periodo_fim = str(form.get("periodo_fim", "")).strip()
+    unidades_executantes = form.getlist("unidades_executantes")
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -76,6 +86,10 @@ async def post_criar_evento(request: Request):
             raise ValueError
         if longitude is not None and not -180 <= longitude <= 180:
             raise ValueError
+        inicio = date.fromisoformat(periodo_inicio) if periodo_inicio else None
+        fim = date.fromisoformat(periodo_fim) if periodo_fim else None
+        if inicio and fim and fim < inicio:
+            raise ValueError
         evento_id = criar_evento(
             nome=nome,
             latitude=latitude,
@@ -84,10 +98,15 @@ async def post_criar_evento(request: Request):
             acao_fiscalizacao=acao_fiscalizacao or None,
             processo_sei=processo_sei or None,
             coordenador_responsavel=coordenador_responsavel or None,
+            periodo_inicio=periodo_inicio or None,
+            periodo_fim=periodo_fim or None,
+            unidades_executantes=unidades_executantes,
             observacoes=observacoes or None,
         )
     except ValueError:
-        request.session["flash_error"] = "Latitude ou longitude inválida."
+        request.session["flash_error"] = (
+            "Informe um período válido (o fim não pode ser anterior ao início)."
+        )
         return RedirectResponse("/criar-evento", status_code=303)
     except IntegrityError:
         request.session["flash_error"] = "Já existe um evento com esse nome."
@@ -107,6 +126,9 @@ async def post_editar_evento(request: Request, evento_id: int):
     acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
     processo_sei = str(form.get("processo_sei", "")).strip()
     coordenador_responsavel = str(form.get("coordenador_responsavel", "")).strip()
+    periodo_inicio = str(form.get("periodo_inicio", "")).strip()
+    periodo_fim = str(form.get("periodo_fim", "")).strip()
+    unidades_executantes = form.getlist("unidades_executantes")
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -122,19 +144,28 @@ async def post_editar_evento(request: Request, evento_id: int):
             raise ValueError
         if longitude is not None and not -180 <= longitude <= 180:
             raise ValueError
+        inicio = date.fromisoformat(periodo_inicio) if periodo_inicio else None
+        fim = date.fromisoformat(periodo_fim) if periodo_fim else None
+        if inicio and fim and fim < inicio:
+            raise ValueError
         atualizar_evento(
-            evento_id,
-            nome,
-            latitude,
-            longitude,
-            local or None,
-            acao_fiscalizacao or None,
-            processo_sei or None,
-            coordenador_responsavel or None,
-            observacoes or None,
+            evento_id=evento_id,
+            nome=nome,
+            latitude=latitude,
+            longitude=longitude,
+            local=local or None,
+            acao_fiscalizacao=acao_fiscalizacao or None,
+            processo_sei=processo_sei or None,
+            coordenador_responsavel=coordenador_responsavel or None,
+            periodo_inicio=periodo_inicio or None,
+            periodo_fim=periodo_fim or None,
+            observacoes=observacoes or None,
         )
+        atualizar_unidades_evento(evento_id, unidades_executantes)
     except ValueError:
-        request.session["flash_error"] = "Latitude ou longitude inválida."
+        request.session["flash_error"] = (
+            "Informe um período válido (o fim não pode ser anterior ao início)."
+        )
         return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
     except IntegrityError:
         request.session["flash_error"] = "Já existe um evento com esse nome."

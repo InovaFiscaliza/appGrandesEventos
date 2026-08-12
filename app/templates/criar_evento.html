@@ -11,7 +11,7 @@
     <div class="table-scroll">
         <table class="ute-table">
             <thead>
-                <tr><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Local</th><th>Ação de Fiscalização</th><th>Processo SEI</th><th>Coordenador Responsável</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
+                <tr><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Local</th><th>Ação de Fiscalização</th><th>Unidades Executantes</th><th>Estações</th><th>Processo SEI</th><th>Coordenador Responsável</th><th>Período</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
             </thead>
             <tbody>
                 {% for item in eventos %}
@@ -21,8 +21,11 @@
                     <td>{{ item.longitude or "-" }}</td>
                     <td>{{ item.local or "-" }}</td>
                     <td>{{ item.acao_fiscalizacao or "-" }}</td>
+                    <td>{{ item.unidades_executantes or "-" }}</td>
+                    <td>{{ item.estacoes or "-" }}</td>
                     <td>{{ item.processo_sei or "-" }}</td>
                     <td>{{ item.coordenador_responsavel or "-" }}</td>
+                    <td>{{ item.periodo_inicio.strftime('%d/%m/%Y') if item.periodo_inicio else '-' }}{% if item.periodo_fim %} a {{ item.periodo_fim.strftime('%d/%m/%Y') }}{% endif %}</td>
                     <td>{{ item.observacoes or "-" }}</td>
                     <td class="evento-acao"><a class="btn" href="/criar-evento?editar={{ item.id }}">Editar</a></td>
                 </tr>
@@ -59,12 +62,34 @@
             <input class="form-control" id="acao-fiscalizacao-evento" type="text" name="acao_fiscalizacao" value="{{ evento.acao_fiscalizacao if evento and evento.acao_fiscalizacao else '' }}">
         </div>
         <div class="form-group">
+            <span class="form-label">Unidades Executantes</span>
+            <div class="unidades-checkboxes" id="unidades-executantes-evento">
+                {% for unidade in unidades_executantes %}
+                <label class="unidade-checkbox">
+                    <input type="checkbox" name="unidades_executantes" value="{{ unidade.sigla }}"{% if evento and unidade.sigla in evento.unidades_executantes %} checked{% endif %}>
+                    <span class="unidade-checkbox-mark" aria-hidden="true"></span>
+                    <span>{{ unidade.sigla }} - {{ unidade.nome }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="form-group">
             <label for="processo-sei-evento">Processo SEI</label>
             <input class="form-control" id="processo-sei-evento" type="text" name="processo_sei" value="{{ evento.processo_sei if evento and evento.processo_sei else '' }}">
         </div>
         <div class="form-group">
             <label for="coordenador-evento">Coordenador Responsável</label>
             <input class="form-control" id="coordenador-evento" type="text" name="coordenador_responsavel" value="{{ evento.coordenador_responsavel if evento and evento.coordenador_responsavel else '' }}">
+        </div>
+        <div class="form-cols">
+            <div class="form-group">
+                <label for="periodo-inicio-evento">Período de realização: início</label>
+                <input class="form-control" id="periodo-inicio-evento" type="date" name="periodo_inicio" value="{{ evento.periodo_inicio if evento and evento.periodo_inicio else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="periodo-fim-evento">Período de realização: fim</label>
+                <input class="form-control" id="periodo-fim-evento" type="date" name="periodo_fim" value="{{ evento.periodo_fim if evento and evento.periodo_fim else '' }}">
+            </div>
         </div>
         <div class="form-group">
             <label for="observacoes-evento">Observações</label>

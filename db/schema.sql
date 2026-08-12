@@ -21,8 +21,21 @@ CREATE TABLE IF NOT EXISTS eventos (
     acao_fiscalizacao TEXT,
     processo_sei    TEXT,
     coordenador_responsavel TEXT,
+    periodo_inicio  DATE,
+    periodo_fim     DATE,
     observacoes     TEXT,
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS unidades_executantes (
+    sigla TEXT PRIMARY KEY,
+    nome TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS eventos_unidades_executantes (
+    evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    unidade_sigla TEXT NOT NULL REFERENCES unidades_executantes(sigla),
+    PRIMARY KEY (evento_id, unidade_sigla)
 );
 
 -- Estações (substitui "abas de estação")
