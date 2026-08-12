@@ -902,6 +902,47 @@ select[multiple] { min-height: 100px; }
     details summary { padding: 0.75rem; }
     details > .details-body { padding: 0.65rem; }
     .readonly-field { overflow-wrap: anywhere; }
+
+    /* A consulta de etiquetagem permanece tabular no celular para facilitar a leitura. */
+    .teq-edit-records .teq-table-wrap {
+        overflow-x: auto;
+        overflow-y: auto;
+    }
+    .teq-edit-records-table,
+    .teq-edit-records-table tbody,
+    .teq-edit-records-table tr,
+    .teq-edit-records-table td {
+        display: table-cell;
+        width: auto;
+    }
+    .teq-edit-records-table {
+        display: table;
+        min-width: 1200px;
+        font-size: .78rem;
+    }
+    .teq-edit-records-table tbody { display: table-row-group; }
+    .teq-edit-records-table tr { display: table-row; }
+    .teq-edit-records-table thead { display: table-header-group; }
+    .teq-edit-records-table th,
+    .teq-edit-records-table td {
+        display: table-cell;
+        padding: .45rem .5rem;
+        white-space: normal;
+    }
+    .teq-edit-records-table td::before { content: none; }
+    .teq-edit-records-table th:first-child,
+    .teq-edit-records-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        min-width: 3rem;
+        width: 3rem;
+        background: #fff;
+    }
+    .teq-edit-records-table th:first-child {
+        background: #f1f3f6;
+        z-index: 3;
+    }
 }
 
 /* ---- RF.Fusion controls ---- */

@@ -45,5 +45,5 @@ MODELOS_EQUIPAMENTO = [
     "Miaer",
     "UMS300",
     "ETM",
-    "ERM",
+    "ERMx",
 ]

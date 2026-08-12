@@ -5,8 +5,36 @@
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 
+<section class="form-card font-semi-bold">
+    <h5 class="teq-title">Eventos existentes</h5>
+    {% if eventos %}
+    <div class="table-scroll">
+        <table class="ute-table">
+            <thead>
+                <tr><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Local</th><th>Ação de Fiscalização</th><th>Processo SEI</th><th>Coordenador Responsável</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
+            </thead>
+            <tbody>
+                {% for item in eventos %}
+                <tr>
+                    <td>{{ item.nome }}</td>
+                    <td>{{ item.latitude or "-" }}</td>
+                    <td>{{ item.longitude or "-" }}</td>
+                    <td>{{ item.local or "-" }}</td>
+                    <td>{{ item.acao_fiscalizacao or "-" }}</td>
+                    <td>{{ item.processo_sei or "-" }}</td>
+                    <td>{{ item.coordenador_responsavel or "-" }}</td>
+                    <td>{{ item.observacoes or "-" }}</td>
+                    <td class="evento-acao"><a class="btn" href="/criar-evento?editar={{ item.id }}">Editar</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p>Nenhum evento cadastrado.</p>{% endif %}
+</section>
+
 <div class="form-card rf-entry-card font-semi-bold">
-    <h5 class="teq-title">{{ "Editar Evento" if evento else "Criar Evento" }}</h5>
+    <h5 class="teq-title">Gerenciar Eventos</h5>
     <form method="post" action="{{ "/criar-evento/" ~ evento.id ~ "/editar" if evento else "/criar-evento" }}" class="rf-entry-form">
         <div class="form-group">
             <label for="nome-evento">Nome do evento <span class="required">*</span></label>
@@ -21,6 +49,22 @@
                 <label for="longitude-evento">Longitude</label>
                 <input class="form-control" id="longitude-evento" type="number" name="longitude" value="{{ evento.longitude if evento and evento.longitude is not none else '' }}" step="any" min="-180" max="180">
             </div>
+        </div>
+        <div class="form-group">
+            <label for="local-evento">Local</label>
+            <input class="form-control" id="local-evento" type="text" name="local" value="{{ evento.local if evento and evento.local else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="acao-fiscalizacao-evento">Ação de Fiscalização</label>
+            <input class="form-control" id="acao-fiscalizacao-evento" type="text" name="acao_fiscalizacao" value="{{ evento.acao_fiscalizacao if evento and evento.acao_fiscalizacao else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="processo-sei-evento">Processo SEI</label>
+            <input class="form-control" id="processo-sei-evento" type="text" name="processo_sei" value="{{ evento.processo_sei if evento and evento.processo_sei else '' }}">
+        </div>
+        <div class="form-group">
+            <label for="coordenador-evento">Coordenador Responsável</label>
+            <input class="form-control" id="coordenador-evento" type="text" name="coordenador_responsavel" value="{{ evento.coordenador_responsavel if evento and evento.coordenador_responsavel else '' }}">
         </div>
         <div class="form-group">
             <label for="observacoes-evento">Observações</label>
@@ -51,27 +95,4 @@
 </section>
 {% endif %}
 
-<section class="form-card font-semi-bold">
-    <h5 class="teq-title">Eventos existentes</h5>
-    {% if eventos %}
-    <div class="table-scroll">
-        <table class="ute-table">
-            <thead>
-                <tr><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
-            </thead>
-            <tbody>
-                {% for item in eventos %}
-                <tr>
-                    <td>{{ item.nome }}</td>
-                    <td>{{ item.latitude or "-" }}</td>
-                    <td>{{ item.longitude or "-" }}</td>
-                    <td>{{ item.observacoes or "-" }}</td>
-                    <td class="evento-acao"><a class="btn" href="/criar-evento?editar={{ item.id }}">Editar</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}<p>Nenhum evento cadastrado.</p>{% endif %}
-</section>
 {% endblock %}

@@ -14,10 +14,13 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE IF NOT EXISTS eventos (
     id              BIGSERIAL PRIMARY KEY,
     nome            TEXT NOT NULL UNIQUE,
-    legacy_sheet_id TEXT,
     latitude        NUMERIC(9,6),
     longitude       NUMERIC(9,6),
     fuso_horario    TEXT DEFAULT 'America/Sao_Paulo',
+    local           TEXT,
+    acao_fiscalizacao TEXT,
+    processo_sei    TEXT,
+    coordenador_responsavel TEXT,
     observacoes     TEXT,
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
 );

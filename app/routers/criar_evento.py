@@ -58,6 +58,10 @@ async def get_criar_evento(request: Request):
 async def post_criar_evento(request: Request):
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
+    local = str(form.get("local", "")).strip()
+    acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
+    processo_sei = str(form.get("processo_sei", "")).strip()
+    coordenador_responsavel = str(form.get("coordenador_responsavel", "")).strip()
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -76,6 +80,10 @@ async def post_criar_evento(request: Request):
             nome=nome,
             latitude=latitude,
             longitude=longitude,
+            local=local or None,
+            acao_fiscalizacao=acao_fiscalizacao or None,
+            processo_sei=processo_sei or None,
+            coordenador_responsavel=coordenador_responsavel or None,
             observacoes=observacoes or None,
         )
     except ValueError:
@@ -95,6 +103,10 @@ async def post_criar_evento(request: Request):
 async def post_editar_evento(request: Request, evento_id: int):
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
+    local = str(form.get("local", "")).strip()
+    acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
+    processo_sei = str(form.get("processo_sei", "")).strip()
+    coordenador_responsavel = str(form.get("coordenador_responsavel", "")).strip()
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -110,7 +122,17 @@ async def post_editar_evento(request: Request, evento_id: int):
             raise ValueError
         if longitude is not None and not -180 <= longitude <= 180:
             raise ValueError
-        atualizar_evento(evento_id, nome, latitude, longitude, observacoes or None)
+        atualizar_evento(
+            evento_id,
+            nome,
+            latitude,
+            longitude,
+            local or None,
+            acao_fiscalizacao or None,
+            processo_sei or None,
+            coordenador_responsavel or None,
+            observacoes or None,
+        )
     except ValueError:
         request.session["flash_error"] = "Latitude ou longitude inválida."
         return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)

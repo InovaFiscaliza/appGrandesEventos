@@ -177,6 +177,10 @@ def criar_evento(
     latitude: float | None = None,
     longitude: float | None = None,
     fuso_horario: str = "America/Sao_Paulo",
+    local: str | None = None,
+    acao_fiscalizacao: str | None = None,
+    processo_sei: str | None = None,
+    coordenador_responsavel: str | None = None,
     observacoes: str | None = None,
     estacoes: list[str | dict] | None = None,
 ) -> int:
@@ -185,9 +189,13 @@ def criar_evento(
         evento_id = conn.execute(
             text("""
                 INSERT INTO eventos
-                    (nome, latitude, longitude, fuso_horario, observacoes)
+                    (nome, latitude, longitude, fuso_horario, local,
+                     acao_fiscalizacao, processo_sei, coordenador_responsavel,
+                     observacoes)
                 VALUES
-                    (:nome, :latitude, :longitude, :fuso_horario, :observacoes)
+                    (:nome, :latitude, :longitude, :fuso_horario, :local,
+                     :acao_fiscalizacao, :processo_sei, :coordenador_responsavel,
+                     :observacoes)
                 RETURNING id
             """),
             {
@@ -195,6 +203,10 @@ def criar_evento(
                 "latitude": latitude,
                 "longitude": longitude,
                 "fuso_horario": fuso_horario,
+                "local": local,
+                "acao_fiscalizacao": acao_fiscalizacao,
+                "processo_sei": processo_sei,
+                "coordenador_responsavel": coordenador_responsavel,
                 "observacoes": observacoes,
             },
         ).scalar_one()
@@ -226,7 +238,9 @@ def listar_eventos_detalhes() -> list[dict]:
     """Retorna os eventos cadastrados com seus dados de localização."""
     with get_engine().connect() as conn:
         rows = conn.execute(text("""
-                SELECT id, nome, latitude, longitude, fuso_horario, observacoes
+                  SELECT id, nome, latitude, longitude, fuso_horario, local,
+                      acao_fiscalizacao, processo_sei, coordenador_responsavel,
+                      observacoes
                 FROM eventos
                 ORDER BY nome
             """)).mappings().all()
@@ -239,7 +253,9 @@ def obter_evento(evento_id: int) -> dict | None:
         row = (
             conn.execute(
                 text("""
-                SELECT id, nome, latitude, longitude, fuso_horario, observacoes
+                  SELECT id, nome, latitude, longitude, fuso_horario, local,
+                      acao_fiscalizacao, processo_sei, coordenador_responsavel,
+                      observacoes
                 FROM eventos
                 WHERE id = :id
             """),
@@ -328,6 +344,10 @@ def atualizar_evento(
     nome: str,
     latitude: float | None = None,
     longitude: float | None = None,
+    local: str | None = None,
+    acao_fiscalizacao: str | None = None,
+    processo_sei: str | None = None,
+    coordenador_responsavel: str | None = None,
     observacoes: str | None = None,
 ) -> None:
     """Atualiza o nome e a localização de um evento."""
@@ -338,6 +358,10 @@ def atualizar_evento(
                 SET nome = :nome,
                     latitude = :latitude,
                     longitude = :longitude,
+                    local = :local,
+                    acao_fiscalizacao = :acao_fiscalizacao,
+                    processo_sei = :processo_sei,
+                    coordenador_responsavel = :coordenador_responsavel,
                     observacoes = :observacoes
                 WHERE id = :id
             """),
@@ -346,6 +370,10 @@ def atualizar_evento(
                 "nome": nome,
                 "latitude": latitude,
                 "longitude": longitude,
+                "local": local,
+                "acao_fiscalizacao": acao_fiscalizacao,
+                "processo_sei": processo_sei,
+                "coordenador_responsavel": coordenador_responsavel,
                 "observacoes": observacoes,
             },
         )
