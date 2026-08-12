@@ -10,6 +10,7 @@ from app.services.postgres import (
     carregar_opcoes_identificacao,
     FrequenciaOcupadaError,
     inserir_emissao_I_W,
+    listar_estacoes_evento,
     obter_fuso_horario_evento,
     verificar_frequencia_global,
 )
@@ -81,6 +82,7 @@ async def get_inserir(request: Request):
         return RedirectResponse("/", status_code=302)
 
     idents = carregar_opcoes_identificacao(evento_id=sp_id)
+    estacoes = listar_estacoes_evento(evento_id=sp_id)
     fuso = obter_fuso_horario_evento(evento_id=sp_id)
     agora = datetime.now(ZoneInfo(fuso))
 
@@ -98,6 +100,8 @@ async def get_inserir(request: Request):
             larg="",
             faixa="",
             ident="",
+            estacao_id="",
+            estacoes=estacoes,
             interferente="",
             ute=False,
             proc="",
@@ -125,6 +129,7 @@ async def post_inserir(request: Request):
     larg_str = form.get("larg", "")
     faixa = form.get("faixa", "")
     ident = form.get("ident", "")
+    estacao_id = form.get("estacao_id", "").strip()
     interferente = form.get("interferente", "")
     ute = bool(form.get("ute"))
     proc = form.get("proc", "").strip()
@@ -132,6 +137,7 @@ async def post_inserir(request: Request):
     situacao = form.get("situacao", "")
 
     idents = carregar_opcoes_identificacao(evento_id=sp_id)
+    estacoes = listar_estacoes_evento(evento_id=sp_id)
 
     erros = list(erros_imagens)
     if not fiscal:
@@ -142,6 +148,8 @@ async def post_inserir(request: Request):
         freq = 0.0
     if freq <= 0:
         erros.append("Frequência")
+    if estacao_id not in {"abordagem", *{str(estacao["id"]) for estacao in estacoes}}:
+        erros.append("Origem da captura")
     if not situacao:
         erros.append("Status")
     erros = list(dict.fromkeys(erros))
@@ -161,6 +169,8 @@ async def post_inserir(request: Request):
                 larg=larg_str,
                 faixa=faixa,
                 ident=ident,
+                estacao_id=estacao_id,
+                estacoes=estacoes,
                 interferente=interferente,
                 ute=ute,
                 proc=proc,
@@ -202,6 +212,7 @@ async def post_inserir(request: Request):
         "Situação": situacao,
         "Autorizado? (Q)": "Indefinido",
         "Interferente?": interferente,
+        "Estação ID": int(estacao_id) if estacao_id.isdigit() else None,
     }
 
     try:
@@ -223,6 +234,8 @@ async def post_inserir(request: Request):
                 larg=larg_str,
                 faixa=faixa,
                 ident=ident,
+                estacao_id=estacao_id,
+                estacoes=estacoes,
                 interferente=interferente,
                 ute=ute,
                 proc=proc,
@@ -255,6 +268,8 @@ async def post_inserir(request: Request):
             larg=larg_str,
             faixa=faixa,
             ident=ident,
+            estacao_id=estacao_id,
+            estacoes=estacoes,
             interferente=interferente,
             ute=ute,
             proc=proc,

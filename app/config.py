@@ -37,3 +37,11 @@ FAIXA_OPCOES = [
     "Satélite",
     "Radiação Restrita",
 ]
+
+MODELOS_EQUIPAMENTO = [
+    "Analisador de espectro",
+    "RFeye",
+    "Celplan",
+    "Miaer",
+    "UMS300",
+]

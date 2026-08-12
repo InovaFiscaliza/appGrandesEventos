@@ -20,6 +20,8 @@ from app.routers import (
     bsr_erb,
     busca,
     consultar,
+    criar_evento,
+    estacoes,
     inserir,
     menu,
     selecao,
@@ -105,6 +107,8 @@ app.include_router(selecao.router)
 app.include_router(menu.router)
 app.include_router(inserir.router)
 app.include_router(consultar.router)
+app.include_router(criar_evento.router)
+app.include_router(estacoes.router)
 app.include_router(bsr_erb.router)
 app.include_router(busca.router)
 app.include_router(tabela_ute.router)

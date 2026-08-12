@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+
+<div class="form-card rf-entry-card font-semi-bold">
+    <h5 class="teq-title">{{ "Editar Evento" if evento else "Criar Evento" }}</h5>
+    <form method="post" action="{{ "/criar-evento/" ~ evento.id ~ "/editar" if evento else "/criar-evento" }}" class="rf-entry-form">
+        <div class="form-group">
+            <label for="nome-evento">Nome do evento <span class="required">*</span></label>
+            <input class="form-control" id="nome-evento" type="text" name="nome" value="{{ evento.nome if evento else '' }}" required autofocus>
+        </div>
+        <div class="form-cols">
+            <div class="form-group">
+                <label for="latitude-evento">Latitude</label>
+                <input class="form-control" id="latitude-evento" type="number" name="latitude" value="{{ evento.latitude if evento and evento.latitude is not none else '' }}" step="any" min="-90" max="90">
+            </div>
+            <div class="form-group">
+                <label for="longitude-evento">Longitude</label>
+                <input class="form-control" id="longitude-evento" type="number" name="longitude" value="{{ evento.longitude if evento and evento.longitude is not none else '' }}" step="any" min="-180" max="180">
+            </div>
+        </div>
+        {% if not evento %}
+        <div class="form-group">
+            <label for="estacoes-evento">Estações</label>
+            <textarea class="form-control" id="estacoes-evento" name="estacoes" rows="4"></textarea>
+        </div>
+        {% endif %}
+        <div class="inserir-acoes">
+            <button type="submit" class="btn btn-submit font-semi-bold">{{ "Salvar alterações" if evento else "Criar Evento" }}</button>
+            <a href="/menu" class="btn btn-back font-semi-bold">Voltar ao Menu</a>
+        </div>
+    </form>
+</div>
+
+{% if evento %}
+<section class="form-card font-semi-bold">
+    <h5 class="teq-title">Estações do evento</h5>
+    {% if estacoes %}
+    <div class="table-scroll">
+        <table class="ute-table estacoes-evento-table">
+            <thead><tr><th>Estação</th></tr></thead>
+            <tbody>
+                {% for estacao in estacoes %}
+                <tr><td>{{ estacao.nome }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p>Nenhuma estação cadastrada.</p>{% endif %}
+    <form method="post" action="/criar-evento/{{ evento.id }}/estacoes" class="rf-entry-form">
+        <div class="form-group">
+            <label for="nova-estacao">Adicionar estação</label>
+            <input class="form-control" id="nova-estacao" type="text" name="nome" placeholder="Ex.: RFeyeXXX">
+        </div>
+        <button type="submit" class="btn btn-submit font-semi-bold">Adicionar estação</button>
+    </form>
+</section>
+{% endif %}
+
+<section class="form-card font-semi-bold">
+    <h5 class="teq-title">Eventos existentes</h5>
+    {% if eventos %}
+    <div class="table-scroll">
+        <table class="ute-table">
+            <thead>
+                <tr><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Ação</th></tr>
+            </thead>
+            <tbody>
+                {% for item in eventos %}
+                <tr>
+                    <td>{{ item.nome }}</td>
+                    <td>{{ item.latitude or "-" }}</td>
+                    <td>{{ item.longitude or "-" }}</td>
+                    <td><a class="btn" href="/criar-evento?editar={{ item.id }}">Editar</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p>Nenhum evento cadastrado.</p>{% endif %}
+</section>
+{% endblock %}

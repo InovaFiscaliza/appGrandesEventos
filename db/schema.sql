@@ -26,6 +26,9 @@ CREATE TABLE IF NOT EXISTS estacoes (
     id          BIGSERIAL PRIMARY KEY,
     evento_id   BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     nome        TEXT NOT NULL,
+    modelo_equipamento TEXT,
+    local       TEXT,
+    cidade      TEXT,
     latitude    NUMERIC(9,6),
     longitude   NUMERIC(9,6),
     UNIQUE (evento_id, nome)

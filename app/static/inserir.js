@@ -76,6 +76,7 @@ AppOffline.interceptarSubmit(
     "Largura em kHz": fd.get("larg") || "",
     "Faixa de Frequência": fd.get("faixa") || "",
     "Identificação": fd.get("ident") || "",
+    "Estação ID": fd.get("estacao_id") || "",
     "Autorizado? (Q)": "",
     "UTE?": fd.get("ute") ? "1" : "",
     "Processo SEI ou Ato UTE": fd.get("proc") || "",

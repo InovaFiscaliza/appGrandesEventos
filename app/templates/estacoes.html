@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+<div class="form-card rf-entry-card font-semi-bold">
+    <h5 class="teq-title">Cadastro de Estações</h5>
+    <form method="get" action="/estacoes" class="rf-entry-form">
+        <div class="form-group">
+            <label for="evento-estacao">Evento <span class="required">*</span></label>
+            <div class="select-shell">
+                <select class="form-control" id="evento-estacao" name="evento_id" onchange="this.form.submit()" required>
+                    <option value="">Selecione um evento</option>
+                    {% for item in eventos %}
+                    <option value="{{ item.id }}" {% if item.id|string == evento_id %}selected{% endif %}>{{ item.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </form>
+
+    {% if evento_id %}
+    <form method="post" action="/estacoes" class="rf-entry-form">
+        <input type="hidden" name="evento_id" value="{{ evento_id }}">
+        <div class="form-group">
+            <label for="nome-estacao">Identificação da estação <span class="required">*</span></label>
+            <input class="form-control" id="nome-estacao" type="text" name="nome" placeholder="Ex.: RFeyeXXX" required>
+        </div>
+        <div class="form-group">
+            <label for="modelo-estacao">Analisador de espectro <span class="required">*</span></label>
+            <div class="select-shell">
+                <select class="form-control" id="modelo-estacao" name="modelo" required>
+                    <option value="">Selecione o modelo</option>
+                    {% for modelo in modelos %}<option value="{{ modelo }}">{{ modelo }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="local-estacao">Local <span class="required">*</span></label>
+            <input class="form-control" id="local-estacao" type="text" name="local" placeholder="Ex.: Estádio, Móvel, Centro, MAM" required>
+        </div>
+        <div class="form-group">
+            <label for="cidade-estacao">Cidade</label>
+            <input class="form-control" id="cidade-estacao" type="text" name="cidade" placeholder="Ex.: Brasília">
+        </div>
+        <button type="submit" class="btn btn-submit font-semi-bold">Cadastrar estação</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if evento_id %}
+<section class="form-card font-semi-bold">
+    <h5 class="teq-title">Estações cadastradas</h5>
+    {% if estacoes %}
+    <div class="table-scroll">
+        <table class="ute-table">
+            <thead><tr><th>Identificação</th><th>Modelo</th><th>Local</th><th>Cidade</th></tr></thead>
+            <tbody>{% for estacao in estacoes %}<tr><td>{{ estacao.nome }}</td><td>{{ estacao.modelo_equipamento or "-" }}</td><td>{{ estacao.local or "-" }}</td><td>{{ estacao.cidade or "-" }}</td></tr>{% endfor %}</tbody>
+        </table>
+    </div>
+    {% else %}<p>Nenhuma estação cadastrada para este evento.</p>{% endif %}
+</section>
+{% endif %}
+
+<a href="/menu" class="btn btn-back font-semi-bold">Voltar ao Menu</a>
+{% endblock %}

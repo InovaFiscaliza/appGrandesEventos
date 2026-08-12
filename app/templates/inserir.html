@@ -29,6 +29,19 @@
             <label>Local/Região</label>
             <input class="form-control" type="text" name="local" value="{{ local or '' }}">
         </div>
+        <div class="form-group">
+            <label>Captura realizada por <span class="required">*</span></label>
+            <div class="select-shell">
+            <select class="form-control" name="estacao_id" required>
+                <option value="">Selecione a origem da captura</option>
+                <option value="abordagem" {% if not estacao_id %}selected{% endif %}>Abordagem</option>
+                {% for estacao in estacoes %}
+                <option value="{{ estacao.id }}" {% if estacao.id|string == estacao_id|string %}selected{% endif %}>{{ estacao.nome }}{% if estacao.modelo_equipamento %} - {{ estacao.modelo_equipamento }}{% endif %}{% if estacao.local %} - {{ estacao.local }}{% endif %}{% if estacao.cidade %} ({{ estacao.cidade }}){% endif %}</option>
+                {% endfor %}
+            </select>
+            </div>
+            <small class="text-neutral-6">Escolha a estação quando a emissão for capturada por um analisador em campo.</small>
+        </div>
         <div class="form-cols">
             <div class="form-group">
                 <label>Frequência (MHz) <span class="required">*</span></label>

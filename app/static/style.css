@@ -207,6 +207,7 @@ button.btn { font-family: inherit; }
 .ute-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 0.85rem; }
 .ute-table th, .ute-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
 .ute-table th { background-color: #f2f2f2; color: #333; }
+.estacoes-evento-table th, .estacoes-evento-table td { text-align: left; }
 .copyable-cell { cursor: pointer; color: #14337b; font-weight: bold; }
 .copyable-cell:hover { text-decoration: underline; background-color: #f0f0f0; }
 .table-hint { text-align: center; font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }

@@ -131,6 +131,152 @@ def buscar_planilhas(_client=None) -> dict:
         return {}
 
 
+def criar_evento(
+    nome: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    fuso_horario: str = "America/Sao_Paulo",
+    estacoes: list[str | dict] | None = None,
+) -> int:
+    """Cria um evento, suas estações e retorna o identificador do evento."""
+    with get_engine().begin() as conn:
+        evento_id = conn.execute(
+            text("""
+                INSERT INTO eventos (nome, latitude, longitude, fuso_horario)
+                VALUES (:nome, :latitude, :longitude, :fuso_horario)
+                RETURNING id
+            """),
+            {
+                "nome": nome,
+                "latitude": latitude,
+                "longitude": longitude,
+                "fuso_horario": fuso_horario,
+            },
+        ).scalar_one()
+        nomes_inseridos = set()
+        for estacao in estacoes or []:
+            dados = {"nome": estacao} if isinstance(estacao, str) else estacao
+            nome_estacao = str(dados.get("nome", "")).strip()
+            if not nome_estacao or nome_estacao in nomes_inseridos:
+                continue
+            nomes_inseridos.add(nome_estacao)
+            conn.execute(
+                text("""
+                    INSERT INTO estacoes
+                        (evento_id, nome, modelo_equipamento, local, cidade)
+                    VALUES
+                        (:evento_id, :nome, :modelo, :local, :cidade)
+                """),
+                {
+                    "evento_id": evento_id,
+                    "nome": nome_estacao,
+                    "modelo": dados.get("modelo"),
+                    "local": dados.get("local"),
+                    "cidade": dados.get("cidade"),
+                },
+            )
+        return evento_id
+
+
+def listar_eventos_detalhes() -> list[dict]:
+    """Retorna os eventos cadastrados com seus dados de localização."""
+    with get_engine().connect() as conn:
+        rows = conn.execute(text("""
+                SELECT id, nome, latitude, longitude, fuso_horario
+                FROM eventos
+                ORDER BY nome
+            """)).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def obter_evento(evento_id: int) -> dict | None:
+    """Retorna um evento pelo identificador."""
+    with get_engine().connect() as conn:
+        row = (
+            conn.execute(
+                text("""
+                SELECT id, nome, latitude, longitude, fuso_horario
+                FROM eventos
+                WHERE id = :id
+            """),
+                {"id": int(evento_id)},
+            )
+            .mappings()
+            .first()
+        )
+    return dict(row) if row else None
+
+
+def listar_estacoes_evento(evento_id: int) -> list[dict]:
+    """Lista as estações vinculadas a um evento."""
+    with get_engine().connect() as conn:
+        rows = (
+            conn.execute(
+                text("""
+                  SELECT id, nome, modelo_equipamento, local, cidade,
+                      latitude, longitude
+                FROM estacoes
+                WHERE evento_id = :evento_id
+                ORDER BY nome
+            """),
+                {"evento_id": int(evento_id)},
+            )
+            .mappings()
+            .all()
+        )
+    return [dict(row) for row in rows]
+
+
+def criar_estacao(
+    evento_id: int,
+    nome: str,
+    modelo: str | None = None,
+    local: str | None = None,
+    cidade: str | None = None,
+) -> int:
+    """Adiciona uma estação a um evento e retorna seu identificador."""
+    with get_engine().begin() as conn:
+        return conn.execute(
+            text("""
+                INSERT INTO estacoes
+                    (evento_id, nome, modelo_equipamento, local, cidade)
+                VALUES
+                    (:evento_id, :nome, :modelo, :local, :cidade)
+                RETURNING id
+            """),
+            {
+                "evento_id": int(evento_id),
+                "nome": nome,
+                "modelo": modelo,
+                "local": local,
+                "cidade": cidade,
+            },
+        ).scalar_one()
+
+
+def atualizar_evento(
+    evento_id: int,
+    nome: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
+) -> None:
+    """Atualiza o nome e a localização de um evento."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                UPDATE eventos
+                SET nome = :nome, latitude = :latitude, longitude = :longitude
+                WHERE id = :id
+            """),
+            {
+                "id": int(evento_id),
+                "nome": nome,
+                "latitude": latitude,
+                "longitude": longitude,
+            },
+        )
+
+
 def listar_abas_estacoes(_client=None, evento_id=None) -> list:
     """Retorna lista de nomes de estações de um evento."""
     if evento_id is None:
@@ -877,21 +1023,22 @@ def inserir_emissao_I_W(
             resultado = conn.execute(
                 text("""
                     INSERT INTO ocorrencias
-                        (evento_id, local_regiao, fiscal, data, hora,
+                        (evento_id, estacao_id, local_regiao, fiscal, data, hora,
                          frequencia_mhz, largura_khz, faixa,
                          identificacao, autorizado, ute,
                          processo_sei_ute, observacoes,
                          interferente, situacao, fonte)
                     VALUES
-                        (:ev, :local, :fiscal, :data, :hora,
+                        (:ev, :estacao_id, :local, :fiscal, :data, :hora,
                          :freq, :bw, :faixa,
                          :ident, :autz, :ute,
                          :proc, :obs,
-                        :inter, :situ, 'ABORDAGEM')
+                        :inter, :situ, :fonte)
                     RETURNING id
                 """),
                 {
                     "ev": int(evento_id),
+                    "estacao_id": dados_formulario.get("Estação ID") or None,
                     "local": dados_formulario.get("Local/Região", "Abordagem"),
                     "fiscal": dados_formulario.get("Fiscal", ""),
                     "data": dia,
@@ -906,6 +1053,9 @@ def inserir_emissao_I_W(
                     "obs": f"{dados_formulario.get('Observações/Detalhes/Contatos', '')} - {dados_formulario.get('Responsável pela emissão', '')}",
                     "inter": dados_formulario.get("Interferente?", ""),
                     "situ": dados_formulario.get("Situação", "Pendente"),
+                    "fonte": (
+                        "ESTACAO" if dados_formulario.get("Estação ID") else "ABORDAGEM"
+                    ),
                 },
             )
             ocorrencia_id = resultado.scalar_one()
