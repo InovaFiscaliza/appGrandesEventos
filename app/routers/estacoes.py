@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from app.config import MODELOS_EQUIPAMENTO, TITULO_PRINCIPAL
 from app.services.postgres import (
     criar_estacao,
+    atualizar_estacao,
     listar_estacoes_evento,
     listar_eventos_detalhes,
 )
@@ -54,7 +55,6 @@ async def post_estacao(request: Request):
     nome = str(form.get("nome", "")).strip()
     modelo = str(form.get("modelo", "")).strip()
     local = str(form.get("local", "")).strip()
-    cidade = str(form.get("cidade", "")).strip()
 
     if not evento_id.isdigit() or not nome or not modelo or not local:
         request.session["flash_error"] = (
@@ -68,9 +68,38 @@ async def post_estacao(request: Request):
             nome=nome,
             modelo=modelo,
             local=local,
-            cidade=cidade or None,
         )
         request.session["flash_success"] = "Estação cadastrada com sucesso."
+    except IntegrityError:
+        request.session["flash_error"] = (
+            "Já existe uma estação com essa identificação no evento."
+        )
+    return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
+
+
+@router.post("/estacoes/{estacao_id}/editar")
+async def post_editar_estacao(request: Request, estacao_id: int):
+    form = await request.form()
+    evento_id = str(form.get("evento_id", "")).strip()
+    nome = str(form.get("nome", "")).strip()
+    modelo = str(form.get("modelo", "")).strip()
+    local = str(form.get("local", "")).strip()
+
+    if not evento_id.isdigit() or not nome:
+        request.session["flash_error"] = (
+            "Informe o evento e a identificação da estação."
+        )
+        return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
+
+    try:
+        atualizar_estacao(
+            evento_id=int(evento_id),
+            estacao_id=estacao_id,
+            nome=nome,
+            modelo=modelo,
+            local=local,
+        )
+        request.session["flash_success"] = "Estação atualizada com sucesso."
     except IntegrityError:
         request.session["flash_error"] = (
             "Já existe uma estação com essa identificação no evento."

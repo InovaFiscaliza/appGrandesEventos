@@ -29,7 +29,7 @@
             <input class="form-control" id="nome-estacao" type="text" name="nome" placeholder="Ex.: RFeyeXXX" required>
         </div>
         <div class="form-group">
-            <label for="modelo-estacao">Analisador de espectro <span class="required">*</span></label>
+            <label for="modelo-estacao">Modelo <span class="required">*</span></label>
             <div class="select-shell">
                 <select class="form-control" id="modelo-estacao" name="modelo" required>
                     <option value="">Selecione o modelo</option>
@@ -41,10 +41,6 @@
             <label for="local-estacao">Local <span class="required">*</span></label>
             <input class="form-control" id="local-estacao" type="text" name="local" placeholder="Ex.: Estádio, Móvel, Centro, MAM" required>
         </div>
-        <div class="form-group">
-            <label for="cidade-estacao">Cidade</label>
-            <input class="form-control" id="cidade-estacao" type="text" name="cidade" placeholder="Ex.: Brasília">
-        </div>
         <button type="submit" class="btn btn-submit font-semi-bold">Cadastrar estação</button>
     </form>
     {% endif %}
@@ -55,14 +51,25 @@
     <h5 class="teq-title">Estações cadastradas</h5>
     {% if estacoes %}
     <div class="table-scroll">
-        <table class="ute-table">
-            <thead><tr><th>Identificação</th><th>Modelo</th><th>Local</th><th>Cidade</th></tr></thead>
-            <tbody>{% for estacao in estacoes %}<tr><td>{{ estacao.nome }}</td><td>{{ estacao.modelo_equipamento or "-" }}</td><td>{{ estacao.local or "-" }}</td><td>{{ estacao.cidade or "-" }}</td></tr>{% endfor %}</tbody>
+        <table class="ute-table estacoes-evento-table">
+            <thead><tr><th>Identificação</th><th>Modelo</th><th>Local</th><th>Ação</th></tr></thead>
+            <tbody>
+            {% for estacao in estacoes %}
+            <tr>
+                <td><input class="form-control" type="text" name="nome" value="{{ estacao.nome }}" form="editar-estacao-{{ estacao.id }}" required></td>
+                <td><select class="form-control" name="modelo" form="editar-estacao-{{ estacao.id }}"><option value="">Selecione</option>{% for modelo in modelos %}<option value="{{ modelo }}" {% if modelo == estacao.modelo_equipamento %}selected{% endif %}>{{ modelo }}</option>{% endfor %}</select></td>
+                <td><input class="form-control" type="text" name="local" value="{{ estacao.local or '' }}" form="editar-estacao-{{ estacao.id }}"></td>
+                <td class="estacao-acao"><form id="editar-estacao-{{ estacao.id }}" method="post" action="/estacoes/{{ estacao.id }}/editar"><input type="hidden" name="evento_id" value="{{ evento_id }}"><button type="submit" class="btn btn-submit font-semi-bold">Editar</button></form></td>
+            </tr>
+            {% endfor %}
+            </tbody>
         </table>
     </div>
     {% else %}<p>Nenhuma estação cadastrada para este evento.</p>{% endif %}
 </section>
 {% endif %}
 
-<a href="/menu" class="btn btn-back font-semi-bold">Voltar ao Menu</a>
+<div class="estacoes-voltar">
+    <a href="/menu" class="btn btn-back font-semi-bold">Voltar ao Menu</a>
+</div>
 {% endblock %}

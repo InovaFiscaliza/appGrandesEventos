@@ -12,7 +12,7 @@ BTN_HEIGHT = "3.8em"
 BTN_GAP = "0px"
 # ============================================================
 
-ABAS_SISTEMA = ["PAINEL", "Abordagem", "Tabela UTE", "Escala", "LISTAS"]
+ABAS_SISTEMA = ["PAINEL", "Tabela UTE", "Escala", "LISTAS"]
 
 TITULO_PRINCIPAL = "AppEventos"
 OBRIG = ":red[**\\***]"
@@ -44,4 +44,6 @@ MODELOS_EQUIPAMENTO = [
     "Celplan",
     "Miaer",
     "UMS300",
+    "ETM",
+    "ERM",
 ]

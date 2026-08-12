@@ -77,6 +77,7 @@ def extrair_dados_edicao(form) -> Dict[str, str]:
         "fonte": form.get("fonte", ""),
         "id_val": form.get("id_val", ""),
         "estacao_raw": form.get("estacao_raw", ""),
+        "estacao_id": form.get("estacao_id", "").strip(),
         "row_key": form.get("row_key", ""),
         "Identificação": form.get("ident_edit", ""),
         "Autorizado?": form.get("autz_edit", ""),

@@ -48,13 +48,24 @@
 
         <div class="form-cols">
             <div class="form-group"><label>ID</label><input class="form-control" type="text" id="f-id" disabled></div>
-            <div class="form-group"><label>Estação utilizada</label><input class="form-control" type="text" id="f-local" disabled></div>
             <div class="form-group"><label>Fiscal</label><input class="form-control" type="text" id="f-fiscal" disabled></div>
             <div class="form-group"><label>Data da identificação</label><input class="form-control" type="text" id="f-data" disabled></div>
             <div class="form-group"><label>HH:mm</label><input class="form-control" type="text" id="f-hora" disabled></div>
             <div class="form-group"><label>Frequência (MHz)</label><input class="form-control" type="text" id="f-freq" disabled></div>
             <div class="form-group"><label>Largura (kHz)</label><input class="form-control" type="text" id="f-largura" disabled></div>
             <div class="form-group"><label>Faixa de Frequência Envolvida</label><input class="form-control" type="text" id="f-faixa" disabled></div>
+        </div>
+
+        <div class="form-group">
+            <label>Estação utilizada <span class="required">*</span></label>
+            <div class="select-shell">
+            <select class="form-control" name="estacao_id" id="f-estacao" required>
+                <option value="">Selecione a estação</option>
+                {% for estacao in estacoes %}
+                <option value="{{ estacao.id }}">{{ estacao.nome }}{% if estacao.modelo_equipamento %} - {{ estacao.modelo_equipamento }}{% endif %}{% if estacao.local %} - {{ estacao.local }}{% endif %}</option>
+                {% endfor %}
+            </select>
+            </div>
         </div>
 
         <div class="form-group">
@@ -141,7 +152,7 @@
 {% if offline_salvo %}
 <script type="application/json" id="offline-edicao-data">{{ offline_dados|tojson }}</script>
 {% endif %}
-<script src="/static/consultar.js?v=9"></script>
+<script src="/static/consultar.js?v=12"></script>
 <script src="/static/upload-imagens.js?v=1"></script>
 {% endblock %}
 

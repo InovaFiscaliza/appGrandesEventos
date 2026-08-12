@@ -19,8 +19,8 @@ function preencherForm(row) {
   document.getElementById("f-fonte").value = row.fonte || "";
   document.getElementById("f-id_val").value = row.id || "";
   document.getElementById("f-estacao_raw").value = row.estacao_raw || "";
+  setSelect("f-estacao", row.estacao_id || "");
   document.getElementById("f-id").value = row.id || "";
-  document.getElementById("f-local").value = row.local || "";
   document.getElementById("f-fiscal").value = row.fiscal || "";
   document.getElementById("f-data").value = row.data || "";
   document.getElementById("f-hora").value = row.hora || "";
@@ -123,6 +123,10 @@ function renderizarTabela(lista) {
     botao.className = "pendencia-expandir";
     botao.setAttribute("aria-label", `Abrir emissão ${textoSeguro(row.id)}`);
     botao.textContent = "+";
+    botao.addEventListener("click", (evento) => {
+      evento.stopPropagation();
+      selecionarPendencia(row);
+    });
     acao.appendChild(botao);
     tr.appendChild(acao);
     valores.forEach((valor, indice) => {
@@ -232,6 +236,7 @@ function extrairDadosEdicao() {
     fonte: g("f-fonte"),
     id_val: g("f-id_val"),
     estacao_raw: g("f-estacao_raw"),
+    estacao_id: g("f-estacao"),
     row_key: g("f-row_key"),
     "Identificação": g("f-ident"),
     "Autorizado?": g("f-autz"),

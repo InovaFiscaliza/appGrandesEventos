@@ -9,14 +9,13 @@ from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
 
 from app.services.postgres import (
-    atualizar_campos_abordagem_por_id,
     atualizar_campos_na_aba_mae,
     carregar_imagens_ocorrencia,
     carregar_imagem_ocorrencia,
-    carregar_pendencias_abordagem_pendentes,
     carregar_pendencias_painel_mapeadas,
     carregar_pendencias_todas_estacoes,
     consultar_historico_ocorrencia,
+    listar_estacoes_evento,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
@@ -81,7 +80,6 @@ def _load_pendencias(sp_id) -> pd.DataFrame:
         d
         for d in [
             carregar_pendencias_painel_mapeadas(evento_id=sp_id),
-            carregar_pendencias_abordagem_pendentes(evento_id=sp_id),
             carregar_pendencias_todas_estacoes(evento_id=sp_id),
         ]
         if d is not None and not d.empty
@@ -111,6 +109,7 @@ async def get_consultar(request: Request, key: str = ""):
         return RedirectResponse("/", status_code=302)
 
     df = _load_pendencias(sp_id)
+    estacoes = listar_estacoes_evento(evento_id=sp_id)
 
     pendencias = []
     selected_row = None
@@ -130,6 +129,7 @@ async def get_consultar(request: Request, key: str = ""):
             pendencias=pendencias,
             selected_key=key,
             selected_row=selected_row,
+            estacoes=estacoes,
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -201,6 +201,7 @@ async def post_consultar_salvar(request: Request):
     cient_edit = form.get("cient_edit", "").strip()
     interf_edit = form.get("interf_edit", "")
     situ_edit = form.get("situ_edit", "")
+    estacao_id = form.get("estacao_id", "").strip()
     acao = form.get("acao", "salvar")
 
     erros = list(erros_imagens)
@@ -208,6 +209,8 @@ async def post_consultar_salvar(request: Request):
         erros.append("Identificação")
     if ute_check and not proc_edit:
         erros.append("Processo SEI (UTE)")
+    if not estacao_id or not estacao_id.isdigit():
+        erros.append("Estação utilizada")
 
     if erros:
         request.session["flash_error"] = "Faltam dados: " + ", ".join(erros)
@@ -222,6 +225,7 @@ async def post_consultar_salvar(request: Request):
         "Alguém mais ciente?": cient_edit,
         "Interferente?": interf_edit,
         "Situação": situ_edit,
+        "Estação ID": estacao_id,
     }
 
     res = ""
@@ -248,14 +252,7 @@ async def post_consultar_salvar(request: Request):
                 imagens_excluir=imagens_excluir,
             )
         else:
-            res = atualizar_campos_abordagem_por_id(
-                evento_id=sp_id,
-                id_h=id_val,
-                novos_valores=pac,
-                usuario_fiscal=USR_FISCAL_ANATEL,
-                imagens=imagens,
-                imagens_excluir=imagens_excluir,
-            )
+            res = "ERRO: origem da ocorrência inválida."
     except Exception as e:
         logging.error(f"Falha ao salvar edição (offline?): {e}")
         falhou_conexao = True
@@ -271,6 +268,7 @@ async def post_consultar_salvar(request: Request):
                 pendencias=[],
                 selected_key=row_key,
                 selected_row=None,
+                estacoes=listar_estacoes_evento(evento_id=sp_id),
                 flash_success=None,
                 flash_error=None,
                 **preparar_offline_ctx(dados_json, "fila_edicoes"),
@@ -330,6 +328,7 @@ async def api_pendencias(request: Request):
                 "interferente": str(row.get("Interferente?", "")),
                 "situacao": str(row.get("Situação", "")),
                 "estacao_raw": str(row.get("EstacaoRaw", "")),
+                "estacao_id": str(row.get("EstacaoID", "")),
             }
         )
     return JSONResponse(records)
@@ -367,6 +366,7 @@ async def api_consultar_salvar(request: Request):
         "Alguém mais ciente?": dados.get("Alguém mais ciente?", ""),
         "Interferente?": dados.get("Interferente?", ""),
         "Situação": dados.get("Situação", ""),
+        "Estação ID": str(dados.get("estacao_id", "")),
     }
 
     if fonte == "PAINEL":
@@ -386,12 +386,7 @@ async def api_consultar_salvar(request: Request):
             usuario_fiscal=USR_FISCAL_ANATEL,
         )
     else:
-        res = atualizar_campos_abordagem_por_id(
-            evento_id=sp_id,
-            id_h=id_val,
-            novos_valores=pac,
-            usuario_fiscal=USR_FISCAL_ANATEL,
-        )
+        return JSONResponse({"erro": "Origem da ocorrência inválida."}, status_code=400)
 
     if res.startswith("ERRO") or res.startswith("Erro"):
         return JSONResponse({"erro": res}, status_code=500)

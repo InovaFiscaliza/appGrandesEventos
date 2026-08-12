@@ -148,8 +148,8 @@ async def post_inserir(request: Request):
         freq = 0.0
     if freq <= 0:
         erros.append("Frequência")
-    if estacao_id not in {"abordagem", *{str(estacao["id"]) for estacao in estacoes}}:
-        erros.append("Origem da captura")
+    if estacao_id not in {str(estacao["id"]) for estacao in estacoes}:
+        erros.append("Estação da captura")
     if not situacao:
         erros.append("Status")
     erros = list(dict.fromkeys(erros))

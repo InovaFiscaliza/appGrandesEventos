@@ -117,6 +117,8 @@ button.btn { font-family: inherit; }
 .inserir-acoes .btn { margin: 0; width: max-content; }
 .inserir-acoes .btn-submit { background: linear-gradient(to bottom, var(--blue-dark), var(--blue-light)); border: var(--border); }
 .btn-back { max-width: 220px; margin: 0.75rem auto 0; }
+.estacoes-voltar { display: flex; justify-content: flex-end; }
+.estacoes-voltar .btn-back { margin: 0.75rem 0 0; }
 .consultar-voltar {
     display: flex;
     justify-content: flex-end;
@@ -177,7 +179,11 @@ button.btn { font-family: inherit; }
 }
 .form-group input:disabled,
 .form-group select:disabled,
-.form-group textarea:disabled { background: #f5f5f5; color: #555; }
+.form-group textarea:disabled {
+    background: #f8fcf4;
+    color: #52604d;
+    border-color: #dce6d6;
+}
 .form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .form-group input[type=checkbox] { width: auto; }
 .required { color: red; font-weight: bold; }
@@ -208,6 +214,12 @@ button.btn { font-family: inherit; }
 .ute-table th, .ute-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
 .ute-table th { background-color: #f2f2f2; color: #333; }
 .estacoes-evento-table th, .estacoes-evento-table td { text-align: left; }
+.estacoes-evento-table .estacao-acao { width: 1%; text-align: center; vertical-align: middle; white-space: nowrap; }
+.estacao-acao form { display: flex; justify-content: center; }
+.estacao-acao .btn { margin: 0; }
+.estacoes-evento-table .form-control { font-size: .95rem; }
+.evento-acao { width: 1%; white-space: nowrap; text-align: center; vertical-align: middle; }
+.evento-acao .btn { width: max-content; margin: 0 auto; }
 .copyable-cell { cursor: pointer; color: #14337b; font-weight: bold; }
 .copyable-cell:hover { text-decoration: underline; background-color: #f0f0f0; }
 .table-hint { text-align: center; font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
@@ -946,8 +958,9 @@ textarea:focus {
 input:not([type="checkbox"]):not([type="radio"]):disabled,
 select:disabled,
 textarea:disabled {
-    background: #eef2f5;
-    color: #607486;
+    background: #f1f8ff;
+    color: #52604d;
+    border-color: #cbdacb;
     cursor: not-allowed;
 }
 
@@ -1424,8 +1437,9 @@ form > .btn-submit { margin-left: auto; }
 .rf-entry-form input:disabled,
 .rf-entry-form select:disabled,
 .rf-entry-form textarea:disabled {
-    background: #eef2f5;
-    color: #607486;
+    background: #f1f8ff;
+    color: #52604d;
+    border-color: #cbdacb;
 }
 .rf-entry-form .inserir-acoes,
 .rf-entry-form .consultar-acoes,
@@ -1480,6 +1494,13 @@ details {
 .select-shell {
     position: relative;
     width: 100%;
+}
+.rf-entry-form input:disabled,
+.rf-entry-form select:disabled,
+.rf-entry-form textarea:disabled {
+    background-color: #edf6ff !important;
+    color: #45627d;
+    border-color: #cfe2f2;
 }
 .select-shell::after {
     position: absolute;

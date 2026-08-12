@@ -6,7 +6,6 @@ from sqlalchemy.exc import IntegrityError
 from app.services.postgres import (
     atualizar_evento,
     criar_evento,
-    criar_estacao,
     listar_estacoes_evento,
     listar_eventos_detalhes,
     obter_evento,
@@ -59,15 +58,9 @@ async def get_criar_evento(request: Request):
 async def post_criar_evento(request: Request):
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
+    observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
-    estacoes_texto = str(form.get("estacoes", ""))
-    estacoes = list(
-        dict.fromkeys(
-            linha.strip() for linha in estacoes_texto.splitlines() if linha.strip()
-        )
-    )
-
     if not nome:
         request.session["flash_error"] = "Informe o nome do evento."
         return RedirectResponse("/criar-evento", status_code=303)
@@ -83,7 +76,7 @@ async def post_criar_evento(request: Request):
             nome=nome,
             latitude=latitude,
             longitude=longitude,
-            estacoes=estacoes,
+            observacoes=observacoes or None,
         )
     except ValueError:
         request.session["flash_error"] = "Latitude ou longitude inválida."
@@ -102,6 +95,7 @@ async def post_criar_evento(request: Request):
 async def post_editar_evento(request: Request, evento_id: int):
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
+    observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
 
@@ -116,7 +110,7 @@ async def post_editar_evento(request: Request, evento_id: int):
             raise ValueError
         if longitude is not None and not -180 <= longitude <= 180:
             raise ValueError
-        atualizar_evento(evento_id, nome, latitude, longitude)
+        atualizar_evento(evento_id, nome, latitude, longitude, observacoes or None)
     except ValueError:
         request.session["flash_error"] = "Latitude ou longitude inválida."
         return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
@@ -128,18 +122,3 @@ async def post_editar_evento(request: Request, evento_id: int):
         request.session["evento_nome"] = nome
     request.session["flash_success"] = "Evento atualizado com sucesso."
     return RedirectResponse("/criar-evento", status_code=303)
-
-
-@router.post("/criar-evento/{evento_id}/estacoes")
-async def post_criar_estacao(request: Request, evento_id: int):
-    form = await request.form()
-    nome = str(form.get("nome", "")).strip()
-    if not nome:
-        request.session["flash_error"] = "Informe o nome da estação."
-    else:
-        try:
-            criar_estacao(evento_id, nome)
-            request.session["flash_success"] = "Estação adicionada com sucesso."
-        except IntegrityError:
-            request.session["flash_error"] = "Essa estação já existe no evento."
-    return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS eventos (
     latitude        NUMERIC(9,6),
     longitude       NUMERIC(9,6),
     fuso_horario    TEXT DEFAULT 'America/Sao_Paulo',
+    observacoes     TEXT,
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

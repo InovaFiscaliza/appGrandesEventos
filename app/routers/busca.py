@@ -67,7 +67,7 @@ async def get_busca(request: Request):
         return RedirectResponse("/", status_code=302)
 
     abas_est = listar_abas_estacoes(evento_id=sp_id)
-    abas_opcoes = ["Abordagem"] + abas_est
+    abas_opcoes = abas_est
 
     return templates.TemplateResponse(
         request,
@@ -94,7 +94,7 @@ async def post_busca(request: Request):
     abas_sel = form.getlist("abas")
 
     abas_est = listar_abas_estacoes(evento_id=sp_id)
-    abas_opcoes = ["Abordagem"] + abas_est
+    abas_opcoes = abas_est
 
     if not abas_sel:
         abas_sel = abas_opcoes

@@ -136,14 +136,17 @@ def criar_evento(
     latitude: float | None = None,
     longitude: float | None = None,
     fuso_horario: str = "America/Sao_Paulo",
+    observacoes: str | None = None,
     estacoes: list[str | dict] | None = None,
 ) -> int:
     """Cria um evento, suas estações e retorna o identificador do evento."""
     with get_engine().begin() as conn:
         evento_id = conn.execute(
             text("""
-                INSERT INTO eventos (nome, latitude, longitude, fuso_horario)
-                VALUES (:nome, :latitude, :longitude, :fuso_horario)
+                INSERT INTO eventos
+                    (nome, latitude, longitude, fuso_horario, observacoes)
+                VALUES
+                    (:nome, :latitude, :longitude, :fuso_horario, :observacoes)
                 RETURNING id
             """),
             {
@@ -151,6 +154,7 @@ def criar_evento(
                 "latitude": latitude,
                 "longitude": longitude,
                 "fuso_horario": fuso_horario,
+                "observacoes": observacoes,
             },
         ).scalar_one()
         nomes_inseridos = set()
@@ -163,16 +167,15 @@ def criar_evento(
             conn.execute(
                 text("""
                     INSERT INTO estacoes
-                        (evento_id, nome, modelo_equipamento, local, cidade)
+                        (evento_id, nome, modelo_equipamento, local)
                     VALUES
-                        (:evento_id, :nome, :modelo, :local, :cidade)
+                        (:evento_id, :nome, :modelo, :local)
                 """),
                 {
                     "evento_id": evento_id,
                     "nome": nome_estacao,
                     "modelo": dados.get("modelo"),
                     "local": dados.get("local"),
-                    "cidade": dados.get("cidade"),
                 },
             )
         return evento_id
@@ -182,7 +185,7 @@ def listar_eventos_detalhes() -> list[dict]:
     """Retorna os eventos cadastrados com seus dados de localização."""
     with get_engine().connect() as conn:
         rows = conn.execute(text("""
-                SELECT id, nome, latitude, longitude, fuso_horario
+                SELECT id, nome, latitude, longitude, fuso_horario, observacoes
                 FROM eventos
                 ORDER BY nome
             """)).mappings().all()
@@ -195,7 +198,7 @@ def obter_evento(evento_id: int) -> dict | None:
         row = (
             conn.execute(
                 text("""
-                SELECT id, nome, latitude, longitude, fuso_horario
+                SELECT id, nome, latitude, longitude, fuso_horario, observacoes
                 FROM eventos
                 WHERE id = :id
             """),
@@ -213,7 +216,7 @@ def listar_estacoes_evento(evento_id: int) -> list[dict]:
         rows = (
             conn.execute(
                 text("""
-                  SELECT id, nome, modelo_equipamento, local, cidade,
+                  SELECT id, nome, modelo_equipamento, local,
                       latitude, longitude
                 FROM estacoes
                 WHERE evento_id = :evento_id
@@ -232,16 +235,15 @@ def criar_estacao(
     nome: str,
     modelo: str | None = None,
     local: str | None = None,
-    cidade: str | None = None,
 ) -> int:
     """Adiciona uma estação a um evento e retorna seu identificador."""
     with get_engine().begin() as conn:
         return conn.execute(
             text("""
                 INSERT INTO estacoes
-                    (evento_id, nome, modelo_equipamento, local, cidade)
+                    (evento_id, nome, modelo_equipamento, local)
                 VALUES
-                    (:evento_id, :nome, :modelo, :local, :cidade)
+                    (:evento_id, :nome, :modelo, :local)
                 RETURNING id
             """),
             {
@@ -249,9 +251,35 @@ def criar_estacao(
                 "nome": nome,
                 "modelo": modelo,
                 "local": local,
-                "cidade": cidade,
             },
         ).scalar_one()
+
+
+def atualizar_estacao(
+    evento_id: int,
+    estacao_id: int,
+    nome: str,
+    modelo: str | None = None,
+    local: str | None = None,
+) -> None:
+    """Atualiza os dados de uma estação vinculada ao evento informado."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                UPDATE estacoes
+                SET nome = :nome,
+                    modelo_equipamento = :modelo,
+                    local = :local
+                WHERE id = :estacao_id AND evento_id = :evento_id
+            """),
+            {
+                "evento_id": int(evento_id),
+                "estacao_id": int(estacao_id),
+                "nome": nome,
+                "modelo": modelo,
+                "local": local,
+            },
+        )
 
 
 def atualizar_evento(
@@ -259,13 +287,17 @@ def atualizar_evento(
     nome: str,
     latitude: float | None = None,
     longitude: float | None = None,
+    observacoes: str | None = None,
 ) -> None:
     """Atualiza o nome e a localização de um evento."""
     with get_engine().begin() as conn:
         conn.execute(
             text("""
                 UPDATE eventos
-                SET nome = :nome, latitude = :latitude, longitude = :longitude
+                SET nome = :nome,
+                    latitude = :latitude,
+                    longitude = :longitude,
+                    observacoes = :observacoes
                 WHERE id = :id
             """),
             {
@@ -273,6 +305,7 @@ def atualizar_evento(
                 "nome": nome,
                 "latitude": latitude,
                 "longitude": longitude,
+                "observacoes": observacoes,
             },
         )
 
@@ -431,6 +464,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
             SELECT
                 o.local_regiao AS "Local",
                 COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
+                o.estacao_id::text AS "EstacaoID",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
@@ -465,53 +499,6 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
         return pd.DataFrame()
 
 
-def carregar_pendencias_abordagem_pendentes(
-    _client=None, evento_id=None
-) -> pd.DataFrame:
-    """Retorna pendências com fonte = 'ABORDAGEM'."""
-    if evento_id is None:
-        return pd.DataFrame()
-    try:
-        sql = text("""
-            SELECT
-                o.id::text AS "ID",
-                COALESCE(o.local_regiao, 'Abordagem') AS "Local",
-                o.fiscal AS "Fiscal",
-                o.data::text AS "Data",
-                to_char(
-                    ((o.data + o.hora) AT TIME ZONE 'UTC'
-                        AT TIME ZONE COALESCE(ev.fuso_horario, 'America/Sao_Paulo')),
-                    'HH24:MI'
-                ) AS "HH:mm",
-                o.frequencia_mhz::text AS "Frequência (MHz)",
-                o.largura_khz::text AS "Largura (kHz)",
-                o.faixa AS "Faixa de Frequência Envolvida",
-                o.identificacao AS "Identificação",
-                o.autorizado AS "Autorizado?",
-                CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
-                o.processo_sei_ute AS "Processo SEI UTE",
-                o.observacoes AS "Ocorrência (observações)",
-                o.alguem_ciente AS "Alguém mais ciente?",
-                o.interferente AS "Interferente?",
-                o.situacao AS "Situação",
-                COALESCE(e.nome, o.local_regiao, 'Abordagem') AS "EstacaoRaw",
-                'ABORDAGEM' AS "Fonte"
-            FROM ocorrencias o
-            LEFT JOIN estacoes e ON e.id = o.estacao_id
-            JOIN eventos ev ON ev.id = o.evento_id
-            WHERE o.evento_id = :ev
-              AND o.fonte = 'ABORDAGEM'
-              AND lower(trim(o.situacao)) = 'pendente'
-            ORDER BY o.local_regiao, o.data
-        """)
-        return pd.read_sql(sql, get_engine(), params={"ev": int(evento_id)})
-    except Exception as e:
-        logger.error(
-            f"Erro carregar_pendencias_abordagem_pendentes: {e}", exc_info=True
-        )
-        return pd.DataFrame()
-
-
 def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataFrame:
     """Retorna pendências de todas as estações (fonte = 'ESTACAO')."""
     if evento_id is None:
@@ -521,6 +508,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
             SELECT
                 o.local_regiao AS "Local",
                 COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
+                o.estacao_id::text AS "EstacaoID",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
@@ -1039,7 +1027,7 @@ def inserir_emissao_I_W(
                 {
                     "ev": int(evento_id),
                     "estacao_id": dados_formulario.get("Estação ID") or None,
-                    "local": dados_formulario.get("Local/Região", "Abordagem"),
+                    "local": dados_formulario.get("Local/Região", ""),
                     "fiscal": dados_formulario.get("Fiscal", ""),
                     "data": dia,
                     "hora": hora,
@@ -1053,9 +1041,7 @@ def inserir_emissao_I_W(
                     "obs": f"{dados_formulario.get('Observações/Detalhes/Contatos', '')} - {dados_formulario.get('Responsável pela emissão', '')}",
                     "inter": dados_formulario.get("Interferente?", ""),
                     "situ": dados_formulario.get("Situação", "Pendente"),
-                    "fonte": (
-                        "ESTACAO" if dados_formulario.get("Estação ID") else "ABORDAGEM"
-                    ),
+                    "fonte": "ESTACAO",
                 },
             )
             ocorrencia_id = resultado.scalar_one()
@@ -1166,10 +1152,12 @@ def atualizar_campos_na_aba_mae(
             atual = (
                 conn.execute(
                     text(f"""
-                    SELECT {', '.join(campos)}
-                    FROM ocorrencias
-                    WHERE evento_id = :ev AND id = :id
-                    FOR UPDATE
+                    SELECT o.{', o.'.join(campos)}, o.estacao_id,
+                           COALESCE(e.nome, '') AS estacao_nome
+                    FROM ocorrencias o
+                    LEFT JOIN estacoes e ON e.id = o.estacao_id
+                    WHERE o.evento_id = :ev AND o.id = :id
+                    FOR UPDATE OF o
                 """),
                     params,
                 )
@@ -1180,6 +1168,39 @@ def atualizar_campos_na_aba_mae(
                 return f"ERRO: ID {id_ocorrencia} não encontrado no evento {evento_id}."
 
             alteracoes = []
+
+            if "Estação ID" in novos_valores:
+                try:
+                    nova_estacao_id = int(str(novos_valores["Estação ID"]).strip())
+                except (TypeError, ValueError):
+                    return "ERRO: estação inválida."
+
+                nova_estacao = (
+                    conn.execute(
+                        text("""
+                            SELECT nome
+                            FROM estacoes
+                            WHERE id = :estacao_id AND evento_id = :ev
+                        """),
+                        {"estacao_id": nova_estacao_id, "ev": int(evento_id)},
+                    )
+                    .mappings()
+                    .first()
+                )
+                if nova_estacao is None:
+                    return "ERRO: estação não pertence ao evento selecionado."
+
+                estacao_atual_id = atual["estacao_id"]
+                if estacao_atual_id != nova_estacao_id:
+                    updates.append("estacao_id = :v_estacao_id")
+                    params["v_estacao_id"] = nova_estacao_id
+                    alteracoes.append(
+                        (
+                            "Estação utilizada",
+                            atual["estacao_nome"] or estacao_atual_id,
+                            nova_estacao["nome"],
+                        )
+                    )
 
             for key, col in field_map.items():
                 if key in novos_valores:
@@ -1345,28 +1366,6 @@ def atualizar_campos_na_aba_mae(
         return f"Atualizado no banco (ID {id_ocorrencia})."
     except Exception as e:
         return f"ERRO ao atualizar: {e}"
-
-
-def atualizar_campos_abordagem_por_id(
-    _client=None,
-    evento_id=None,
-    id_h="",
-    novos_valores: dict = None,
-    usuario_fiscal: str = USR_FISCAL_ANATEL,
-    imagens: list[dict] | None = None,
-    imagens_excluir: list[int] | None = None,
-) -> str:
-    """Atualiza campos de uma ocorrência da Abordagem (alias para atualizar_campos_na_aba_mae)."""
-    return atualizar_campos_na_aba_mae(
-        _client,
-        evento_id,
-        "Abordagem",
-        id_h,
-        novos_valores,
-        usuario_fiscal,
-        imagens,
-        imagens_excluir,
-    )
 
 
 def consultar_historico_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[dict]:
