@@ -18,7 +18,7 @@ from app.services.postgres import (
     carregar_pendencias_todas_estacoes,
     consultar_historico_ocorrencia,
 )
-from app.utils.formatters import _img_b64
+from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
 from app.config import IDENT_OPCOES, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
 
@@ -50,9 +50,12 @@ async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
         if len(conteudo) > TAMANHO_MAXIMO_IMAGEM:
             erros.append(f"Imagem muito grande: {nome}. Limite de 10 MB.")
             continue
+        data_hora_foto = _data_hora_foto(conteudo)
         imagens.append(
             {
                 "nome_arquivo": nome,
+                "data_foto": data_hora_foto.date() if data_hora_foto else None,
+                "hora_foto": data_hora_foto.time() if data_hora_foto else None,
                 "tipo_mime": arquivo.content_type,
                 "tamanho_bytes": len(conteudo),
                 "conteudo": conteudo,

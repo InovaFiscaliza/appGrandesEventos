@@ -36,14 +36,29 @@ def _escape_like(s: str) -> str:
 
 
 def _nome_imagem_emissao(
-    ocorrencia_id: int, data_emissao, hora_emissao, nome_original: str
+    ocorrencia_id: int,
+    data_emissao,
+    hora_emissao,
+    nome_original: str,
+    data_foto=None,
+    hora_foto=None,
 ) -> str:
-    """Gera um nome vinculando a foto à emissão, data, hora e minuto."""
+    """Gera um nome usando a emissão e o momento original registrado na foto."""
     extensao = ""
     if "." in nome_original:
         extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
-    data_texto = data_emissao.strftime("%Y%m%d") if hasattr(data_emissao, "strftime") else str(data_emissao).replace("-", "")
-    hora_texto = hora_emissao.strftime("%H%M") if hasattr(hora_emissao, "strftime") else str(hora_emissao).replace(":", "")[:4]
+    data_base = data_foto or data_emissao
+    hora_base = hora_foto or hora_emissao
+    data_texto = (
+        data_base.strftime("%Y%m%d")
+        if hasattr(data_base, "strftime")
+        else str(data_base).replace("-", "")
+    )
+    hora_texto = (
+        hora_base.strftime("%H%M")
+        if hasattr(hora_base, "strftime")
+        else str(hora_base).replace(":", "")[:4]
+    )
     return f"ID_{ocorrencia_id}_{data_texto}_{hora_texto}{extensao}"
 
 
@@ -268,7 +283,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
     try:
         sql = text("""
             SELECT
-                COALESCE(e.nome, o.local_regiao) AS "Local",
+                o.local_regiao AS "Local",
                 COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
@@ -294,6 +309,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
             LEFT JOIN estacoes e ON e.id = o.estacao_id
             JOIN eventos ev ON ev.id = o.evento_id
             WHERE o.evento_id = :ev
+                            AND COALESCE(NULLIF(upper(trim(o.fonte)), ''), 'PAINEL') = 'PAINEL'
               AND lower(trim(o.situacao)) = 'pendente'
             ORDER BY "Local", "Data"
         """)
@@ -332,9 +348,10 @@ def carregar_pendencias_abordagem_pendentes(
                 o.alguem_ciente AS "Alguém mais ciente?",
                 o.interferente AS "Interferente?",
                 o.situacao AS "Situação",
-                'ABORDAGEM' AS "EstacaoRaw",
+                COALESCE(e.nome, o.local_regiao, 'Abordagem') AS "EstacaoRaw",
                 'ABORDAGEM' AS "Fonte"
             FROM ocorrencias o
+            LEFT JOIN estacoes e ON e.id = o.estacao_id
             JOIN eventos ev ON ev.id = o.evento_id
             WHERE o.evento_id = :ev
               AND o.fonte = 'ABORDAGEM'
@@ -356,7 +373,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
     try:
         sql = text("""
             SELECT
-                COALESCE(e.nome, o.local_regiao) AS "Local",
+                o.local_regiao AS "Local",
                 COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
@@ -382,6 +399,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
             JOIN estacoes e ON e.id = o.estacao_id
             JOIN eventos ev ON ev.id = o.evento_id
             WHERE o.evento_id = :ev
+                            AND o.fonte = 'ESTACAO'
               AND lower(trim(o.situacao)) = 'pendente'
             ORDER BY "Local", "Data"
         """)
@@ -902,7 +920,12 @@ def inserir_emissao_I_W(
                     {
                         "ocorrencia_id": ocorrencia_id,
                         "nome": _nome_imagem_emissao(
-                            ocorrencia_id, dia, hora, imagem["nome_arquivo"]
+                            ocorrencia_id,
+                            dia,
+                            hora,
+                            imagem["nome_arquivo"],
+                            imagem.get("data_foto"),
+                            imagem.get("hora_foto"),
                         ),
                         "tipo": imagem["tipo_mime"],
                         "tamanho": imagem["tamanho_bytes"],
@@ -1063,13 +1086,24 @@ def atualizar_campos_na_aba_mae(
                     .all()
                 )
 
-            emissao = conn.execute(
-                text("SELECT data, hora FROM ocorrencias WHERE evento_id = :ev AND id = :id"),
-                {"ev": int(evento_id), "id": int(id_ocorrencia)},
-            ).mappings().one()
+            emissao = (
+                conn.execute(
+                    text(
+                        "SELECT data, hora FROM ocorrencias WHERE evento_id = :ev AND id = :id"
+                    ),
+                    {"ev": int(evento_id), "id": int(id_ocorrencia)},
+                )
+                .mappings()
+                .one()
+            )
             for imagem in imagens or []:
                 nome_imagem = _nome_imagem_emissao(
-                    int(id_ocorrencia), emissao["data"], emissao["hora"], imagem["nome_arquivo"]
+                    int(id_ocorrencia),
+                    emissao["data"],
+                    emissao["hora"],
+                    imagem["nome_arquivo"],
+                    imagem.get("data_foto"),
+                    imagem.get("hora_foto"),
                 )
                 conn.execute(
                     text("""

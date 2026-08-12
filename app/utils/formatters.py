@@ -1,8 +1,12 @@
 import base64
+import io
 import re
 import unicodedata
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+
+from PIL import Image
 
 
 def _img_b64(path: str) -> Optional[str]:
@@ -10,6 +14,16 @@ def _img_b64(path: str) -> Optional[str]:
     if not p.exists():
         return None
     return base64.b64encode(p.read_bytes()).decode("utf-8")
+
+
+def _data_hora_foto(conteudo: bytes) -> datetime | None:
+    """Obtém a data e hora original da foto pelo metadado EXIF."""
+    try:
+        with Image.open(io.BytesIO(conteudo)) as imagem:
+            valor = imagem.getexif().get(36867)
+        return datetime.strptime(str(valor), "%Y:%m:%d %H:%M:%S") if valor else None
+    except (OSError, TypeError, ValueError):
+        return None
 
 
 def _normalize_text(s: str) -> str:
