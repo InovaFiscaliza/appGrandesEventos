@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+<section class="rf-entry-card auditoria-page" aria-labelledby="auditoria-titulo">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">CONTROLE</span>
+            <h1 id="auditoria-titulo" class="wf-screen-title">Auditoria</h1>
+            <p class="table-hint">Alterações registradas em emissões, teste de etiquetagem e BSR/ERB.</p>
+        </div>
+        <span class="module-count">{{ auditoria|length }} registro(s)</span>
+    </div>
+
+    <form method="get" action="/auditoria" class="rf-entry-form auditoria-filtros">
+        <div class="form-group">
+            <label for="auditoria-origem">Origem</label>
+            <select id="auditoria-origem" name="origem" class="form-control">
+                <option value="">Todas as origens</option>
+                {% for origem in origens %}
+                <option value="{{ origem }}" {% if origem == origem_selecionada %}selected{% endif %}>{{ origem }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="btn-col consultar-acoes">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a href="/auditoria" class="btn btn-back">Limpar</a>
+        </div>
+    </form>
+
+    {% if auditoria %}
+    <div class="table-scroll historico-tabela-wrap" role="region" aria-label="Auditoria consolidada" tabindex="0">
+        <table class="historico-tabela">
+            <thead>
+                <tr>
+                    <th scope="col">Origem</th>
+                    <th scope="col">Registro</th>
+                    <th scope="col">Data e hora</th>
+                    <th scope="col">Fiscal/usuário</th>
+                    <th scope="col">Campo editado</th>
+                    <th scope="col">Valor anterior</th>
+                    <th scope="col">Novo valor</th>
+                    <th scope="col">Foto</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in auditoria %}
+                <tr>
+                    <td>{{ registro.origem }}</td>
+                    <td>{{ registro.registro }}</td>
+                    <td>{{ registro.modificado_em.strftime('%d/%m/%Y %H:%M:%S') if registro.modificado_em else '(sem data)' }}</td>
+                    <td>{{ registro.usuario_fiscal }}</td>
+                    <td>{{ registro.campo }}</td>
+                    <td>{{ registro.valor_anterior if registro.valor_anterior is not none else '(vazio)' }}</td>
+                    <td>{{ registro.valor_novo if registro.valor_novo is not none else '(vazio)' }}</td>
+                    <td>
+                        {% if registro.imagem_url %}
+                        <img class="historico-imagem auditoria-miniatura" src="{{ registro.imagem_url }}" alt="{{ registro.valor_novo }}" title="Abrir imagem" role="button" tabindex="0" onclick="abrirZoomImagem(this.src, this.alt)" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); abrirZoomImagem(this.src, this.alt); }">
+                        {% elif registro.campo in ['Imagem anexada', 'Imagem excluída'] %}
+                        <span class="table-hint">Indisponível</span>
+                        {% else %}
+                        <span class="table-hint">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="historico-vazio">Nenhum registro de auditoria encontrado para este filtro.</p>
+    {% endif %}
+
+    <div class="btn-col consultar-acoes">
+        <a href="/menu" class="btn btn-back">Voltar ao menu</a>
+    </div>
+</section>
+<script src="/static/upload-imagens.js?v=3"></script>
+{% endblock %}

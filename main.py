@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.routers import (
+    auditoria,
     bsr_erb,
     busca,
     consultar,
@@ -105,6 +106,7 @@ async def service_worker():
 # Routers
 app.include_router(selecao.router)
 app.include_router(menu.router)
+app.include_router(auditoria.router)
 app.include_router(inserir.router)
 app.include_router(consultar.router)
 app.include_router(criar_evento.router)

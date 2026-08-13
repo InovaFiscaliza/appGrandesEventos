@@ -1980,6 +1980,129 @@ def consultar_historico_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[d
         return []
 
 
+def consultar_auditoria_evento(evento_id=None, origem=None) -> list[dict]:
+    """Retorna a auditoria consolidada de emissões, etiquetagem e BSR/ERB."""
+    if evento_id is None:
+        return []
+    try:
+        with get_engine().connect() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                           SELECT origem, registro_id, registro, usuario_fiscal,
+                               campo, valor_anterior, valor_novo, modificado_em,
+                               imagem_tipo_mime, imagem_conteudo
+                        FROM (
+                            SELECT
+                                'Emissão' AS origem,
+                                auditoria.ocorrencia_id AS registro_id,
+                                COALESCE(ocorrencia.id_planilha,
+                                         'Ocorrência #' || ocorrencia.id::text) AS registro,
+                                auditoria.usuario_fiscal,
+                                auditoria.campo,
+                                auditoria.valor_anterior,
+                                auditoria.valor_novo,
+                                                                auditoria.modificado_em,
+                                                                imagem.tipo_mime AS imagem_tipo_mime,
+                                                                imagem.conteudo AS imagem_conteudo
+                            FROM auditoria_ocorrencias auditoria
+                            JOIN ocorrencias ocorrencia
+                              ON ocorrencia.id = auditoria.ocorrencia_id
+                                                        LEFT JOIN LATERAL (
+                                                                SELECT oi.tipo_mime, oi.conteudo
+                                                                FROM ocorrencia_imagens oi
+                                                                WHERE oi.ocorrencia_id = auditoria.ocorrencia_id
+                                                                    AND oi.nome_arquivo = auditoria.valor_novo
+                                                                    AND auditoria.campo = 'Imagem anexada'
+                                                                ORDER BY oi.id
+                                                                LIMIT 1
+                                                        ) imagem ON TRUE
+                            WHERE auditoria.evento_id = :evento_id
+
+                            UNION ALL
+
+                            SELECT
+                                'Teste de etiquetagem' AS origem,
+                                auditoria.teste_etiquetagem_id AS registro_id,
+                                COALESCE(teste.numero_etiqueta,
+                                         'Teste #' || teste.id::text) AS registro,
+                                auditoria.usuario_fiscal,
+                                auditoria.campo,
+                                auditoria.valor_anterior,
+                                auditoria.valor_novo,
+                                                                auditoria.modificado_em,
+                                                                imagem.tipo_mime AS imagem_tipo_mime,
+                                                                imagem.conteudo AS imagem_conteudo
+                            FROM auditoria_testes_etiquetagem auditoria
+                            JOIN testes_etiquetagem teste
+                              ON teste.id = auditoria.teste_etiquetagem_id
+                                                        LEFT JOIN LATERAL (
+                                                                SELECT imagem.tipo_mime, imagem.conteudo
+                                                                FROM teste_etiquetagem_imagens imagem
+                                                                WHERE imagem.teste_etiquetagem_id = auditoria.teste_etiquetagem_id
+                                                                    AND imagem.nome_arquivo = auditoria.valor_novo
+                                                                    AND auditoria.campo = 'Imagem anexada'
+                                                                ORDER BY imagem.id
+                                                                LIMIT 1
+                                                        ) imagem ON TRUE
+                            WHERE auditoria.evento_id = :evento_id
+
+                            UNION ALL
+
+                            SELECT
+                                'BSR/ERB' AS origem,
+                                auditoria.bsr_erb_id AS registro_id,
+                                COALESCE(
+                                    NULLIF(CONCAT_WS(' - ', bsr.tipo, bsr.regiao), ''),
+                                    'Registro #' || bsr.id::text
+                                ) AS registro,
+                                auditoria.usuario_fiscal,
+                                auditoria.campo,
+                                auditoria.valor_anterior,
+                                auditoria.valor_novo,
+                                auditoria.modificado_em,
+                                imagem.tipo_mime AS imagem_tipo_mime,
+                                imagem.conteudo AS imagem_conteudo
+                            FROM auditoria_bsr_erb auditoria
+                            JOIN bsr_erb bsr ON bsr.id = auditoria.bsr_erb_id
+                            LEFT JOIN LATERAL (
+                                SELECT imagem.tipo_mime, imagem.conteudo
+                                FROM bsr_erb_imagens imagem
+                                WHERE imagem.bsr_erb_id = auditoria.bsr_erb_id
+                                  AND imagem.nome_arquivo = auditoria.valor_novo
+                                  AND auditoria.campo = 'Imagem anexada'
+                                ORDER BY imagem.id
+                                LIMIT 1
+                            ) imagem ON TRUE
+                            WHERE auditoria.evento_id = :evento_id
+                        ) auditoria_consolidada
+                        WHERE CAST(:origem AS TEXT) IS NULL
+                           OR CAST(:origem AS TEXT) = ''
+                           OR origem = CAST(:origem AS TEXT)
+                        ORDER BY modificado_em DESC
+                    """),
+                    {"evento_id": int(evento_id), "origem": origem},
+                )
+                .mappings()
+                .all()
+            )
+        auditoria = []
+        for row in rows:
+            registro = dict(row)
+            conteudo = registro.pop("imagem_conteudo", None)
+            tipo_mime = registro.pop("imagem_tipo_mime", None)
+            registro["imagem_url"] = (
+                f"data:{tipo_mime};base64,{base64.b64encode(bytes(conteudo)).decode('ascii')}"
+                if conteudo and tipo_mime
+                else None
+            )
+            auditoria.append(registro)
+        return auditoria
+    except Exception as e:
+        logger.error("Erro ao consultar auditoria consolidada: %s", e, exc_info=True)
+        return []
+
+
 # =========================================================================
 # Busca textual
 # =========================================================================

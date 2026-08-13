@@ -28,6 +28,8 @@
     <span aria-current="page">Cadastro de estações</span>
     {% elif caminho_atual.startswith('/inserir') %}
     <span aria-current="page">Inserir emissão</span>
+    {% elif caminho_atual.startswith('/auditoria') %}
+    <span aria-current="page">Auditoria</span>
     {% elif caminho_atual.startswith('/consultar/historico') %}
     <a href="/consultar">Pendências</a><span aria-current="page">Histórico</span>
     {% elif caminho_atual.startswith('/consultar') %}
