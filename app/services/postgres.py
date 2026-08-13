@@ -89,6 +89,44 @@ def carregar_imagens_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[dict
         ]
 
 
+def carregar_imagens_ocorrencias(
+    evento_id=None, ocorrencia_ids=None
+) -> dict[int, list[dict]]:
+    """Retorna as fotos agrupadas por ocorrência, validando o evento."""
+    ids = [int(valor) for valor in (ocorrencia_ids or []) if str(valor).isdigit()]
+    if evento_id is None or not ids:
+        return {}
+    with get_engine().connect() as conn:
+        registros = (
+            conn.execute(
+                text("""
+                SELECT oi.ocorrencia_id, oi.id, oi.nome_arquivo,
+                       oi.tipo_mime, oi.conteudo
+                FROM ocorrencia_imagens oi
+                JOIN ocorrencias o ON o.id = oi.ocorrencia_id
+                WHERE o.evento_id = :evento_id
+                  AND oi.ocorrencia_id = ANY(:ocorrencia_ids)
+                ORDER BY oi.ocorrencia_id, oi.id
+            """),
+                {"evento_id": int(evento_id), "ocorrencia_ids": ids},
+            )
+            .mappings()
+            .all()
+        )
+    imagens = {}
+    for registro in registros:
+        imagens.setdefault(registro["ocorrencia_id"], []).append(
+            {
+                "nome_arquivo": registro["nome_arquivo"],
+                "url": (
+                    f"data:{registro['tipo_mime']};base64,"
+                    f"{base64.b64encode(bytes(registro['conteudo'])).decode('ascii')}"
+                ),
+            }
+        )
+    return imagens
+
+
 def carregar_imagem_ocorrencia(evento_id=None, ocorrencia_id=None, imagem_id=None):
     """Retorna o conteúdo de uma imagem somente dentro da ocorrência informada."""
     with get_engine().connect() as conn:
@@ -2111,11 +2149,12 @@ def consultar_auditoria_evento(evento_id=None, origem=None) -> list[dict]:
 def _buscar_por_texto_livre(
     _client=None, evento_id=None, termos: str = "", abas: list = None
 ) -> pd.DataFrame:
-    """Busca textual em ocorrências usando unaccent + ILIKE."""
-    if evento_id is None or not termos or len(termos.strip()) < 3:
+    """Busca ocorrências por texto, ID ou todas as emissões do evento."""
+    termo = termos.strip() if termos else ""
+    if evento_id is None or (termo and len(termo) < 3 and not termo.isdigit()):
         return pd.DataFrame()
     try:
-        termo_clean = _escape_like(termos.strip())
+        termo_clean = _escape_like(termo)
         sql = text("""
             SELECT
                 o.id::text AS "ID",
@@ -2139,23 +2178,91 @@ def _buscar_por_texto_livre(
             FROM ocorrencias o
             LEFT JOIN estacoes e ON e.id = o.estacao_id
             WHERE o.evento_id = :ev
-              AND unaccent(lower(
-                    COALESCE(o.local_regiao,'') || ' ' ||
-                    COALESCE(o.fiscal,'') || ' ' ||
-                    COALESCE(o.identificacao,'') || ' ' ||
-                    COALESCE(o.observacoes,'') || ' ' ||
-                    COALESCE(o.faixa,'') || ' ' ||
-                    COALESCE(o.processo_sei_ute,'')
-              )) LIKE unaccent(lower(:q))
-            ORDER BY o.data DESC
-            LIMIT 200
+              AND (
+                                    (:listar_tratadas)
+                                    OR (
+                                        NOT :listar_tratadas
+                                        AND (
+                                            unaccent(lower(
+                                                COALESCE(o.local_regiao,'') || ' ' ||
+                                                COALESCE(o.fiscal,'') || ' ' ||
+                                                COALESCE(o.identificacao,'') || ' ' ||
+                                                COALESCE(o.observacoes,'') || ' ' ||
+                                                COALESCE(o.faixa,'') || ' ' ||
+                                                COALESCE(o.processo_sei_ute,'')
+                                            )) LIKE unaccent(lower(:q))
+                                            OR o.id::text LIKE :q
+                                        )
+                                    )
+              )
+                        ORDER BY o.data DESC NULLS LAST, o.id DESC
+                        LIMIT CASE WHEN :listar_tratadas THEN 2147483647 ELSE 200 END
         """)
         df = pd.read_sql(
             sql,
             get_engine(),
-            params={"ev": int(evento_id), "q": f"%{termo_clean}%"},
+            params={
+                "ev": int(evento_id),
+                "q": f"%{termo_clean}%",
+                "listar_tratadas": not bool(termo),
+            },
         )
         return df
     except Exception as e:
         logger.error(f"Erro _buscar_por_texto_livre: {e}", exc_info=True)
         return pd.DataFrame()
+
+
+def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
+    """Retorna sugestões de ID e descrição para o autocomplete de emissões."""
+    termo = termo.strip() if termo else ""
+    if evento_id is None or not termo:
+        return []
+    try:
+        with get_engine().connect() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                        SELECT o.id::text AS id,
+                               COALESCE(e.nome, o.local_regiao, 'Sem local') AS local,
+                               o.frequencia_mhz::text AS frequencia,
+                               o.identificacao AS identificacao
+                        FROM ocorrencias o
+                        LEFT JOIN estacoes e ON e.id = o.estacao_id
+                        WHERE o.evento_id = :evento_id
+                          AND (
+                              o.id::text LIKE :termo
+                              OR unaccent(lower(
+                                  COALESCE(e.nome, '') || ' ' ||
+                                  COALESCE(o.local_regiao, '') || ' ' ||
+                                  COALESCE(o.identificacao, '') || ' ' ||
+                                  COALESCE(o.observacoes, '')
+                              )) LIKE unaccent(lower(:termo))
+                          )
+                        ORDER BY o.id DESC
+                        LIMIT 10
+                    """),
+                    {"evento_id": int(evento_id), "termo": f"%{_escape_like(termo)}%"},
+                )
+                .mappings()
+                .all()
+            )
+        return [
+            {
+                "id": row["id"],
+                "label": " | ".join(
+                    parte
+                    for parte in [
+                        f"ID {row['id']}",
+                        row["local"],
+                        f"{row['frequencia']} MHz" if row["frequencia"] else "",
+                        row["identificacao"] or "",
+                    ]
+                    if parte
+                ),
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        logger.error("Erro ao sugerir emissões: %s", e, exc_info=True)
+        return []

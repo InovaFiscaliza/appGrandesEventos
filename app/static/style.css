@@ -286,6 +286,38 @@ button.btn { font-family: inherit; }
 .copyable-cell { cursor: pointer; color: #14337b; font-weight: bold; }
 .copyable-cell:hover { text-decoration: underline; background-color: #f0f0f0; }
 .table-hint { text-align: center; font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
+.busca-sugestoes {
+    display: none;
+    max-height: 15rem;
+    overflow-y: auto;
+    margin-top: .35rem;
+    border: 1px solid #cfdae6;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(31, 53, 82, .12);
+}
+.busca-sugestoes[aria-expanded="true"] { display: block; }
+.busca-sugestao {
+    display: flex;
+    width: 100%;
+    gap: .65rem;
+    align-items: baseline;
+    padding: .6rem .75rem;
+    border: 0;
+    border-bottom: 1px solid #e7edf3;
+    background: #fff;
+    color: #1f3552;
+    text-align: left;
+    cursor: pointer;
+}
+.busca-sugestao:last-child { border-bottom: 0; }
+.busca-sugestao:hover,
+.busca-sugestao:focus { background: #edf6ff; outline: none; }
+.busca-sugestao strong { color: #0b5c8e; white-space: nowrap; }
+.busca-sugestao span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.busca-detalhes { min-width: 7rem; }
+.busca-detalhes summary { cursor: pointer; color: #0b5c8e; font-weight: 700; white-space: nowrap; }
+.busca-detalhes .details-body { min-width: min(48rem, 80vw); }
 
 /* ---- Tabela de emissões pendentes ---- */
 .pendencias-panel { margin: 1rem 0 1.25rem; }

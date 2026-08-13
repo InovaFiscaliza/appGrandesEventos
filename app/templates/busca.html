@@ -8,18 +8,10 @@
 <h5 class="teq-title">Pesquisar emissões</h5>
 <form method="post" action="/busca" class="rf-entry-form font-semi-bold">
     <div class="form-group">
-        <label>Buscar texto (mín 3 chars):</label>
-        <input class="form-control" type="text" name="termo" value="{{ termo or '' }}" placeholder="Digite para buscar...">
-    </div>
-    <div class="form-group">
-        <label>Abas:</label>
-        <div class="select-shell">
-        <select class="form-control" name="abas" multiple>
-            {% for aba in abas_opcoes %}
-            <option value="{{ aba }}" {% if aba in abas_sel %}selected{% endif %}>{{ aba }}</option>
-            {% endfor %}
-        </select>
-        </div>
+        <label for="busca-termo">Buscar texto ou ID da emissão:</label>
+        <input id="busca-termo" class="form-control" type="search" name="termo" value="{{ termo or '' }}" placeholder="Vazio: listar todas | Texto ou ID: pesquisar" autocomplete="off" aria-controls="busca-sugestoes" aria-expanded="false">
+        <div id="busca-sugestoes" class="busca-sugestoes" role="listbox" aria-label="Sugestões de emissões"></div>
+        <small class="table-hint">Deixe vazio para listar todas as emissões do evento, qualquer que seja a situação. Para pesquisar, use ao menos 3 caracteres ou um ID.</small>
     </div>
     <div class="inserir-acoes">
         <button type="submit" class="btn btn-submit">🔎 Consultar</button>
@@ -33,23 +25,71 @@
     <div class="flash flash-info">Nenhum resultado encontrado.</div>
     {% else %}
     <div class="flash flash-success">Resultados encontrados: {{ resultados | length }}</div>
-    {% for row in resultados %}
-    <details>
-        <summary>{{ row.titulo }}</summary>
-        <div class="details-body">
-            <div class="readonly-grid">
-                {% for label, val in row.campos %}
-                <div class="readonly-field">
-                    <small>{{ label }}</small>
-                    <span>{{ val }}</span>
-                </div>
+    <div class="form-group busca-tamanho-pagina">
+        <label for="busca-page-size">Itens por página:</label>
+        <select id="busca-page-size" class="form-control">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
+    <div class="table-scroll" role="region" aria-label="Resultados da pesquisa de emissões" tabindex="0">
+        <table class="ute-table busca-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Local</th>
+                    <th>Data</th>
+                    <th>Frequência (MHz)</th>
+                    <th>Identificação</th>
+                    <th>Situação</th>
+                    <th>Detalhes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in resultados %}
+                <tr>
+                    <td>{{ row.id }}</td>
+                    <td>{{ row.local }}</td>
+                    <td>{{ row.data }}</td>
+                    <td>{{ row.frequencia }}</td>
+                    <td>{{ row.identificacao }}</td>
+                    <td>{{ row.situacao }}</td>
+                    <td>
+                        <details class="busca-detalhes">
+                            <summary>Ver dados</summary>
+                            <div class="details-body">
+                                <div class="readonly-grid">
+                                    {% for label, val in row.campos %}
+                                    <div class="readonly-field">
+                                        <small>{{ label }}</small>
+                                        <span>{{ val }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                    {% if row.imagens %}
+                                    <div class="lista-imagens busca-imagens">
+                                        {% for imagem in row.imagens %}
+                                        <span class="imagem-preview-item">
+                                            <img class="historico-imagem" src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                            </div>
+                        </details>
+                    </td>
+                </tr>
                 {% endfor %}
-            </div>
-            <p class="source-caption">Fonte: {{ row.fonte }} | Aba: {{ row.aba_origem }}</p>
-        </div>
-    </details>
-    {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div id="busca-pagination" class="pendencias-pagination ute-pagination" aria-label="Paginação dos resultados"></div>
     {% endif %}
 {% endif %}
 
+<script src="/static/busca.js?v=1"></script>
+<script src="/static/upload-imagens.js?v=3"></script>
 {% endblock %}
