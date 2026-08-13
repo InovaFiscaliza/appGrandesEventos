@@ -1712,7 +1712,6 @@ def listar_bsr_erb(evento_id: int) -> list[dict]:
 def atualizar_campos_na_aba_mae(
     _client=None,
     evento_id=None,
-    estacao_raw="",
     id_ocorrencia="",
     novos_valores: dict = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,

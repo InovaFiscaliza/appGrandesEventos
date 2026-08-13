@@ -9,13 +9,10 @@
 <form method="post" action="/busca" class="rf-entry-form font-semi-bold">
     <div class="form-group">
         <label for="busca-termo">Buscar texto ou ID da emissão:</label>
-        <input id="busca-termo" class="form-control" type="search" name="termo" value="{{ termo or '' }}" placeholder="Vazio: listar todas | Texto ou ID: pesquisar" autocomplete="off" aria-controls="busca-sugestoes" aria-expanded="false">
-        <div id="busca-sugestoes" class="busca-sugestoes" role="listbox" aria-label="Sugestões de emissões"></div>
-        <small class="table-hint">Deixe vazio para listar todas as emissões do evento, qualquer que seja a situação. Para pesquisar, use ao menos 3 caracteres ou um ID.</small>
+        <input id="busca-termo" class="form-control" type="search" name="termo" value="{{ termo or '' }}" autocomplete="off">
     </div>
     <div class="inserir-acoes">
-        <button type="submit" class="btn btn-submit">🔎 Consultar</button>
-        <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
+        <button type="submit" class="btn btn-submit">Consultar</button>
     </div>
 </form>
 </div>

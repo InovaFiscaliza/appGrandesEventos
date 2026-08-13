@@ -191,7 +191,6 @@ async def post_consultar_salvar(request: Request):
     ]
     fonte = form.get("fonte", "")
     id_val = form.get("id_val", "")
-    estacao_raw = form.get("estacao_raw", "")
     row_key = form.get("row_key", "")
     ident_edit = form.get("ident_edit", "")
     autz_edit = form.get("autz_edit", "")
@@ -231,28 +230,17 @@ async def post_consultar_salvar(request: Request):
     res = ""
     falhou_conexao = False
     try:
-        if fonte == "PAINEL":
-            res = atualizar_campos_na_aba_mae(
-                evento_id=sp_id,
-                estacao_raw="PAINEL",
-                id_ocorrencia=id_val,
-                novos_valores=pac,
-                usuario_fiscal=USR_FISCAL_ANATEL,
-                imagens=imagens,
-                imagens_excluir=imagens_excluir,
-            )
-        elif fonte == "ESTACAO":
-            res = atualizar_campos_na_aba_mae(
-                evento_id=sp_id,
-                estacao_raw=estacao_raw,
-                id_ocorrencia=id_val,
-                novos_valores=pac,
-                usuario_fiscal=USR_FISCAL_ANATEL,
-                imagens=imagens,
-                imagens_excluir=imagens_excluir,
-            )
-        else:
+        if fonte not in {"PAINEL", "ESTACAO"}:
             res = "ERRO: origem da ocorrência inválida."
+        else:
+            res = atualizar_campos_na_aba_mae(
+                evento_id=sp_id,
+                id_ocorrencia=id_val,
+                novos_valores=pac,
+                usuario_fiscal=USR_FISCAL_ANATEL,
+                imagens=imagens,
+                imagens_excluir=imagens_excluir,
+            )
     except Exception as e:
         logging.error(f"Falha ao salvar edição (offline?): {e}")
         falhou_conexao = True
@@ -363,7 +351,6 @@ async def api_consultar_salvar(request: Request):
 
     fonte = dados.get("fonte", "")
     id_val = dados.get("id_val", "")
-    estacao_raw = dados.get("estacao_raw", "")
     pac = {
         "Identificação": dados.get("Identificação", ""),
         "Autorizado?": dados.get("Autorizado?", ""),
@@ -376,18 +363,9 @@ async def api_consultar_salvar(request: Request):
         "Estação ID": str(dados.get("estacao_id", "")),
     }
 
-    if fonte == "PAINEL":
+    if fonte in {"PAINEL", "ESTACAO"}:
         res = atualizar_campos_na_aba_mae(
             evento_id=sp_id,
-            estacao_raw="PAINEL",
-            id_ocorrencia=id_val,
-            novos_valores=pac,
-            usuario_fiscal=USR_FISCAL_ANATEL,
-        )
-    elif fonte == "ESTACAO":
-        res = atualizar_campos_na_aba_mae(
-            evento_id=sp_id,
-            estacao_raw=estacao_raw,
             id_ocorrencia=id_val,
             novos_valores=pac,
             usuario_fiscal=USR_FISCAL_ANATEL,

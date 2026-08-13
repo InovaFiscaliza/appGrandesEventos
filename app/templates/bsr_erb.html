@@ -25,13 +25,11 @@
         <div class="form-cols">
             <div class="form-group">
                 <label>Latitude (-90 a 90)</label>
-                <input class="form-control" type="number" step="any" name="lat" value="{{ lat or '' }}"
-                      placeholder="">
+                    <input class="form-control" type="number" step="any" name="lat" value="{{ lat or '' }}">
             </div>
             <div class="form-group">
                 <label>Longitude (-180 a 180)</label>
-                <input class="form-control" type="number" step="any" name="lon" value="{{ lon or '' }}"
-                      placeholder="">
+                    <input class="form-control" type="number" step="any" name="lon" value="{{ lon or '' }}">
             </div>
         </div>
         <div class="form-group">
@@ -42,12 +40,10 @@
             <label for="imagens-bsr-erb">Fotos da ocorrência</label>
             <input id="imagens-bsr-erb" name="imagens" type="file" accept=".jpeg,.jpg,.png,image/jpeg,image/png" multiple>
             <ul id="lista-imagens-bsr-erb" class="lista-imagens" aria-live="polite"></ul>
-            <small class="text-neutral-6">Você pode selecionar uma ou várias fotos em JPEG ou PNG.</small>
         </div>
         <div class="inserir-acoes">
             <button type="submit" class="btn btn-submit">{{ "Salvar alterações" if registro_edicao else "Registrar" }}</button>
             {% if registro_edicao %}<a href="/bsr-erb" class="btn btn-back">Cancelar</a>{% endif %}
-            <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
         </div>
     </form>
 </div>
@@ -83,7 +79,7 @@
                     <td class="bsr-acao">
                         <div class="bsr-acoes">
                             <a class="btn" href="/bsr-erb?editar={{ registro.id }}">Editar</a>
-                            <form method="post" action="/bsr-erb/{{ registro.id }}/excluir" onsubmit="return confirm('Deseja excluir este registro?');">
+                            <form method="post" action="/bsr-erb/{{ registro.id }}/excluir">
                                 <button type="submit" class="btn btn-red">Excluir</button>
                             </form>
                         </div>

@@ -157,6 +157,31 @@ button.btn { font-family: inherit; }
 .info-green { background: linear-gradient(to bottom, #1b5e20, #2e7d32); color: #fff; font-weight: 700; text-align: center; padding: .8rem 1rem; border-radius: 8px; margin: .25rem 0 1rem; }
 .confirm-warning { background: linear-gradient(to bottom, #f0ad4e, #ec971f); color: #333; font-weight: 600; text-align: center; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid #d58512; }
 
+.confirmacao-aberta { overflow: hidden; }
+.confirmacao-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(20, 51, 123, .48);
+}
+.confirmacao-overlay[hidden] { display: none; }
+.confirmacao-dialogo {
+    width: min(100%, 28rem);
+    padding: 1.25rem;
+    border: 2px solid var(--blue-dark);
+    border-radius: var(--radius);
+    background: #fff;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, .28);
+}
+.confirmacao-dialogo h2 { margin: 0 0 .6rem; color: var(--blue-dark); font-size: 1.2rem; }
+.confirmacao-dialogo p { margin: 0; color: #222; line-height: 1.45; }
+.confirmacao-acoes { display: flex; justify-content: flex-end; gap: .7rem; margin-top: 1.2rem; }
+.confirmacao-acoes .btn { min-height: 2.6rem; }
+.confirmacao-cancelar { background: #5f6368; border-color: #45484c; }
+
 /* ---- Forms ---- */
 .form-card {
     background: #fff;
@@ -276,6 +301,7 @@ button.btn { font-family: inherit; }
 .estacao-acao form { display: flex; justify-content: center; }
 .estacao-acao .btn { margin: 0; }
 .estacoes-evento-table .form-control { font-size: .95rem; }
+.estacoes-evento-table .estacao-acao .btn { font-size: calc(.95rem - 2px); }
 .evento-acao { width: 1%; white-space: nowrap; text-align: center; vertical-align: middle; }
 .evento-acao .btn { width: max-content; margin: 0 auto; }
 .bsr-acao { width: 1%; min-width: 5.2rem; white-space: nowrap; text-align: center; vertical-align: middle; }

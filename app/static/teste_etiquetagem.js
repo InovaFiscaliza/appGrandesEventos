@@ -229,10 +229,10 @@
       cpfCnpj.value = '';
       cpfCnpj.setCustomValidity('');
       cpfCnpj.classList.remove('teq-valid', 'teq-invalid');
-      cpfCnpjAjuda.classList.remove('teq-valid', 'teq-invalid');
-      cpfCnpjAjuda.textContent = 'CPF/CNPJ não se aplica a estrangeiro.';
+      cpfCnpjAjuda?.classList.remove('teq-valid', 'teq-invalid');
+      if (cpfCnpjAjuda) cpfCnpjAjuda.textContent = 'CPF/CNPJ não se aplica a estrangeiro.';
     } else {
-      cpfCnpjAjuda.textContent = 'Informe um CPF ou CNPJ válido, se necessário.';
+      if (cpfCnpjAjuda) cpfCnpjAjuda.textContent = 'Informe um CPF ou CNPJ válido, se necessário.';
       atualizarValidacaoCpfCnpj();
     }
   }

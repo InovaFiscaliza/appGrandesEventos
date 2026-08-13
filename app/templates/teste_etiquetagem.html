@@ -196,8 +196,7 @@
 
                 <div class="form-group teq-order-2">
                     <label class="teq-label teq-checkbox-title{% if 'cpf_cnpj' in values.invalid_fields %} teq-label-invalid{% endif %}" for="cpfcnpj">CPF/CNPJ</label>
-                    <input id="cpfcnpj" name="cpf_cnpj" class="form-control teq-control{% if 'cpf_cnpj' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="numeric" maxlength="18" value="{{ values.cpf_cnpj }}" aria-describedby="cpfcnpj-ajuda">
-                    <small id="cpfcnpj-ajuda" class="teq-field-help">Informe um CPF ou CNPJ válido, se necessário.</small>
+                    <input id="cpfcnpj" name="cpf_cnpj" class="form-control teq-control{% if 'cpf_cnpj' in values.invalid_fields %} teq-invalid{% endif %}" type="text" inputmode="numeric" maxlength="18" value="{{ values.cpf_cnpj }}">
                 </div>
 
                 <div class="form-group teq-order-11">
@@ -246,7 +245,6 @@
             <a href="/teste_etiquetagem?consultar=1" class="btn teq-btn teq-btn-secondary">Consultar registros</a>
             <button class="btn teq-btn" type="submit">{% if values.registro_id %}Salvar alterações{% else %}Inserir teste{% endif %}</button>
             <button class="btn teq-btn" type="reset">Limpar formulário</button>
-            <a href="/menu" class="btn teq-btn teq-btn-back">Voltar ao Menu</a>
         </div>
     </form>
 </div>
