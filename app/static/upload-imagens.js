@@ -53,6 +53,7 @@ document.addEventListener("keydown", (evento) => {
   }
 
   configurarUpload("imagens-inserir", "lista-imagens-inserir");
+  configurarUpload("imagens-bsr-erb", "lista-imagens-bsr-erb");
   configurarUpload("imagens-edicao", "lista-imagens-edicao");
   configurarUpload("imagens-teste", "lista-imagens-teste");
 })();

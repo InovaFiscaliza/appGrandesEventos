@@ -392,7 +392,7 @@ async def post_teste_etiquetagem(request: Request):
         if cadastro:
             equipamento = cadastro[0]
             detalhe = (
-                f" Empresa: {equipamento['entidade'] or 'nome não informado'};"
+                f" Equipamento com essa frequência já cadastrado: {equipamento['entidade'] or 'nome não informado'} |"
                 f" CPF/CNPJ: {equipamento['cpf_cnpj'] or 'não informado'};"
                 f" tipo: {equipamento['tipo_equipamento'] or 'não informado'};"
                 f" etiqueta: {equipamento['numero_etiqueta'] or 'não informada'};"
@@ -402,6 +402,7 @@ async def post_teste_etiquetagem(request: Request):
             request,
             values,
             f"Frequência {values['frequencia_mhz']} MHz já cadastrada em {conflito}.{detalhe}",
+            ["frequencia_mhz"],
         )
 
     for frequencia_lista in values["frequencias_selecionadas"]:
@@ -425,7 +426,7 @@ async def post_teste_etiquetagem(request: Request):
             if cadastro:
                 equipamento = cadastro[0]
                 detalhe = (
-                    f" Empresa: {equipamento['entidade'] or 'nome não informado'};"
+                    f" Equipamento com essa frequência já cadastrado: {equipamento['entidade'] or 'nome não informado'} |"
                     f" CPF/CNPJ: {equipamento['cpf_cnpj'] or 'não informado'};"
                     f" etiqueta: {equipamento['numero_etiqueta'] or 'não informada'}."
                 )
@@ -433,6 +434,7 @@ async def post_teste_etiquetagem(request: Request):
                 request,
                 values,
                 f"Frequência {frequencia_lista} já cadastrada em {conflito_lista}.{detalhe}",
+                ["frequencias_selecionadas"],
             )
 
     dados = values

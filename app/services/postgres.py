@@ -789,7 +789,10 @@ def verificar_etiqueta_existente(
                     FROM testes_etiquetagem t
                     JOIN eventos e ON e.id = t.evento_id
                     WHERE trim(t.numero_etiqueta) = trim(:numero)
-                      AND (:excluir_id IS NULL OR t.id <> :excluir_id)
+                                            AND (
+                                                        CAST(:excluir_id AS BIGINT) IS NULL
+                                                        OR t.id <> CAST(:excluir_id AS BIGINT)
+                                                    )
                     ORDER BY t.criado_em, t.id
                     LIMIT 1
                 """),
@@ -856,7 +859,10 @@ def verificar_frequencia_etiquetagem(
                             replace(split_part(selecionada, ' MHz', 1), ',', '.')::numeric,
                             3
                           ) = :freq
-                      AND (:excluir_id IS NULL OR t.id <> :excluir_id)
+                                            AND (
+                                                        CAST(:excluir_id AS BIGINT) IS NULL
+                                                        OR t.id <> CAST(:excluir_id AS BIGINT)
+                                                    )
                     LIMIT 1
                 """),
                 {"ev": int(evento_id), "freq": frequencia, "excluir_id": excluir_id},
@@ -1358,7 +1364,14 @@ def inserir_emissao_I_W(
 
 
 def inserir_bsr_erb(
-    _client=None, evento_id=None, tipo="", regiao="", lat="", lon=""
+    _client=None,
+    evento_id=None,
+    tipo="",
+    regiao="",
+    lat="",
+    lon="",
+    observacoes="",
+    imagens=None,
 ) -> str:
     """Insere registro de BSR/Jammer ou ERB Fake."""
     if evento_id is None:
@@ -1372,10 +1385,12 @@ def inserir_bsr_erb(
 
     try:
         with get_engine().begin() as conn:
-            conn.execute(
+            bsr_erb_id = conn.execute(
                 text("""
-                    INSERT INTO bsr_erb (evento_id, tipo, regiao, latitude, longitude)
-                    VALUES (:ev, :tipo, :regiao, :lat, :lon)
+                    INSERT INTO bsr_erb
+                        (evento_id, tipo, regiao, latitude, longitude, observacoes)
+                    VALUES (:ev, :tipo, :regiao, :lat, :lon, :observacoes)
+                    RETURNING id
                 """),
                 {
                     "ev": int(evento_id),
@@ -1383,11 +1398,272 @@ def inserir_bsr_erb(
                     "regiao": regiao or "",
                     "lat": lat_v,
                     "lon": lon_v,
+                    "observacoes": observacoes or "",
+                },
+            ).scalar_one()
+            conn.execute(
+                text("""
+                    INSERT INTO auditoria_bsr_erb (
+                        bsr_erb_id, evento_id, usuario_fiscal, campo,
+                        valor_anterior, valor_novo
+                    ) VALUES (:registro_id, :evento_id, :usuario, 'Inclusão', NULL, :valor)
+                """),
+                {
+                    "registro_id": bsr_erb_id,
+                    "evento_id": int(evento_id),
+                    "usuario": USR_FISCAL_ANATEL,
+                    "valor": f"{tipo} | {regiao or ''}",
                 },
             )
+            for imagem in imagens or []:
+                conn.execute(
+                    text("""
+                        INSERT INTO bsr_erb_imagens
+                            (bsr_erb_id, nome_arquivo, tipo_mime, tamanho_bytes, conteudo)
+                        VALUES
+                            (:bsr_erb_id, :nome_arquivo, :tipo_mime, :tamanho_bytes, :conteudo)
+                    """),
+                    {
+                        "bsr_erb_id": bsr_erb_id,
+                        "nome_arquivo": imagem["nome_arquivo"],
+                        "tipo_mime": imagem["tipo_mime"],
+                        "tamanho_bytes": imagem["tamanho_bytes"],
+                        "conteudo": imagem["conteudo"],
+                    },
+                )
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_bsr_erb (
+                            bsr_erb_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (:registro_id, :evento_id, :usuario,
+                                  'Imagem anexada', NULL, :valor)
+                    """),
+                    {
+                        "registro_id": bsr_erb_id,
+                        "evento_id": int(evento_id),
+                        "usuario": USR_FISCAL_ANATEL,
+                        "valor": imagem["nome_arquivo"],
+                    },
+                )
         return f"'{tipo}' incluído com sucesso."
     except Exception as e:
         return f"ERRO: {e}"
+
+
+def atualizar_bsr_erb(
+    registro_id,
+    evento_id,
+    tipo="",
+    regiao="",
+    lat="",
+    lon="",
+    observacoes="",
+    imagens=None,
+) -> str:
+    """Atualiza um registro BSR/ERB e acrescenta novas fotos, se houver."""
+    try:
+        lat_v = float(lat.replace(",", ".")) if lat else None
+        lon_v = float(lon.replace(",", ".")) if lon else None
+    except (ValueError, AttributeError):
+        lat_v = None
+        lon_v = None
+
+    try:
+        with get_engine().begin() as conn:
+            anterior = (
+                conn.execute(
+                    text("""
+                    SELECT tipo, regiao, latitude, longitude, observacoes
+                    FROM bsr_erb
+                    WHERE id = :id AND evento_id = :evento_id AND excluido_em IS NULL
+                    FOR UPDATE
+                """),
+                    {"id": int(registro_id), "evento_id": int(evento_id)},
+                )
+                .mappings()
+                .first()
+            )
+            if anterior is None:
+                return "ERRO: Registro BSR/ERB não encontrado."
+            atualizado = conn.execute(
+                text("""
+                    UPDATE bsr_erb
+                    SET tipo = :tipo, regiao = :regiao, latitude = :lat,
+                        longitude = :lon, observacoes = :observacoes
+                    WHERE id = :id AND evento_id = :evento_id
+                """),
+                {
+                    "id": int(registro_id),
+                    "evento_id": int(evento_id),
+                    "tipo": tipo,
+                    "regiao": regiao or "",
+                    "lat": lat_v,
+                    "lon": lon_v,
+                    "observacoes": observacoes or "",
+                },
+            ).rowcount
+            if not atualizado:
+                return "ERRO: Registro BSR/ERB não encontrado."
+
+            valores_novos = {
+                "Tipo": tipo,
+                "Local": regiao or "",
+                "Latitude": lat_v,
+                "Longitude": lon_v,
+                "Observações": observacoes or "",
+            }
+            valores_anteriores = {
+                "Tipo": anterior["tipo"],
+                "Local": anterior["regiao"] or "",
+                "Latitude": anterior["latitude"],
+                "Longitude": anterior["longitude"],
+                "Observações": anterior["observacoes"] or "",
+            }
+            for campo, valor_novo in valores_novos.items():
+                valor_anterior = valores_anteriores[campo]
+                if str(valor_anterior) != str(valor_novo):
+                    conn.execute(
+                        text("""
+                            INSERT INTO auditoria_bsr_erb (
+                                bsr_erb_id, evento_id, usuario_fiscal, campo,
+                                valor_anterior, valor_novo
+                            ) VALUES (:registro_id, :evento_id, :usuario, :campo,
+                                      :valor_anterior, :valor_novo)
+                        """),
+                        {
+                            "registro_id": int(registro_id),
+                            "evento_id": int(evento_id),
+                            "usuario": USR_FISCAL_ANATEL,
+                            "campo": campo,
+                            "valor_anterior": str(valor_anterior),
+                            "valor_novo": str(valor_novo),
+                        },
+                    )
+
+            for imagem in imagens or []:
+                conn.execute(
+                    text("""
+                        INSERT INTO bsr_erb_imagens
+                            (bsr_erb_id, nome_arquivo, tipo_mime, tamanho_bytes, conteudo)
+                        VALUES
+                            (:bsr_erb_id, :nome_arquivo, :tipo_mime, :tamanho_bytes, :conteudo)
+                    """),
+                    {
+                        "bsr_erb_id": int(registro_id),
+                        "nome_arquivo": imagem["nome_arquivo"],
+                        "tipo_mime": imagem["tipo_mime"],
+                        "tamanho_bytes": imagem["tamanho_bytes"],
+                        "conteudo": imagem["conteudo"],
+                    },
+                )
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_bsr_erb (
+                            bsr_erb_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (:registro_id, :evento_id, :usuario,
+                                  'Imagem anexada', NULL, :valor)
+                    """),
+                    {
+                        "registro_id": int(registro_id),
+                        "evento_id": int(evento_id),
+                        "usuario": USR_FISCAL_ANATEL,
+                        "valor": imagem["nome_arquivo"],
+                    },
+                )
+        return f"'{tipo}' atualizado com sucesso."
+    except Exception as e:
+        return f"ERRO: {e}"
+
+
+def excluir_bsr_erb(
+    registro_id, evento_id, usuario_fiscal: str = USR_FISCAL_ANATEL
+) -> str:
+    """Marca um registro BSR/ERB como excluído, sem apagar seus dados."""
+    try:
+        with get_engine().begin() as conn:
+            atualizado = conn.execute(
+                text("""
+                    UPDATE bsr_erb
+                    SET excluido_em = now(), excluido_por = :usuario
+                    WHERE id = :id AND evento_id = :evento_id AND excluido_em IS NULL
+                """),
+                {
+                    "id": int(registro_id),
+                    "evento_id": int(evento_id),
+                    "usuario": usuario_fiscal,
+                },
+            ).rowcount
+            if not atualizado:
+                return "ERRO: Registro BSR/ERB não encontrado ou já excluído."
+            conn.execute(
+                text("""
+                    INSERT INTO auditoria_bsr_erb (
+                        bsr_erb_id, evento_id, usuario_fiscal, campo,
+                        valor_anterior, valor_novo
+                    ) VALUES (:registro_id, :evento_id, :usuario,
+                              'Exclusão lógica', NULL, :valor)
+                """),
+                {
+                    "registro_id": int(registro_id),
+                    "evento_id": int(evento_id),
+                    "usuario": usuario_fiscal,
+                    "valor": "Registro marcado como excluído",
+                },
+            )
+        return "Registro BSR/ERB excluído com sucesso."
+    except Exception as e:
+        return f"ERRO: {e}"
+
+
+def listar_bsr_erb(evento_id: int) -> list[dict]:
+    """Lista registros BSR/ERB do evento com as fotos anexadas."""
+    with get_engine().connect() as conn:
+        registros = (
+            conn.execute(
+                text("""
+                SELECT b.id, b.tipo, b.regiao, b.latitude, b.longitude,
+                       b.observacoes, b.criado_em,
+                       i.id AS imagem_id, i.nome_arquivo, i.tipo_mime, i.conteudo
+                FROM bsr_erb b
+                LEFT JOIN bsr_erb_imagens i ON i.bsr_erb_id = b.id
+                WHERE b.evento_id = :evento_id AND b.excluido_em IS NULL
+                ORDER BY b.criado_em DESC, i.id
+            """),
+                {"evento_id": int(evento_id)},
+            )
+            .mappings()
+            .all()
+        )
+
+    registros_por_id = {}
+    for registro in registros:
+        item = registros_por_id.setdefault(
+            registro["id"],
+            {
+                "id": registro["id"],
+                "tipo": registro["tipo"],
+                "regiao": registro["regiao"],
+                "latitude": registro["latitude"],
+                "longitude": registro["longitude"],
+                "observacoes": registro["observacoes"],
+                "criado_em": registro["criado_em"],
+                "imagens": [],
+            },
+        )
+        if registro["imagem_id"]:
+            item["imagens"].append(
+                {
+                    "id": registro["imagem_id"],
+                    "nome_arquivo": registro["nome_arquivo"],
+                    "url": (
+                        f"data:{registro['tipo_mime']};base64,"
+                        f"{base64.b64encode(bytes(registro['conteudo'])).decode('ascii')}"
+                    ),
+                }
+            )
+    return list(registros_por_id.values())
 
 
 # =========================================================================

@@ -103,7 +103,7 @@
     const linhas = [];
     if (mensagemLocal) linhas.push(mensagemLocal);
     data.equipamentos.forEach((equipamento) => {
-      linhas.push(`Equipamento já cadastrado: ${equipamento.entidade || 'Nome não informado'} | CPF/CNPJ: ${equipamento.cpf_cnpj || 'não informado'} | Tipo: ${equipamento.tipo_equipamento || 'não informado'} | Etiqueta: ${equipamento.numero_etiqueta || 'não informada'} | Local: ${equipamento.local || 'não informado'}`);
+      linhas.push(`Equipamento com essa frequência já cadastrado: ${equipamento.entidade || 'Nome não informado'} | CPF/CNPJ: ${equipamento.cpf_cnpj || 'não informado'} | Tipo: ${equipamento.tipo_equipamento || 'não informado'} | Etiqueta: ${equipamento.numero_etiqueta || 'não informada'} | Local: ${equipamento.local || 'não informado'}`);
     });
     data.referencias.forEach((referencia) => {
       linhas.push(`Referência no banco: ${referencia.origem} | ${referencia.detalhe}`);
@@ -114,7 +114,9 @@
         return indice === 0 ? [texto] : [document.createElement('br'), texto];
       })
     );
-    frequenciaConsulta.classList.toggle('teq-frequency-check-warning', linhas.length > 0);
+    const conflito = linhas.length > 0;
+    frequenciaConsulta.classList.toggle('teq-frequency-check-warning', conflito);
+    frequencia.classList.toggle('teq-invalid', conflito);
   }
 
   async function consultarFrequencia(valor) {
@@ -123,6 +125,7 @@
     if (!Number.isFinite(numero) || numero <= 0) {
       frequenciaConsulta.replaceChildren();
       frequenciaConsulta.classList.remove('teq-frequency-check-warning');
+      frequencia.classList.remove('teq-invalid');
       return null;
     }
     try {

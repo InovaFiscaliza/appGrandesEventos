@@ -7,10 +7,17 @@
   if (!form) return;
 
   form.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (form.dataset.enviando === "1") return;
+    form.dataset.enviando = "1";
+    const botao = form.querySelector('button[type="submit"]');
+    if (botao) botao.disabled = true;
+
     // Tenta enviar online primeiro
     const fd = new FormData(this);
+    const destino = this.getAttribute("action") || "/bsr-erb";
     try {
-      const resp = await fetch("/bsr_erb/salvar", {
+      const resp = await fetch(destino, {
         method: "POST",
         body: fd,
       });
@@ -30,12 +37,26 @@
       // Falha de rede — continua para salvar offline
     }
 
-    e.preventDefault();
+    if (destino !== "/bsr-erb") {
+      delete form.dataset.enviando;
+      if (botao) botao.disabled = false;
+      alert("Não é possível editar este registro sem conexão.");
+      return;
+    }
+
+    const possuiFotos = fd.getAll("imagens").some((arquivo) => arquivo instanceof File && arquivo.size > 0);
+    if (possuiFotos) {
+      delete form.dataset.enviando;
+      if (botao) botao.disabled = false;
+      alert("As fotos precisam de conexão para serem enviadas. Mantenha o formulário aberto e tente novamente quando a conexão voltar.");
+      return;
+    }
     const dados = {
       tipo: fd.get("tipo") || "BSR/Jammer",
       regiao: fd.get("regiao") || "",
       lat: fd.get("lat") || "",
       lon: fd.get("lon") || "",
+      observacoes: fd.get("observacoes") || "",
     };
 
     if (!dados.regiao) {
@@ -50,7 +71,11 @@
       div.textContent = "📥 Salvo localmente. Será enviado ao reconectar.";
       this.parentElement.insertBefore(div, this);
       this.reset();
+      delete form.dataset.enviando;
+      if (botao) botao.disabled = false;
     } catch (err) {
+      delete form.dataset.enviando;
+      if (botao) botao.disabled = false;
       alert("Erro ao salvar localmente: " + err);
     }
   });

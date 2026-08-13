@@ -133,8 +133,38 @@ CREATE TABLE IF NOT EXISTS bsr_erb (
     regiao      TEXT,
     latitude    NUMERIC(9,6),
     longitude   NUMERIC(9,6),
-    criado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+    observacoes TEXT,
+    criado_em   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    excluido_em TIMESTAMPTZ,
+    excluido_por TEXT
 );
+
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS excluido_em TIMESTAMPTZ;
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS excluido_por TEXT;
+
+CREATE TABLE IF NOT EXISTS bsr_erb_imagens (
+    id            BIGSERIAL PRIMARY KEY,
+    bsr_erb_id    BIGINT NOT NULL REFERENCES bsr_erb(id) ON DELETE CASCADE,
+    nome_arquivo  TEXT NOT NULL,
+    tipo_mime     TEXT NOT NULL,
+    tamanho_bytes INTEGER NOT NULL,
+    conteudo      BYTEA NOT NULL,
+    criado_em     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS auditoria_bsr_erb (
+    id            BIGSERIAL PRIMARY KEY,
+    bsr_erb_id    BIGINT NOT NULL REFERENCES bsr_erb(id) ON DELETE CASCADE,
+    evento_id     BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    usuario_fiscal TEXT NOT NULL,
+    campo         TEXT NOT NULL,
+    valor_anterior TEXT,
+    valor_novo    TEXT,
+    modificado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_bsr_erb_registro
+    ON auditoria_bsr_erb (bsr_erb_id, modificado_em DESC);
 
 -- Opções de identificação (substitui LISTAS)
 CREATE TABLE IF NOT EXISTS opcoes_identificacao (

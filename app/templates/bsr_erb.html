@@ -10,7 +10,7 @@
     <div id="offline-aviso-bsr" class="flash flash-error" style="display:none">
       ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
     </div>
-    <form method="post" action="/bsr-erb" id="form-bsr-erb" class="rf-entry-form">
+    <form method="post" action="{{ '/bsr-erb/' ~ registro_edicao.id ~ '/editar' if registro_edicao else '/bsr-erb' }}" id="form-bsr-erb" class="rf-entry-form" enctype="multipart/form-data">
         <div class="form-group">
             <label>Tipo <span class="required">*</span></label>
             <div class="radio-group">
@@ -26,24 +26,78 @@
             <div class="form-group">
                 <label>Latitude (-90 a 90)</label>
                 <input class="form-control" type="number" step="any" name="lat" value="{{ lat or '' }}"
-                       placeholder="-23.550520"
-                       title="Número entre -90 e 90. Use ponto ou vírgula como decimal.">
+                      placeholder="">
             </div>
             <div class="form-group">
                 <label>Longitude (-180 a 180)</label>
                 <input class="form-control" type="number" step="any" name="lon" value="{{ lon or '' }}"
-                       placeholder="-46.633309"
-                       title="Número entre -180 e 180. Use ponto ou vírgula como decimal.">
+                      placeholder="">
             </div>
         </div>
+        <div class="form-group">
+            <label for="observacoes-bsr-erb">Observações</label>
+            <textarea class="form-control" id="observacoes-bsr-erb" name="observacoes" rows="4">{{ observacoes or '' }}</textarea>
+        </div>
+        <div class="form-group imagem-upload">
+            <label for="imagens-bsr-erb">Fotos da ocorrência</label>
+            <input id="imagens-bsr-erb" name="imagens" type="file" accept=".jpeg,.jpg,.png,image/jpeg,image/png" multiple>
+            <ul id="lista-imagens-bsr-erb" class="lista-imagens" aria-live="polite"></ul>
+            <small class="text-neutral-6">Você pode selecionar uma ou várias fotos em JPEG ou PNG.</small>
+        </div>
         <div class="inserir-acoes">
-            <button type="submit" class="btn btn-submit">Registrar</button>
+            <button type="submit" class="btn btn-submit">{{ "Salvar alterações" if registro_edicao else "Registrar" }}</button>
+            {% if registro_edicao %}<a href="/bsr-erb" class="btn btn-back">Cancelar</a>{% endif %}
             <a href="/menu" class="btn btn-back">Voltar ao Menu</a>
         </div>
     </form>
 </div>
 
+<section class="form-card font-semi-bold">
+    <h5 class="teq-title">Registros cadastrados</h5>
+    {% if registros %}
+    <div class="table-scroll">
+        <table class="ute-table">
+            <thead>
+                <tr><th>Tipo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th>Fotos</th><th>Registrado em</th><th class="bsr-acao">Ação</th></tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                <tr>
+                    <td>{{ registro.tipo }}</td>
+                    <td>{{ registro.regiao or "-" }}</td>
+                    <td>{{ registro.latitude or "-" }}</td>
+                    <td>{{ registro.longitude or "-" }}</td>
+                    <td>{{ registro.observacoes or "-" }}</td>
+                    <td>
+                        {% if registro.imagens %}
+                        <div class="lista-imagens">
+                            {% for imagem in registro.imagens %}
+                            <span class="imagem-preview-item">
+                                <img class="historico-imagem" src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>{{ registro.criado_em.strftime('%d/%m/%Y %H:%M') if registro.criado_em else "-" }}</td>
+                    <td class="bsr-acao">
+                        <div class="bsr-acoes">
+                            <a class="btn" href="/bsr-erb?editar={{ registro.id }}">Editar</a>
+                            <form method="post" action="/bsr-erb/{{ registro.id }}/excluir" onsubmit="return confirm('Deseja excluir este registro?');">
+                                <button type="submit" class="btn btn-red">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}<p>Nenhum registro cadastrado.</p>{% endif %}
+</section>
+
 <script src="/static/db.js"></script>
 <script src="/static/sync.js"></script>
-<script src="/static/bsr_erb.js"></script>
+<script src="/static/bsr_erb.js?v=3"></script>
+<script src="/static/upload-imagens.js?v=3"></script>
 {% endblock %}

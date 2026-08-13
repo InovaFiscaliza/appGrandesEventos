@@ -278,6 +278,11 @@ button.btn { font-family: inherit; }
 .estacoes-evento-table .form-control { font-size: .95rem; }
 .evento-acao { width: 1%; white-space: nowrap; text-align: center; vertical-align: middle; }
 .evento-acao .btn { width: max-content; margin: 0 auto; }
+.bsr-acao { width: 1%; min-width: 5.2rem; white-space: nowrap; text-align: center; vertical-align: middle; }
+.bsr-acao .btn { width: max-content; margin: 0 auto; }
+.bsr-acoes { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.bsr-acoes form { margin: 0; }
+.bsr-acoes .btn { font-size: calc(0.88rem - 2px); }
 .copyable-cell { cursor: pointer; color: #14337b; font-weight: bold; }
 .copyable-cell:hover { text-decoration: underline; background-color: #f0f0f0; }
 .table-hint { text-align: center; font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; }
@@ -492,7 +497,7 @@ body {
 
 /* ---- Selection screen ---- */
 .selecao-logo { display: flex; justify-content: center; margin: 1.5rem 0 1rem; }
-.selecao-logo img { width: 170px; }
+.selecao-logo img { width: 85px; }
 .selecao-title { text-align: center; color: #14337b; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
 .selecao-sub { text-align: center; color: #333; margin-bottom: 1rem; }
 
@@ -1603,6 +1608,12 @@ details {
 .form-control:focus {
     border-color: #86a9d1;
     box-shadow: 0 0 0 3px rgba(48, 105, 170, .12);
+}
+.rf-entry-form .teq-control.teq-invalid,
+.rf-entry-form .teq-control.teq-invalid:focus {
+    border-color: #c62828 !important;
+    background-color: #fff1f2;
+    color: #991b1b;
 }
 .select-shell {
     position: relative;
