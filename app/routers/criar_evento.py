@@ -1,7 +1,7 @@
 from datetime import date
 
 from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +14,11 @@ from app.services.postgres import (
     atualizar_unidades_evento,
     listar_unidades_evento,
     listar_unidades_executantes,
+    listar_fiscais,
+    criar_fiscal,
+    listar_fiscais_evento,
+    atualizar_fiscais_evento,
+    excluir_fiscal,
 )
 from app.utils.formatters import _img_b64
 from app.config import TITULO_PRINCIPAL
@@ -42,6 +47,7 @@ async def get_criar_evento(request: Request):
         evento = obter_evento(int(editar_id))
         if evento:
             evento["unidades_executantes"] = listar_unidades_evento(int(editar_id))
+            evento["fiscais"] = listar_fiscais_evento(int(editar_id))
             estacoes = listar_estacoes_evento(int(editar_id))
     if editar_id and evento is None:
         request.session["flash_error"] = "Evento não encontrado."
@@ -56,9 +62,42 @@ async def get_criar_evento(request: Request):
             estacoes=estacoes,
             eventos=listar_eventos_detalhes(),
             unidades_executantes=listar_unidades_executantes(),
+            fiscais=listar_fiscais(),
             flash_error=request.session.pop("flash_error", None),
         ),
     )
+
+
+@router.post("/fiscais")
+async def post_criar_fiscal(request: Request):
+    """Cadastra um fiscal globalmente para uso em todos os eventos."""
+    form = await request.form()
+    nome = str(form.get("nome", "")).strip()
+    local_anatel = str(form.get("local_anatel", "")).strip()
+    funcao_evento = str(form.get("funcao_evento", "")).strip()
+    funcoes = {"Coordenação", "Abordagem", "Monitoração"}
+    unidades = {item["sigla"] for item in listar_unidades_executantes()}
+    if not nome or local_anatel not in unidades or funcao_evento not in funcoes:
+        return JSONResponse(
+            {"ok": False, "mensagem": "Preencha os dados do fiscal corretamente."},
+            status_code=400,
+        )
+    try:
+        fiscal_id = criar_fiscal(nome, local_anatel, funcao_evento)
+    except IntegrityError:
+        return JSONResponse(
+            {"ok": False, "mensagem": "Este fiscal já está cadastrado."},
+            status_code=409,
+        )
+    fiscal = next(item for item in listar_fiscais() if item["id"] == fiscal_id)
+    return JSONResponse({"ok": True, "fiscal": fiscal})
+
+
+@router.post("/fiscais/{fiscal_id}/excluir")
+async def post_excluir_fiscal(fiscal_id: int):
+    """Exclui um fiscal da lista global."""
+    excluir_fiscal(fiscal_id)
+    return JSONResponse({"ok": True})
 
 
 @router.post("/criar-evento")
@@ -72,6 +111,7 @@ async def post_criar_evento(request: Request):
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
     periodo_fim = str(form.get("periodo_fim", "")).strip()
     unidades_executantes = form.getlist("unidades_executantes")
+    fiscais_evento = form.getlist("fiscais_evento")
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -101,6 +141,7 @@ async def post_criar_evento(request: Request):
             periodo_inicio=periodo_inicio or None,
             periodo_fim=periodo_fim or None,
             unidades_executantes=unidades_executantes,
+            fiscais=fiscais_evento,
             observacoes=observacoes or None,
         )
     except ValueError:
@@ -129,6 +170,7 @@ async def post_editar_evento(request: Request, evento_id: int):
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
     periodo_fim = str(form.get("periodo_fim", "")).strip()
     unidades_executantes = form.getlist("unidades_executantes")
+    fiscais_evento = form.getlist("fiscais_evento")
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -162,6 +204,7 @@ async def post_editar_evento(request: Request, evento_id: int):
             observacoes=observacoes or None,
         )
         atualizar_unidades_evento(evento_id, unidades_executantes)
+        atualizar_fiscais_evento(evento_id, fiscais_evento)
     except ValueError:
         request.session["flash_error"] = (
             "Informe um período válido (o fim não pode ser anterior ao início)."

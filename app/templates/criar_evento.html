@@ -11,17 +11,20 @@
     <div class="table-scroll">
         <table class="ute-table">
             <thead>
-                <tr><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Local</th><th>Ação de Fiscalização</th><th>Unidades Executantes</th><th>Estações</th><th>Processo SEI</th><th>Coordenador Responsável</th><th>Período</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
+                <tr><th>ID</th><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Fuso horário</th><th>Local</th><th>Ação de Fiscalização</th><th>Unidades Executantes</th><th>Fiscais participantes</th><th>Estações</th><th>Processo SEI</th><th>Coordenador Responsável</th><th>Período</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
             </thead>
             <tbody>
                 {% for item in eventos %}
                 <tr>
+                    <td>{{ item.id }}</td>
                     <td>{{ item.nome }}</td>
                     <td>{{ item.latitude or "-" }}</td>
                     <td>{{ item.longitude or "-" }}</td>
+                    <td>{{ item.fuso_horario or "-" }}</td>
                     <td>{{ item.local or "-" }}</td>
                     <td>{{ item.acao_fiscalizacao or "-" }}</td>
                     <td>{{ item.unidades_executantes or "-" }}</td>
+                    <td>{{ item.fiscais_participantes or "-" }}</td>
                     <td>{{ item.estacoes or "-" }}</td>
                     <td>{{ item.processo_sei or "-" }}</td>
                     <td>{{ item.coordenador_responsavel or "-" }}</td>
@@ -37,7 +40,9 @@
 </section>
 
 <div class="form-card rf-entry-card font-semi-bold">
-    <h5 class="teq-title">Gerenciar Eventos</h5>
+    <div class="evento-form-titulo">
+        <h5 class="teq-title">Gerenciar Eventos</h5>
+    </div>
     <form method="post" action="{{ "/criar-evento/" ~ evento.id ~ "/editar" if evento else "/criar-evento" }}" class="rf-entry-form">
         <div class="form-group">
             <label for="nome-evento">Nome do evento <span class="required">*</span></label>
@@ -73,6 +78,23 @@
                 {% endfor %}
             </div>
         </div>
+        <div class="form-group fiscais-evento-grupo">
+            <div class="fiscais-acoes-evento">
+                <span class="form-label">Fiscais participantes do evento</span>
+                <button type="button" id="abrir-fiscais" class="btn btn-add" data-sem-confirmacao aria-label="Cadastrar fiscal" title="Cadastrar fiscal">+</button>
+            </div>
+            <div class="unidades-checkboxes fiscais-checkboxes" id="fiscais-evento">
+                {% for fiscal in fiscais %}
+                <label class="unidade-checkbox">
+                    <input type="checkbox" name="fiscais_evento" value="{{ fiscal.id }}"{% if evento and fiscal.id in evento.fiscais %} checked{% endif %}>
+                    <span class="unidade-checkbox-mark" aria-hidden="true"></span>
+                    <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }}</span>
+                </label>
+                {% else %}
+                <span class="fiscais-vazio">Nenhum fiscal cadastrado. Use o botão + para cadastrar.</span>
+                {% endfor %}
+            </div>
+        </div>
         <div class="form-group">
             <label for="processo-sei-evento">Processo SEI</label>
             <input class="form-control" id="processo-sei-evento" type="text" name="processo_sei" value="{{ evento.processo_sei if evento and evento.processo_sei else '' }}">
@@ -101,6 +123,65 @@
     </form>
 </div>
 
+<div id="fiscais-popup" class="fiscais-popup-overlay" hidden>
+    <section class="fiscais-popup-dialog" role="dialog" aria-modal="true" aria-labelledby="fiscais-popup-titulo">
+        <div class="fiscais-popup-cabecalho">
+            <h2 id="fiscais-popup-titulo">Fiscais cadastrados</h2>
+            <button type="button" id="fechar-fiscais" class="fiscais-popup-fechar" aria-label="Fechar">×</button>
+        </div>
+        <form id="form-fiscal" class="fiscal-cadastro-form">
+            <div class="form-group">
+                <label for="fiscal-nome">Nome</label>
+                <input class="form-control" id="fiscal-nome" name="nome" type="text" required>
+            </div>
+            <div class="form-group">
+                <label for="fiscal-local">Local Anatel</label>
+                <select class="form-control" id="fiscal-local" name="local_anatel" required>
+                    <option value="">Selecione uma GR ou UO</option>
+                    {% for unidade in unidades_executantes %}
+                    <option value="{{ unidade.sigla }}">{{ unidade.sigla }} - {{ unidade.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="fiscal-funcao">Função no evento</label>
+                <select class="form-control" id="fiscal-funcao" name="funcao_evento" required>
+                    <option value="">Selecione a função</option>
+                    <option value="Coordenação">Coordenação</option>
+                    <option value="Abordagem">Abordagem</option>
+                    <option value="Monitoração">Monitoração</option>
+                </select>
+            </div>
+            <div id="fiscal-mensagem" class="fiscal-mensagem" role="status"></div>
+            <div class="inserir-acoes">
+                <button type="submit" class="btn btn-submit">Cadastrar fiscal</button>
+            </div>
+        </form>
+        <div class="fiscais-lista-wrap">
+            <h3>Lista global de fiscais</h3>
+            <table class="ute-table fiscais-tabela">
+                <thead><tr><th>Nome</th><th>Local Anatel</th><th>Função no evento</th><th>Ação</th></tr></thead>
+                <tbody id="fiscais-tbody">
+                    {% for fiscal in fiscais %}
+                    <tr data-fiscal-id="{{ fiscal.id }}">
+                        <td>{{ fiscal.nome }}</td>
+                        <td>{{ fiscal.local_anatel }} - {{ fiscal.local_anatel_nome }}</td>
+                        <td>{{ fiscal.funcao_evento }}</td>
+                        <td>
+                            <form class="fiscal-exclusao-form" method="post" action="/fiscais/{{ fiscal.id }}/excluir">
+                                <button type="submit" class="btn fiscal-excluir">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr id="fiscais-vazio"><td colspan="4">Nenhum fiscal cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
 {% if evento %}
 <section class="form-card font-semi-bold">
     <h5 class="teq-title">Estações do evento</h5>
@@ -119,4 +200,5 @@
 </section>
 {% endif %}
 
+<script src="/static/fiscais.js?v=1"></script>
 {% endblock %}

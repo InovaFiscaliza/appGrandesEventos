@@ -32,6 +32,24 @@ CREATE TABLE IF NOT EXISTS unidades_executantes (
     nome TEXT NOT NULL
 );
 
+-- Fiscais disponíveis globalmente para todos os eventos
+CREATE TABLE IF NOT EXISTS fiscais (
+    id            BIGSERIAL PRIMARY KEY,
+    nome          TEXT NOT NULL,
+    local_anatel  TEXT NOT NULL REFERENCES unidades_executantes(sigla),
+    funcao_evento TEXT NOT NULL CHECK (funcao_evento IN ('Coordenação', 'Abordagem', 'Monitoração')),
+    criado_em     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (nome, local_anatel, funcao_evento)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fiscais_nome ON fiscais (nome);
+
+CREATE TABLE IF NOT EXISTS eventos_fiscais (
+    evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    fiscal_id BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
+    PRIMARY KEY (evento_id, fiscal_id)
+);
+
 CREATE TABLE IF NOT EXISTS eventos_unidades_executantes (
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     unidade_sigla TEXT NOT NULL REFERENCES unidades_executantes(sigla),

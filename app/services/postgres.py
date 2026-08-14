@@ -224,6 +224,7 @@ def criar_evento(
     unidades_executantes: list[str] | None = None,
     observacoes: str | None = None,
     estacoes: list[str | dict] | None = None,
+    fiscais: list[str] | None = None,
 ) -> int:
     """Cria um evento, suas estações e retorna o identificador do evento."""
     with get_engine().begin() as conn:
@@ -283,6 +284,15 @@ def criar_evento(
                 """),
                 {"evento_id": evento_id, "unidade_sigla": sigla},
             )
+        for fiscal_id in fiscais or []:
+            conn.execute(
+                text("""
+                INSERT INTO eventos_fiscais (evento_id, fiscal_id)
+                VALUES (:evento_id, :fiscal_id)
+                ON CONFLICT DO NOTHING
+                """),
+                {"evento_id": evento_id, "fiscal_id": int(fiscal_id)},
+            )
         return evento_id
 
 
@@ -295,6 +305,81 @@ def listar_unidades_executantes() -> list[dict]:
             ORDER BY CASE WHEN sigla LIKE 'GR%' THEN 0 ELSE 1 END, sigla
         """)).mappings().all()
     return [dict(row) for row in rows]
+
+
+def listar_fiscais() -> list[dict]:
+    """Retorna a lista global de fiscais cadastrados."""
+    with get_engine().connect() as conn:
+        rows = conn.execute(text("""
+            SELECT f.id, f.nome, f.local_anatel, u.nome AS local_anatel_nome,
+                   f.funcao_evento
+            FROM fiscais f
+            JOIN unidades_executantes u ON u.sigla = f.local_anatel
+            ORDER BY f.nome, f.local_anatel, f.funcao_evento
+        """)).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def criar_fiscal(nome: str, local_anatel: str, funcao_evento: str) -> int:
+    """Cadastra um fiscal na lista global e retorna seu identificador."""
+    with get_engine().begin() as conn:
+        return conn.execute(
+            text("""
+            INSERT INTO fiscais (nome, local_anatel, funcao_evento)
+            VALUES (:nome, :local_anatel, :funcao_evento)
+            RETURNING id
+        """),
+            {
+                "nome": nome,
+                "local_anatel": local_anatel,
+                "funcao_evento": funcao_evento,
+            },
+        ).scalar_one()
+
+
+def excluir_fiscal(fiscal_id: int) -> None:
+    """Exclui um fiscal global e seus vínculos com eventos."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("DELETE FROM fiscais WHERE id = :fiscal_id"),
+            {
+                "fiscal_id": int(fiscal_id),
+            },
+        )
+
+
+def listar_fiscais_evento(evento_id: int) -> list[int]:
+    """Retorna os IDs dos fiscais participantes do evento."""
+    with get_engine().connect() as conn:
+        return list(
+            conn.execute(
+                text("""
+            SELECT fiscal_id
+            FROM eventos_fiscais
+            WHERE evento_id = :evento_id
+            ORDER BY fiscal_id
+        """),
+                {"evento_id": int(evento_id)},
+            ).scalars()
+        )
+
+
+def atualizar_fiscais_evento(evento_id: int, fiscais: list[str]) -> None:
+    """Substitui os fiscais participantes do evento."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("DELETE FROM eventos_fiscais WHERE evento_id = :evento_id"),
+            {"evento_id": int(evento_id)},
+        )
+        for fiscal_id in fiscais:
+            conn.execute(
+                text("""
+                INSERT INTO eventos_fiscais (evento_id, fiscal_id)
+                VALUES (:evento_id, :fiscal_id)
+                ON CONFLICT DO NOTHING
+            """),
+                {"evento_id": int(evento_id), "fiscal_id": int(fiscal_id)},
+            )
 
 
 def listar_unidades_evento(evento_id: int) -> list[str]:
@@ -348,7 +433,16 @@ def listar_eventos_detalhes() -> list[dict]:
                           SELECT string_agg(est.nome, ', ' ORDER BY est.nome)
                           FROM estacoes est
                           WHERE est.evento_id = e.id
-                      ), '') AS estacoes
+                      ), '') AS estacoes,
+                      COALESCE((
+                          SELECT string_agg(
+                              f.nome || ' (' || f.local_anatel || ' - ' || f.funcao_evento || ')',
+                              ', ' ORDER BY f.nome
+                          )
+                          FROM eventos_fiscais ef
+                          JOIN fiscais f ON f.id = ef.fiscal_id
+                          WHERE ef.evento_id = e.id
+                      ), '') AS fiscais_participantes
                   FROM eventos e
                 ORDER BY e.nome
             """)).mappings().all()

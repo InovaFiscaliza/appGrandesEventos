@@ -83,6 +83,7 @@
     const botao = evento.target.closest("button, a");
     if (!botao || botao.tagName === "BUTTON" && botao.type === "submit") return;
     if (botao.tagName === "A") return;
+    if (botao.hasAttribute("data-sem-confirmacao")) return;
     if (botao.hasAttribute("data-confirmacao-imagem")) return;
     if (confirmacoesLiberadas.has(botao)) return;
     const mensagem = mensagemPara(botao);

@@ -182,6 +182,51 @@ button.btn { font-family: inherit; }
 .confirmacao-acoes { display: flex; justify-content: flex-end; gap: .7rem; margin-top: 1.2rem; }
 .confirmacao-acoes .btn { min-height: 2.6rem; }
 .confirmacao-cancelar { background: #5f6368; border-color: #45484c; }
+.evento-form-titulo { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.evento-form-titulo .teq-title { margin-bottom: 0; }
+.fiscais-acoes-evento { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .5rem 0 .75rem; }
+.fiscais-checkboxes { max-height: 14rem; }
+.fiscais-vazio { color: #526273; font-size: .9rem; }
+.btn-add { min-width: 2.35rem; min-height: 2.35rem; padding: .15rem .55rem; font-size: 1.35rem; line-height: 1; }
+.fiscais-popup-overlay[hidden] { display: none; }
+.fiscais-popup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(20, 51, 123, .48);
+}
+.fiscais-popup-dialog {
+    width: min(100%, 58rem);
+    max-height: 92vh;
+    overflow: auto;
+    padding: 1.25rem;
+    border: 2px solid var(--blue-dark);
+    border-radius: var(--radius);
+    background: #fff;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, .28);
+}
+.fiscais-popup-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.fiscais-popup-cabecalho h2 { margin: 0; color: var(--blue-dark); font-size: 1.25rem; }
+.fiscais-popup-fechar { border: 0; background: transparent; color: var(--blue-dark); font-size: 1.8rem; line-height: 1; cursor: pointer; }
+.fiscal-cadastro-form { display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; align-items: end; gap: .75rem; }
+.fiscal-cadastro-form .inserir-acoes { grid-column: 1 / -1; justify-content: flex-end; margin: 0; }
+.fiscal-mensagem { min-height: 1.25rem; grid-column: 1 / -1; }
+.fiscal-mensagem.erro { color: #b42318; }
+.fiscal-mensagem.sucesso { color: #176b2c; }
+.fiscais-lista-wrap { margin-top: 1rem; overflow-x: auto; }
+.fiscais-lista-wrap h3 { margin: 0 0 .5rem; color: var(--blue-dark); font-size: 1rem; }
+.fiscais-tabela { width: 100%; }
+.fiscal-exclusao-form { margin: 0; }
+.fiscal-excluir { white-space: nowrap; padding: .35rem .6rem; font-size: calc(1rem - 4px) !important; }
+body.fiscais-popup-aberto { overflow: hidden; }
+@media (max-width: 760px) {
+    .fiscal-cadastro-form { grid-template-columns: 1fr 1fr; }
+    .fiscal-cadastro-form .form-group:first-child { grid-column: 1 / -1; }
+    .fiscal-cadastro-form .inserir-acoes { grid-column: 1 / -1; }
+}
 .historico-popup-overlay {
     position: fixed;
     inset: 0;
