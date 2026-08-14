@@ -46,9 +46,13 @@
     botaoCancelar.onclick = fechar;
   }
 
+  window.confirmarExclusaoImagem = (continuar, elemento) => {
+    abrir("Confirma a exclusão desta imagem?", continuar, elemento);
+  };
+
   function mensagemPara(botao) {
     const formulario = botao?.form;
-    const destino = formulario?.getAttribute("action") || "";
+    const destino = formulario?.getAttribute("action") || botao?.getAttribute("href") || "";
     const texto = [
       botao?.textContent,
       botao?.getAttribute("aria-label"),
@@ -67,6 +71,7 @@
     const mensagem = mensagemPara(evento.submitter);
     if (!mensagem || confirmacoesLiberadas.has(evento.target)) return;
     evento.preventDefault();
+    evento.stopImmediatePropagation();
     abrir(mensagem, () => {
       confirmacoesLiberadas.add(evento.target);
       evento.target.requestSubmit(evento.submitter);
@@ -75,12 +80,15 @@
   }, true);
 
   document.addEventListener("click", (evento) => {
-    const botao = evento.target.closest("button");
-    if (!botao || botao.type === "submit") return;
+    const botao = evento.target.closest("button, a");
+    if (!botao || botao.tagName === "BUTTON" && botao.type === "submit") return;
+    if (botao.tagName === "A") return;
+    if (botao.hasAttribute("data-confirmacao-imagem")) return;
     if (confirmacoesLiberadas.has(botao)) return;
     const mensagem = mensagemPara(botao);
     if (!mensagem) return;
     evento.preventDefault();
+    evento.stopImmediatePropagation();
     abrir(mensagem, () => {
       confirmacoesLiberadas.add(botao);
       botao.click();

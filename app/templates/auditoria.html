@@ -22,6 +22,22 @@
                 {% endfor %}
             </select>
         </div>
+        <div class="form-group">
+            <label for="auditoria-data-inicio">Data inicial</label>
+            <input id="auditoria-data-inicio" name="data_inicio" class="form-control" type="date" value="{{ data_inicio_selecionada }}">
+        </div>
+        <div class="form-group">
+            <label for="auditoria-data-fim">Data final</label>
+            <input id="auditoria-data-fim" name="data_fim" class="form-control" type="date" value="{{ data_fim_selecionada }}">
+        </div>
+        <div class="form-group">
+            <label for="auditoria-fiscal">Fiscal</label>
+            <input id="auditoria-fiscal" name="fiscal" class="form-control" type="search" value="{{ fiscal_selecionado }}" placeholder="Nome do fiscal">
+        </div>
+        <div class="form-group">
+            <label for="auditoria-palavra">Palavra-chave</label>
+            <input id="auditoria-palavra" name="palavra" class="form-control" type="search" value="{{ palavra_selecionada }}" placeholder="Digite uma palavra">
+        </div>
         <div class="btn-col consultar-acoes">
             <button type="submit" class="btn btn-primary">Filtrar</button>
             <a href="/auditoria" class="btn btn-back">Limpar</a>
@@ -55,7 +71,9 @@
                     <td>{{ registro.valor_novo if registro.valor_novo is not none else '(vazio)' }}</td>
                     <td>
                         {% if registro.imagem_url %}
-                        <img class="historico-imagem auditoria-miniatura" src="{{ registro.imagem_url }}" alt="{{ registro.valor_novo }}" title="Abrir imagem" role="button" tabindex="0" onclick="abrirZoomImagem(this.src, this.alt)" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); abrirZoomImagem(this.src, this.alt); }">
+                        <a href="{{ registro.imagem_url }}" target="_blank" rel="noopener" title="Abrir imagem">
+                            <img class="historico-imagem auditoria-miniatura" src="{{ registro.imagem_url }}" alt="{{ registro.valor_novo }}" title="Abrir imagem" role="button" tabindex="0" onclick="event.preventDefault(); event.stopPropagation(); abrirZoomImagem(this.src, this.alt)" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); abrirZoomImagem(this.src, this.alt); }">
+                        </a>
                         {% elif registro.campo in ['Imagem anexada', 'Imagem excluída'] %}
                         <span class="table-hint">Indisponível</span>
                         {% else %}

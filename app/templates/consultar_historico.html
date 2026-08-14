@@ -26,9 +26,7 @@
                 <td>{{ registro.valor_anterior if registro.valor_anterior is not none else "(vazio)" }}</td>
                 <td>
                     {% if registro.imagem_id %}
-                    <a href="{{ registro.imagem_url }}" target="_blank" rel="noopener" title="Abrir imagem anexada">
-                        <img class="historico-imagem" src="{{ registro.imagem_url }}" alt="{{ registro.valor_novo }}">
-                    </a>
+                    <img class="historico-imagem" src="{{ registro.imagem_url }}" alt="{{ registro.valor_novo }}" title="Imagem anexada">
                     <span class="historico-imagem-nome">{{ registro.valor_novo }}</span>
                     {% else %}
                     {{ registro.valor_novo if registro.valor_novo is not none else "(vazio)" }}
@@ -44,6 +42,14 @@
 {% endif %}
 
 <div class="btn-col consultar-acoes">
-    <a href="/consultar" class="btn btn-back">Voltar para consulta</a>
+    <button type="button" class="btn btn-back" onclick="window.parent.postMessage({ tipo: 'fechar-historico' }, window.location.origin);">Fechar histórico</button>
 </div>
+<script src="/static/upload-imagens.js?v=2"></script>
+<script>
+    document.querySelectorAll(".historico-imagem").forEach((imagem) => {
+        imagem.addEventListener("click", () => {
+            window.abrirZoomImagem(imagem.src, imagem.alt);
+        });
+    });
+</script>
 {% endblock %}

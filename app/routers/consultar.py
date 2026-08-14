@@ -299,7 +299,7 @@ async def api_pendencias(request: Request):
         if id_ocorrencia.isdigit():
             imagens = carregar_imagens_ocorrencia(
                 evento_id=sp_id, ocorrencia_id=int(id_ocorrencia)
-            )[:2]
+            )
         records.append(
             {
                 "row_key": _make_row_key(row),

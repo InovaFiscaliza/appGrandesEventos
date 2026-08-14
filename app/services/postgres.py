@@ -2017,7 +2017,14 @@ def consultar_historico_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[d
         return []
 
 
-def consultar_auditoria_evento(evento_id=None, origem=None) -> list[dict]:
+def consultar_auditoria_evento(
+    evento_id=None,
+    origem=None,
+    data_inicio=None,
+    data_fim=None,
+    fiscal=None,
+    palavra=None,
+) -> list[dict]:
     """Retorna a auditoria consolidada de emissões, etiquetagem e BSR/ERB."""
     if evento_id is None:
         return []
@@ -2113,12 +2120,42 @@ def consultar_auditoria_evento(evento_id=None, origem=None) -> list[dict]:
                             ) imagem ON TRUE
                             WHERE auditoria.evento_id = :evento_id
                         ) auditoria_consolidada
-                        WHERE CAST(:origem AS TEXT) IS NULL
-                           OR CAST(:origem AS TEXT) = ''
-                           OR origem = CAST(:origem AS TEXT)
+                                                WHERE (
+                                                            CAST(:origem AS TEXT) IS NULL
+                                                            OR CAST(:origem AS TEXT) = ''
+                                                            OR origem = CAST(:origem AS TEXT)
+                                                    )
+                          AND (
+                              CAST(:data_inicio AS DATE) IS NULL
+                              OR modificado_em >= CAST(:data_inicio AS DATE)
+                          )
+                          AND (
+                              CAST(:data_fim AS DATE) IS NULL
+                              OR modificado_em < CAST(:data_fim AS DATE) + INTERVAL '1 day'
+                          )
+                          AND (
+                              CAST(:fiscal AS TEXT) IS NULL
+                              OR CAST(:fiscal AS TEXT) = ''
+                              OR LOWER(COALESCE(usuario_fiscal, '')) LIKE LOWER('%' || CAST(:fiscal AS TEXT) || '%')
+                          )
+                          AND (
+                              CAST(:palavra AS TEXT) IS NULL
+                              OR CAST(:palavra AS TEXT) = ''
+                              OR LOWER(CONCAT_WS(
+                                  ' ', origem, registro, usuario_fiscal, campo,
+                                  valor_anterior, valor_novo
+                              )) LIKE LOWER('%' || CAST(:palavra AS TEXT) || '%')
+                          )
                         ORDER BY modificado_em DESC
                     """),
-                    {"evento_id": int(evento_id), "origem": origem},
+                    {
+                        "evento_id": int(evento_id),
+                        "origem": origem,
+                        "data_inicio": data_inicio,
+                        "data_fim": data_fim,
+                        "fiscal": fiscal,
+                        "palavra": palavra,
+                    },
                 )
                 .mappings()
                 .all()

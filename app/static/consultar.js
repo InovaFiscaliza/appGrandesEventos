@@ -67,16 +67,19 @@ async function carregarImagensOcorrencia(id) {
       const excluir = document.createElement("button");
       excluir.type = "button";
       excluir.className = "imagem-preview-excluir";
+      excluir.setAttribute("data-confirmacao-imagem", "true");
       excluir.setAttribute("aria-label", `Excluir ${imagem.nome_arquivo}`);
       excluir.title = "Excluir imagem";
       excluir.textContent = "🗑️";
-      excluir.addEventListener("click", () => {
-        const campo = document.getElementById("f-imagens-excluir");
-        const ids = campo.value ? campo.value.split(",") : [];
-        if (!ids.includes(String(imagem.id))) ids.push(String(imagem.id));
-        campo.value = ids.filter(Boolean).join(",");
-        item.remove();
-      });
+      excluir.addEventListener("click", () =>
+        window.confirmarExclusaoImagem(() => {
+          const campo = document.getElementById("f-imagens-excluir");
+          const ids = campo.value ? campo.value.split(",") : [];
+          if (!ids.includes(String(imagem.id))) ids.push(String(imagem.id));
+          campo.value = ids.filter(Boolean).join(",");
+          item.remove();
+        }, excluir)
+      );
       item.appendChild(excluir);
       lista.appendChild(item);
     });
@@ -137,9 +140,10 @@ function renderizarTabela(lista) {
     });
     const fotos = document.createElement("td");
     fotos.dataset.label = "Fotos";
-    (row.imagens || []).slice(0, 2).forEach((imagem) => {
+    (row.imagens || []).forEach((imagem, indice) => {
       const miniatura = document.createElement("img");
       miniatura.className = "historico-imagem pendencia-imagem-miniatura";
+      if (indice >= 2) miniatura.classList.add("pendencia-imagem-extra");
       miniatura.src = imagem.url;
       miniatura.alt = imagem.nome_arquivo || "Foto da emissão";
       miniatura.title = miniatura.alt;
@@ -204,6 +208,51 @@ function selecionarPendencia(row) {
   }
   document.getElementById("bloco-form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+function abrirHistoricoPopup(evento) {
+  evento.preventDefault();
+  const link = evento.currentTarget;
+  let modal = document.getElementById("historico-popup");
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "historico-popup";
+    modal.className = "historico-popup-overlay";
+    modal.innerHTML = `
+      <section class="historico-popup-dialog" role="dialog" aria-modal="true"
+               aria-labelledby="historico-popup-titulo">
+        <div class="historico-popup-cabecalho">
+          <h2 id="historico-popup-titulo">Histórico de modificações</h2>
+          <button type="button" class="historico-popup-fechar" aria-label="Fechar histórico">×</button>
+        </div>
+        <iframe class="historico-popup-frame" title="Histórico de modificações"></iframe>
+      </section>
+    `;
+    document.body.appendChild(modal);
+    modal.querySelector(".historico-popup-fechar").addEventListener("click", fecharHistoricoPopup);
+    modal.addEventListener("click", (eventoModal) => {
+      if (eventoModal.target === modal) fecharHistoricoPopup();
+    });
+  }
+  modal.querySelector(".historico-popup-frame").src = link.href;
+  modal.classList.add("aberto");
+  document.body.classList.add("historico-popup-aberto");
+}
+
+function fecharHistoricoPopup() {
+  const modal = document.getElementById("historico-popup");
+  if (!modal) return;
+  modal.classList.remove("aberto");
+  modal.querySelector(".historico-popup-frame").src = "about:blank";
+  document.body.classList.remove("historico-popup-aberto");
+}
+
+window.fecharHistoricoPopup = fecharHistoricoPopup;
+window.addEventListener("message", (evento) => {
+  if (evento.data?.tipo === "fechar-historico") fecharHistoricoPopup();
+});
+
+const linkHistorico = document.getElementById("btn-consultar-historico");
+linkHistorico?.addEventListener("click", abrirHistoricoPopup);
 
 function popularTabela(lista) {
   const selectedKey = new URLSearchParams(window.location.search).get("key") || "";

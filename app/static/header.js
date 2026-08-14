@@ -2,7 +2,7 @@
   document.addEventListener('keydown', (event) => {
     const elemento = event.target;
     const digitando = elemento.matches('input, textarea, select, [contenteditable="true"]');
-    if (event.altKey && event.key.toLowerCase() === 'm' && !digitando) {
+    if (event.altKey && event.key.toLowerCase() === 'x' && !digitando) {
       event.preventDefault();
       window.location.href = '/menu';
     }

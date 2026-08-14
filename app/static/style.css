@@ -137,6 +137,7 @@ button.btn { font-family: inherit; }
 .historico-vazio { margin: 0; padding: 1rem; color: #526273; background: #fff; border: 1px solid #dbe3ec; border-radius: 8px; }
 .historico-imagem { display: block; width: 72px; height: 54px; object-fit: cover; border: 1px solid #cbd5e1; border-radius: 4px; }
 .pendencia-imagem-miniatura { display: inline-block; width: 42px; height: 32px; margin-right: .25rem; vertical-align: middle; }
+.pendencia-imagem-extra { width: 5px; height: 5px; margin-right: 2px; border: 0; border-radius: 0; }
 .historico-imagem-nome { display: block; margin-top: .25rem; max-width: 180px; overflow-wrap: anywhere; font-size: .8rem; color: #526273; }
 .menu-voltar { align-items: flex-end; margin-left: auto; margin-right: 0; }
 .menu-voltar .btn-back { margin-left: 0; margin-right: 0; }
@@ -181,6 +182,47 @@ button.btn { font-family: inherit; }
 .confirmacao-acoes { display: flex; justify-content: flex-end; gap: .7rem; margin-top: 1.2rem; }
 .confirmacao-acoes .btn { min-height: 2.6rem; }
 .confirmacao-cancelar { background: #5f6368; border-color: #45484c; }
+.historico-popup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, .55);
+}
+.historico-popup-overlay.aberto { display: flex; }
+.historico-popup-dialog {
+    display: flex;
+    flex-direction: column;
+    width: min(1100px, 100%);
+    height: min(760px, 92vh);
+    overflow: hidden;
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, .35);
+}
+.historico-popup-cabecalho {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .75rem 1rem;
+    background: var(--blue-dark);
+    color: #fff;
+}
+.historico-popup-cabecalho h2 { margin: 0; font-size: 1.1rem; }
+.historico-popup-fechar {
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 1.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.historico-popup-frame { flex: 1; width: 100%; border: 0; }
+body.historico-popup-aberto { overflow: hidden; }
 
 /* ---- Forms ---- */
 .form-card {
@@ -212,6 +254,15 @@ button.btn { font-family: inherit; }
 }
 .form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
 .form-group input[type=checkbox] { width: auto; }
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
 .required { color: red; font-weight: bold; }
 .radio-group label { display: inline; font-weight: normal; margin-right: 1rem; }
 .radio-group input[type=radio] { width: auto; margin-right: 0.25rem; }
@@ -297,11 +348,17 @@ button.btn { font-family: inherit; }
 .ute-table th, .ute-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
 .ute-table th { background-color: #f2f2f2; color: #333; }
 .estacoes-evento-table th, .estacoes-evento-table td { text-align: left; }
+.estacoes-evento-table tbody td,
+.estacoes-evento-table .form-control,
+.estacoes-evento-table .estacao-acao .btn {
+    font-family: inherit;
+    font-size: calc(.85rem + 1px) !important;
+    font-weight: inherit;
+    line-height: 1.2;
+}
 .estacoes-evento-table .estacao-acao { width: 1%; text-align: center; vertical-align: middle; white-space: nowrap; }
 .estacao-acao form { display: flex; justify-content: center; }
 .estacao-acao .btn { margin: 0; }
-.estacoes-evento-table .form-control { font-size: .95rem; }
-.estacoes-evento-table .estacao-acao .btn { font-size: calc(.95rem - 2px); }
 .evento-acao { width: 1%; white-space: nowrap; text-align: center; vertical-align: middle; }
 .evento-acao .btn { width: max-content; margin: 0 auto; }
 .bsr-acao { width: 1%; min-width: 5.2rem; white-space: nowrap; text-align: center; vertical-align: middle; }

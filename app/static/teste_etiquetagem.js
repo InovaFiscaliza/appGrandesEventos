@@ -1,14 +1,15 @@
 (() => {
   const imagensExcluir = document.querySelector('#imagens-teste-excluir');
   document.querySelectorAll('.imagem-preview-excluir[data-imagem-id]').forEach((botao) => {
-    botao.addEventListener('click', () => {
+    botao.setAttribute('data-confirmacao-imagem', 'true');
+    botao.addEventListener('click', () => window.confirmarExclusaoImagem(() => {
       const campo = document.createElement('input');
       campo.type = 'hidden';
       campo.name = 'imagens_excluir';
       campo.value = botao.dataset.imagemId;
       imagensExcluir?.appendChild(campo);
       botao.closest('.imagem-preview-item')?.remove();
-    });
+    }, botao));
   });
 
   const frequencia = document.querySelector('#frequencia');
