@@ -231,7 +231,6 @@
                 <li class="imagem-preview-item imagem-salva-item">
                     <img src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
                     <button type="button" class="imagem-preview-excluir" data-imagem-id="{{ imagem.id }}" aria-label="Excluir {{ imagem.nome_arquivo }}" title="Excluir imagem">🗑️</button>
-                    <span class="imagem-preview-nome">ID: {{ imagem.id }} · {{ imagem.nome_arquivo }}</span>
                 </li>
                 {% endfor %}
             </ul>
@@ -249,5 +248,5 @@
     </form>
 </div>
 <script src="/static/teste_etiquetagem.js?v=10"></script>
-<script src="/static/upload-imagens.js?v=2"></script>
+<script src="/static/upload-imagens.js?v=4"></script>
 {% endblock %}

@@ -27,7 +27,6 @@
                 <td>
                     {% if registro.imagem_id %}
                     <img class="historico-imagem" src="{{ registro.imagem_url }}" alt="{{ registro.valor_novo }}" title="Imagem anexada">
-                    <span class="historico-imagem-nome">{{ registro.valor_novo }}</span>
                     {% else %}
                     {{ registro.valor_novo if registro.valor_novo is not none else "(vazio)" }}
                     {% endif %}
@@ -44,7 +43,7 @@
 <div class="btn-col consultar-acoes">
     <button type="button" class="btn btn-back" onclick="window.parent.postMessage({ tipo: 'fechar-historico' }, window.location.origin);">Fechar histórico</button>
 </div>
-<script src="/static/upload-imagens.js?v=2"></script>
+<script src="/static/upload-imagens.js?v=4"></script>
 <script>
     document.querySelectorAll(".historico-imagem").forEach((imagem) => {
         imagem.addEventListener("click", () => {

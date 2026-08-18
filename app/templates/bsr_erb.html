@@ -38,7 +38,17 @@
         </div>
         <div class="form-group imagem-upload">
             <label for="imagens-bsr-erb">Fotos da ocorrência</label>
-            <input id="imagens-bsr-erb" name="imagens" type="file" accept=".jpeg,.jpg,.png,image/jpeg,image/png" multiple>
+            {% if registro_edicao and registro_edicao.imagens %}
+            <ul class="lista-imagens" aria-label="Fotos já anexadas">
+                {% for imagem in registro_edicao.imagens %}
+                <li class="imagem-preview-item">
+                    <img src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
+                    <button type="button" class="imagem-preview-excluir" data-imagem-bsr-excluir="/bsr-erb/{{ registro_edicao.id }}/imagem/{{ imagem.id }}/excluir" aria-label="Excluir {{ imagem.nome_arquivo }}" title="Excluir imagem">🗑️</button>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <input id="imagens-bsr-erb" name="imagens" type="file" accept=".jpeg,.jpg,.png,image/jpeg,image/png" capture="environment" multiple>
             <ul id="lista-imagens-bsr-erb" class="lista-imagens" aria-live="polite"></ul>
         </div>
         <div class="inserir-acoes">
@@ -78,7 +88,7 @@
                     <td>{{ registro.criado_em.strftime('%d/%m/%Y %H:%M') if registro.criado_em else "-" }}</td>
                     <td class="bsr-acao">
                         <div class="bsr-acoes">
-                            <a class="btn" href="/bsr-erb?editar={{ registro.id }}">Editar</a>
+                            <a class="btn" href="/bsr-erb?editar={{ registro.id }}" data-sem-confirmacao>Editar</a>
                             <form method="post" action="/bsr-erb/{{ registro.id }}/excluir">
                                 <button type="submit" class="btn btn-red">Excluir</button>
                             </form>
@@ -94,6 +104,6 @@
 
 <script src="/static/db.js"></script>
 <script src="/static/sync.js"></script>
-<script src="/static/bsr_erb.js?v=3"></script>
-<script src="/static/upload-imagens.js?v=3"></script>
+<script src="/static/bsr_erb.js?v=5"></script>
+<script src="/static/upload-imagens.js?v=5"></script>
 {% endblock %}

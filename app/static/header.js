@@ -1,8 +1,6 @@
 (() => {
   document.addEventListener('keydown', (event) => {
-    const elemento = event.target;
-    const digitando = elemento.matches('input, textarea, select, [contenteditable="true"]');
-    if (event.altKey && event.key.toLowerCase() === 'x' && !digitando) {
+    if (event.altKey && event.key.toLowerCase() === 'x') {
       event.preventDefault();
       window.location.href = '/menu';
     }

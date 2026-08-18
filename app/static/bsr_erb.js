@@ -6,6 +6,25 @@
   const form = document.getElementById("form-bsr-erb");
   if (!form) return;
 
+  document.querySelectorAll("[data-imagem-bsr-excluir]").forEach((botao) => {
+    botao.addEventListener("click", () => {
+      window.confirmarExclusaoImagem(async () => {
+        botao.disabled = true;
+        try {
+          const resposta = await fetch(botao.dataset.imagemBsrExcluir, {
+            method: "POST",
+            headers: { Accept: "text/html" },
+          });
+          if (!resposta.ok) throw new Error(`Falha HTTP ${resposta.status}`);
+          window.location.href = resposta.url;
+        } catch (erro) {
+          botao.disabled = false;
+          alert("Não foi possível excluir a foto: " + erro.message);
+        }
+      }, botao);
+    });
+  });
+
   form.addEventListener("submit", async function (e) {
     e.preventDefault();
     if (form.dataset.enviando === "1") return;

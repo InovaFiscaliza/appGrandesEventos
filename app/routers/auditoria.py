@@ -10,7 +10,7 @@ from app.utils.formatters import _img_b64
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-ORIGENS_AUDITORIA = ("Emissão", "Teste de etiquetagem", "BSR/ERB")
+ORIGENS_AUDITORIA = ("Evento", "Emissão", "Teste de etiquetagem", "BSR/ERB")
 
 
 @router.get("/auditoria", response_class=HTMLResponse)

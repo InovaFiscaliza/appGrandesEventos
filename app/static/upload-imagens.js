@@ -7,6 +7,7 @@ window.abrirZoomImagem = function (src, alt) {
     modal.innerHTML = `
       <button type="button" class="imagem-zoom-fechar" aria-label="Fechar imagem">×</button>
       <img class="imagem-zoom-conteudo" alt="">
+      <small class="imagem-zoom-nome"></small>
     `;
     document.body.appendChild(modal);
     modal.querySelector(".imagem-zoom-fechar").addEventListener("click", () => {
@@ -19,6 +20,7 @@ window.abrirZoomImagem = function (src, alt) {
   const imagem = modal.querySelector(".imagem-zoom-conteudo");
   imagem.src = src;
   imagem.alt = alt || "Imagem ampliada";
+  modal.querySelector(".imagem-zoom-nome").textContent = alt || "";
   modal.classList.add("aberto");
 };
 

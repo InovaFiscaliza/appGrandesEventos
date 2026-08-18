@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS eventos (
     local           TEXT,
     acao_fiscalizacao TEXT,
     processo_sei    TEXT,
-    coordenador_responsavel TEXT,
     periodo_inicio  DATE,
     periodo_fim     DATE,
     observacoes     TEXT,
@@ -49,6 +48,20 @@ CREATE TABLE IF NOT EXISTS eventos_fiscais (
     fiscal_id BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
     PRIMARY KEY (evento_id, fiscal_id)
 );
+
+CREATE TABLE IF NOT EXISTS eventos_coordenadores (
+    evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    fiscal_id BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
+    PRIMARY KEY (evento_id, fiscal_id),
+    FOREIGN KEY (evento_id, fiscal_id)
+        REFERENCES eventos_fiscais(evento_id, fiscal_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_eventos_coordenadores_fiscal
+    ON eventos_coordenadores (fiscal_id);
+
+ALTER TABLE eventos DROP COLUMN IF EXISTS coordenador_responsavel;
 
 CREATE TABLE IF NOT EXISTS eventos_unidades_executantes (
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
@@ -130,6 +143,20 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_ocorrencia_data
     ON auditoria_ocorrencias (ocorrencia_id, modificado_em DESC);
 CREATE INDEX IF NOT EXISTS idx_auditoria_evento_data
     ON auditoria_ocorrencias (evento_id, modificado_em DESC);
+
+-- Histórico de alterações dos eventos.
+CREATE TABLE IF NOT EXISTS auditoria_eventos (
+    id              BIGSERIAL PRIMARY KEY,
+    evento_id       BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    usuario_fiscal  TEXT NOT NULL,
+    campo           TEXT NOT NULL,
+    valor_anterior  TEXT,
+    valor_novo      TEXT,
+    modificado_em   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_evento_data_historico
+    ON auditoria_eventos (evento_id, modificado_em DESC);
 
 -- Tabela UTE
 CREATE TABLE IF NOT EXISTS tabela_ute (

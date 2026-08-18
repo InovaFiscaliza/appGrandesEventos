@@ -17,6 +17,9 @@ from app.services.postgres import (
     listar_fiscais,
     criar_fiscal,
     listar_fiscais_evento,
+    listar_coordenadores_evento,
+    registrar_auditoria_evento,
+    obter_snapshot_auditoria_evento,
     atualizar_fiscais_evento,
     excluir_fiscal,
 )
@@ -48,6 +51,7 @@ async def get_criar_evento(request: Request):
         if evento:
             evento["unidades_executantes"] = listar_unidades_evento(int(editar_id))
             evento["fiscais"] = listar_fiscais_evento(int(editar_id))
+            evento["coordenadores"] = listar_coordenadores_evento(int(editar_id))
             estacoes = listar_estacoes_evento(int(editar_id))
     if editar_id and evento is None:
         request.session["flash_error"] = "Evento não encontrado."
@@ -107,11 +111,13 @@ async def post_criar_evento(request: Request):
     local = str(form.get("local", "")).strip()
     acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
     processo_sei = str(form.get("processo_sei", "")).strip()
-    coordenador_responsavel = str(form.get("coordenador_responsavel", "")).strip()
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
     periodo_fim = str(form.get("periodo_fim", "")).strip()
     unidades_executantes = form.getlist("unidades_executantes")
     fiscais_evento = form.getlist("fiscais_evento")
+    coordenadores_evento = [
+        valor for valor in form.getlist("coordenador_responsavel") if valor.isdigit()
+    ]
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -137,11 +143,11 @@ async def post_criar_evento(request: Request):
             local=local or None,
             acao_fiscalizacao=acao_fiscalizacao or None,
             processo_sei=processo_sei or None,
-            coordenador_responsavel=coordenador_responsavel or None,
             periodo_inicio=periodo_inicio or None,
             periodo_fim=periodo_fim or None,
             unidades_executantes=unidades_executantes,
             fiscais=fiscais_evento,
+            coordenadores=coordenadores_evento,
             observacoes=observacoes or None,
         )
     except ValueError:
@@ -155,6 +161,8 @@ async def post_criar_evento(request: Request):
 
     request.session["evento_nome"] = nome
     request.session["spreadsheet_id"] = str(evento_id)
+    evento_novo = obter_snapshot_auditoria_evento(evento_id)
+    registrar_auditoria_evento(evento_id, {}, evento_novo)
     request.session["flash_success"] = "Evento criado com sucesso."
     return RedirectResponse("/menu", status_code=303)
 
@@ -166,11 +174,13 @@ async def post_editar_evento(request: Request, evento_id: int):
     local = str(form.get("local", "")).strip()
     acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
     processo_sei = str(form.get("processo_sei", "")).strip()
-    coordenador_responsavel = str(form.get("coordenador_responsavel", "")).strip()
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
     periodo_fim = str(form.get("periodo_fim", "")).strip()
     unidades_executantes = form.getlist("unidades_executantes")
     fiscais_evento = form.getlist("fiscais_evento")
+    coordenadores_evento = [
+        valor for valor in form.getlist("coordenador_responsavel") if valor.isdigit()
+    ]
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
@@ -190,6 +200,11 @@ async def post_editar_evento(request: Request, evento_id: int):
         fim = date.fromisoformat(periodo_fim) if periodo_fim else None
         if inicio and fim and fim < inicio:
             raise ValueError
+        evento_anterior = obter_snapshot_auditoria_evento(evento_id)
+        if evento_anterior is None:
+            request.session["flash_error"] = "Evento não encontrado."
+            return RedirectResponse("/criar-evento", status_code=303)
+        atualizar_fiscais_evento(evento_id, fiscais_evento)
         atualizar_evento(
             evento_id=evento_id,
             nome=nome,
@@ -198,13 +213,14 @@ async def post_editar_evento(request: Request, evento_id: int):
             local=local or None,
             acao_fiscalizacao=acao_fiscalizacao or None,
             processo_sei=processo_sei or None,
-            coordenador_responsavel=coordenador_responsavel or None,
             periodo_inicio=periodo_inicio or None,
             periodo_fim=periodo_fim or None,
             observacoes=observacoes or None,
+            coordenadores=coordenadores_evento,
         )
         atualizar_unidades_evento(evento_id, unidades_executantes)
-        atualizar_fiscais_evento(evento_id, fiscais_evento)
+        evento_novo = obter_snapshot_auditoria_evento(evento_id)
+        registrar_auditoria_evento(evento_id, evento_anterior, evento_novo)
     except ValueError:
         request.session["flash_error"] = (
             "Informe um período válido (o fim não pode ser anterior ao início)."

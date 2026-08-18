@@ -11,6 +11,7 @@ O parâmetro spreadsheet_id é tratado como evento_id (inteiro).
 import base64
 import logging
 import re
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import pandas as pd
@@ -61,6 +62,31 @@ def _nome_imagem_emissao(
         else str(hora_base).replace(":", "")[:4]
     )
     return f"ID_{ocorrencia_id}_{data_texto}_{hora_texto}{extensao}"
+
+
+def _nome_imagem_bsr_erb(
+    registro_id: int,
+    tipo: str,
+    nome_evento: str,
+    instante: datetime,
+    nome_original: str,
+    indice: int,
+) -> str:
+    """Gera nome padronizado para fotos de BSR/Jammer e ERB Fake."""
+    extensao = ""
+    if "." in nome_original:
+        extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
+
+    def limpar(valor: str) -> str:
+        valor = re.sub(r"[^A-Za-z0-9]+", "_", str(valor or "")).strip("_")
+        return valor or "SEM_VALOR"
+
+    instante_local = instante.astimezone(timezone.utc)
+    return (
+        f"{limpar(nome_evento)}_{limpar(tipo)}_ID_{registro_id}_"
+        f"{instante_local:%Y%m%d}_{instante_local:%H%M%S}_"
+        f"{indice:02d}{extensao}"
+    )
 
 
 def carregar_imagens_ocorrencia(evento_id=None, ocorrencia_id=None) -> list[dict]:
@@ -160,7 +186,11 @@ def _nome_imagem_teste_etiquetagem(
     if "." in nome_original:
         extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
     etiqueta = re.sub(r"[^A-Za-z0-9_-]+", "_", str(numero_etiqueta).strip())
-    return f"ETQ_{etiqueta}_ID_{teste_id}_FOTO_{imagem_id:02d}{extensao}"
+    if re.match(r"^ETQ[_-]", etiqueta, re.IGNORECASE):
+        etiqueta = re.sub(r"^(?:ETQ[_-])+", "ETQ-", etiqueta, flags=re.IGNORECASE)
+    else:
+        etiqueta = f"ETQ_{etiqueta}"
+    return f"{etiqueta}_ID_{teste_id}_FOTO_{imagem_id:02d}{extensao}"
 
 
 def carregar_imagens_teste_etiquetagem(evento_id=None, teste_id=None) -> list[dict]:
@@ -218,13 +248,13 @@ def criar_evento(
     local: str | None = None,
     acao_fiscalizacao: str | None = None,
     processo_sei: str | None = None,
-    coordenador_responsavel: str | None = None,
     periodo_inicio: str | None = None,
     periodo_fim: str | None = None,
     unidades_executantes: list[str] | None = None,
     observacoes: str | None = None,
     estacoes: list[str | dict] | None = None,
     fiscais: list[str] | None = None,
+    coordenadores: list[str] | None = None,
 ) -> int:
     """Cria um evento, suas estações e retorna o identificador do evento."""
     with get_engine().begin() as conn:
@@ -232,11 +262,11 @@ def criar_evento(
             text("""
                 INSERT INTO eventos
                     (nome, latitude, longitude, fuso_horario, local,
-                     acao_fiscalizacao, processo_sei, coordenador_responsavel,
+                     acao_fiscalizacao, processo_sei,
                      periodo_inicio, periodo_fim, observacoes)
                 VALUES
                     (:nome, :latitude, :longitude, :fuso_horario, :local,
-                    :acao_fiscalizacao, :processo_sei, :coordenador_responsavel,
+                    :acao_fiscalizacao, :processo_sei,
                     :periodo_inicio, :periodo_fim, :observacoes)
                 RETURNING id
             """),
@@ -248,7 +278,6 @@ def criar_evento(
                 "local": local,
                 "acao_fiscalizacao": acao_fiscalizacao,
                 "processo_sei": processo_sei,
-                "coordenador_responsavel": coordenador_responsavel,
                 "periodo_inicio": periodo_inicio,
                 "periodo_fim": periodo_fim,
                 "observacoes": observacoes,
@@ -289,6 +318,20 @@ def criar_evento(
                 text("""
                 INSERT INTO eventos_fiscais (evento_id, fiscal_id)
                 VALUES (:evento_id, :fiscal_id)
+                ON CONFLICT DO NOTHING
+                """),
+                {"evento_id": evento_id, "fiscal_id": int(fiscal_id)},
+            )
+        for fiscal_id in coordenadores or []:
+            conn.execute(
+                text("""
+                INSERT INTO eventos_coordenadores (evento_id, fiscal_id)
+                SELECT :evento_id, ef.fiscal_id
+                FROM eventos_fiscais ef
+                JOIN fiscais f ON f.id = ef.fiscal_id
+                WHERE ef.evento_id = :evento_id
+                  AND ef.fiscal_id = :fiscal_id
+                  AND f.funcao_evento = 'Coordenação'
                 ON CONFLICT DO NOTHING
                 """),
                 {"evento_id": evento_id, "fiscal_id": int(fiscal_id)},
@@ -364,6 +407,23 @@ def listar_fiscais_evento(evento_id: int) -> list[int]:
         )
 
 
+def listar_coordenadores_evento(evento_id: int) -> list[int]:
+    """Retorna os IDs dos coordenadores vinculados ao evento."""
+    with get_engine().connect() as conn:
+        vinculados = list(
+            conn.execute(
+                text("""
+                SELECT fiscal_id
+                FROM eventos_coordenadores
+                WHERE evento_id = :evento_id
+                ORDER BY fiscal_id
+                """),
+                {"evento_id": int(evento_id)},
+            ).scalars()
+        )
+        return vinculados
+
+
 def atualizar_fiscais_evento(evento_id: int, fiscais: list[str]) -> None:
     """Substitui os fiscais participantes do evento."""
     with get_engine().begin() as conn:
@@ -422,7 +482,13 @@ def listar_eventos_detalhes() -> list[dict]:
     with get_engine().connect() as conn:
         rows = conn.execute(text("""
                   SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.local,
-                      acao_fiscalizacao, processo_sei, coordenador_responsavel,
+                      acao_fiscalizacao, processo_sei,
+                      (
+                          SELECT string_agg(f.nome, ', ' ORDER BY f.nome)
+                          FROM eventos_coordenadores ec
+                          JOIN fiscais f ON f.id = ec.fiscal_id
+                          WHERE ec.evento_id = e.id
+                      ) AS coordenador_responsavel,
                       periodo_inicio, periodo_fim, observacoes,
                       COALESCE((
                           SELECT string_agg(eu.unidade_sigla, ', ' ORDER BY eu.unidade_sigla)
@@ -455,11 +521,17 @@ def obter_evento(evento_id: int) -> dict | None:
         row = (
             conn.execute(
                 text("""
-                  SELECT id, nome, latitude, longitude, fuso_horario, local,
-                      acao_fiscalizacao, processo_sei, coordenador_responsavel,
+                  SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.local,
+                      e.acao_fiscalizacao, e.processo_sei,
+                      (
+                          SELECT string_agg(f.nome, ', ' ORDER BY f.nome)
+                          FROM eventos_coordenadores ec
+                          JOIN fiscais f ON f.id = ec.fiscal_id
+                          WHERE ec.evento_id = e.id
+                      ) AS coordenador_responsavel,
                       periodo_inicio, periodo_fim, observacoes
-                FROM eventos
-                WHERE id = :id
+                FROM eventos e
+                WHERE e.id = :id
             """),
                 {"id": int(evento_id)},
             )
@@ -467,6 +539,84 @@ def obter_evento(evento_id: int) -> dict | None:
             .first()
         )
     return dict(row) if row else None
+
+
+def registrar_auditoria_evento(
+    evento_id: int,
+    valores_anteriores: dict,
+    valores_novos: dict,
+    usuario_fiscal: str = USR_FISCAL_ANATEL,
+) -> None:
+    """Registra as diferenças de todos os campos editáveis de um evento."""
+    campos = (
+        ("nome", "Nome do evento"),
+        ("latitude", "Latitude"),
+        ("longitude", "Longitude"),
+        ("fuso_horario", "Fuso horário"),
+        ("local", "Local"),
+        ("acao_fiscalizacao", "Ação de fiscalização"),
+        ("processo_sei", "Processo SEI"),
+        ("coordenadores", "Coordenadores responsáveis"),
+        ("fiscais_participantes", "Fiscais participantes"),
+        ("unidades_executantes", "Unidades executantes"),
+        ("periodo_inicio", "Período inicial"),
+        ("periodo_fim", "Período final"),
+        ("observacoes", "Observações"),
+    )
+
+    def normalizar(valor):
+        if valor is None or valor == "":
+            return None
+        if hasattr(valor, "isoformat"):
+            return valor.isoformat()
+        return str(valor)
+
+    alteracoes = []
+    for campo, rotulo in campos:
+        anterior = normalizar(valores_anteriores.get(campo))
+        novo = normalizar(valores_novos.get(campo))
+        if anterior != novo:
+            alteracoes.append(
+                {
+                    "evento_id": int(evento_id),
+                    "usuario_fiscal": usuario_fiscal,
+                    "campo": rotulo,
+                    "valor_anterior": anterior,
+                    "valor_novo": novo,
+                }
+            )
+    if not alteracoes:
+        return
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO auditoria_eventos
+                    (evento_id, usuario_fiscal, campo, valor_anterior, valor_novo)
+                VALUES
+                    (:evento_id, :usuario_fiscal, :campo, :valor_anterior, :valor_novo)
+            """),
+            alteracoes,
+        )
+
+
+def obter_snapshot_auditoria_evento(evento_id: int) -> dict:
+    """Retorna os campos do evento e seus vínculos para comparação de auditoria."""
+    evento = obter_evento(int(evento_id)) or {}
+    fiscais = {fiscal["id"]: fiscal for fiscal in listar_fiscais()}
+    participantes = listar_fiscais_evento(int(evento_id))
+    coordenadores = listar_coordenadores_evento(int(evento_id))
+    evento["fiscais_participantes"] = ", ".join(
+        fiscais[fiscal_id]["nome"]
+        for fiscal_id in participantes
+        if fiscal_id in fiscais
+    )
+    evento["coordenadores"] = ", ".join(
+        fiscais[fiscal_id]["nome"]
+        for fiscal_id in coordenadores
+        if fiscal_id in fiscais
+    )
+    evento["unidades_executantes"] = ", ".join(listar_unidades_evento(int(evento_id)))
+    return evento
 
 
 def listar_estacoes_evento(evento_id: int) -> list[dict]:
@@ -549,11 +699,11 @@ def atualizar_evento(
     local: str | None = None,
     acao_fiscalizacao: str | None = None,
     processo_sei: str | None = None,
-    coordenador_responsavel: str | None = None,
     periodo_inicio: str | None = None,
     periodo_fim: str | None = None,
     unidades_executantes: list[str] | None = None,
     observacoes: str | None = None,
+    coordenadores: list[str] | None = None,
 ) -> None:
     """Atualiza o nome e a localização de um evento."""
     with get_engine().begin() as conn:
@@ -566,7 +716,6 @@ def atualizar_evento(
                     local = :local,
                     acao_fiscalizacao = :acao_fiscalizacao,
                     processo_sei = :processo_sei,
-                    coordenador_responsavel = :coordenador_responsavel,
                     periodo_inicio = :periodo_inicio,
                     periodo_fim = :periodo_fim,
                     observacoes = :observacoes
@@ -580,12 +729,28 @@ def atualizar_evento(
                 "local": local,
                 "acao_fiscalizacao": acao_fiscalizacao,
                 "processo_sei": processo_sei,
-                "coordenador_responsavel": coordenador_responsavel,
                 "periodo_inicio": periodo_inicio,
                 "periodo_fim": periodo_fim,
                 "observacoes": observacoes,
             },
         )
+        conn.execute(
+            text("DELETE FROM eventos_coordenadores WHERE evento_id = :evento_id"),
+            {"evento_id": int(evento_id)},
+        )
+        for fiscal_id in dict.fromkeys(coordenadores or []):
+            conn.execute(
+                text("""
+                    INSERT INTO eventos_coordenadores (evento_id, fiscal_id)
+                    SELECT :evento_id, ef.fiscal_id
+                    FROM eventos_fiscais ef
+                    JOIN fiscais f ON f.id = ef.fiscal_id
+                    WHERE ef.evento_id = :evento_id
+                      AND ef.fiscal_id = :fiscal_id
+                      AND f.funcao_evento = 'Coordenação'
+                """),
+                {"evento_id": int(evento_id), "fiscal_id": int(fiscal_id)},
+            )
 
 
 def listar_abas_estacoes(_client=None, evento_id=None) -> list:
@@ -1533,6 +1698,11 @@ def inserir_bsr_erb(
                     "observacoes": observacoes or "",
                 },
             ).scalar_one()
+            nome_evento = conn.execute(
+                text("SELECT nome FROM eventos WHERE id = :evento_id"),
+                {"evento_id": int(evento_id)},
+            ).scalar_one_or_none()
+            instante_imagens = datetime.now(timezone.utc)
             conn.execute(
                 text("""
                     INSERT INTO auditoria_bsr_erb (
@@ -1547,7 +1717,15 @@ def inserir_bsr_erb(
                     "valor": f"{tipo} | {regiao or ''}",
                 },
             )
-            for imagem in imagens or []:
+            for indice, imagem in enumerate(imagens or [], start=1):
+                nome_arquivo = _nome_imagem_bsr_erb(
+                    bsr_erb_id,
+                    tipo,
+                    nome_evento,
+                    instante_imagens,
+                    imagem["nome_arquivo"],
+                    indice,
+                )
                 conn.execute(
                     text("""
                         INSERT INTO bsr_erb_imagens
@@ -1557,7 +1735,7 @@ def inserir_bsr_erb(
                     """),
                     {
                         "bsr_erb_id": bsr_erb_id,
-                        "nome_arquivo": imagem["nome_arquivo"],
+                        "nome_arquivo": nome_arquivo,
                         "tipo_mime": imagem["tipo_mime"],
                         "tamanho_bytes": imagem["tamanho_bytes"],
                         "conteudo": imagem["conteudo"],
@@ -1575,7 +1753,7 @@ def inserir_bsr_erb(
                         "registro_id": bsr_erb_id,
                         "evento_id": int(evento_id),
                         "usuario": USR_FISCAL_ANATEL,
-                        "valor": imagem["nome_arquivo"],
+                        "valor": nome_arquivo,
                     },
                 )
         return f"'{tipo}' incluído com sucesso."
@@ -1673,7 +1851,28 @@ def atualizar_bsr_erb(
                         },
                     )
 
-            for imagem in imagens or []:
+            nome_evento = conn.execute(
+                text("SELECT nome FROM eventos WHERE id = :evento_id"),
+                {"evento_id": int(evento_id)},
+            ).scalar_one_or_none()
+            instante_imagens = datetime.now(timezone.utc)
+            quantidade_imagens = conn.execute(
+                text(
+                    "SELECT COUNT(*) FROM bsr_erb_imagens WHERE bsr_erb_id = :registro_id"
+                ),
+                {"registro_id": int(registro_id)},
+            ).scalar_one()
+            for indice, imagem in enumerate(
+                imagens or [], start=int(quantidade_imagens) + 1
+            ):
+                nome_arquivo = _nome_imagem_bsr_erb(
+                    int(registro_id),
+                    tipo,
+                    nome_evento,
+                    instante_imagens,
+                    imagem["nome_arquivo"],
+                    indice,
+                )
                 conn.execute(
                     text("""
                         INSERT INTO bsr_erb_imagens
@@ -1683,7 +1882,7 @@ def atualizar_bsr_erb(
                     """),
                     {
                         "bsr_erb_id": int(registro_id),
-                        "nome_arquivo": imagem["nome_arquivo"],
+                        "nome_arquivo": nome_arquivo,
                         "tipo_mime": imagem["tipo_mime"],
                         "tamanho_bytes": imagem["tamanho_bytes"],
                         "conteudo": imagem["conteudo"],
@@ -1701,7 +1900,7 @@ def atualizar_bsr_erb(
                         "registro_id": int(registro_id),
                         "evento_id": int(evento_id),
                         "usuario": USR_FISCAL_ANATEL,
-                        "valor": imagem["nome_arquivo"],
+                        "valor": nome_arquivo,
                     },
                 )
         return f"'{tipo}' atualizado com sucesso."
@@ -1745,6 +1944,57 @@ def excluir_bsr_erb(
                 },
             )
         return "Registro BSR/ERB excluído com sucesso."
+    except Exception as e:
+        return f"ERRO: {e}"
+
+
+def excluir_imagem_bsr_erb(
+    imagem_id, registro_id, evento_id, usuario_fiscal: str = USR_FISCAL_ANATEL
+) -> str:
+    """Exclui uma foto de BSR/ERB e registra a ação na auditoria."""
+    try:
+        with get_engine().begin() as conn:
+            imagem = (
+                conn.execute(
+                    text("""
+                    SELECT i.nome_arquivo
+                    FROM bsr_erb_imagens i
+                    JOIN bsr_erb b ON b.id = i.bsr_erb_id
+                    WHERE i.id = :imagem_id AND i.bsr_erb_id = :registro_id
+                      AND b.evento_id = :evento_id AND b.excluido_em IS NULL
+                    """),
+                    {
+                        "imagem_id": int(imagem_id),
+                        "registro_id": int(registro_id),
+                        "evento_id": int(evento_id),
+                    },
+                )
+                .mappings()
+                .first()
+            )
+            if imagem is None:
+                return "ERRO: Foto não encontrada."
+
+            conn.execute(
+                text("DELETE FROM bsr_erb_imagens WHERE id = :imagem_id"),
+                {"imagem_id": int(imagem_id)},
+            )
+            conn.execute(
+                text("""
+                    INSERT INTO auditoria_bsr_erb (
+                        bsr_erb_id, evento_id, usuario_fiscal, campo,
+                        valor_anterior, valor_novo
+                    ) VALUES (:registro_id, :evento_id, :usuario,
+                              'Imagem excluída', :valor, NULL)
+                """),
+                {
+                    "registro_id": int(registro_id),
+                    "evento_id": int(evento_id),
+                    "usuario": usuario_fiscal,
+                    "valor": imagem["nome_arquivo"],
+                },
+            )
+        return "Foto excluída com sucesso."
     except Exception as e:
         return f"ERRO: {e}"
 
@@ -2156,7 +2406,6 @@ def consultar_auditoria_evento(
                                                                 LIMIT 1
                                                         ) imagem ON TRUE
                             WHERE auditoria.evento_id = :evento_id
-
                             UNION ALL
 
                             SELECT
@@ -2184,7 +2433,6 @@ def consultar_auditoria_evento(
                                                                 LIMIT 1
                                                         ) imagem ON TRUE
                             WHERE auditoria.evento_id = :evento_id
-
                             UNION ALL
 
                             SELECT
@@ -2212,6 +2460,23 @@ def consultar_auditoria_evento(
                                 ORDER BY imagem.id
                                 LIMIT 1
                             ) imagem ON TRUE
+                            WHERE auditoria.evento_id = :evento_id
+
+                            UNION ALL
+
+                            SELECT
+                                'Evento' AS origem,
+                                auditoria.evento_id AS registro_id,
+                                evento.nome AS registro,
+                                auditoria.usuario_fiscal,
+                                auditoria.campo,
+                                auditoria.valor_anterior,
+                                auditoria.valor_novo,
+                                auditoria.modificado_em,
+                                NULL AS imagem_tipo_mime,
+                                NULL AS imagem_conteudo
+                            FROM auditoria_eventos auditoria
+                            JOIN eventos evento ON evento.id = auditoria.evento_id
                             WHERE auditoria.evento_id = :evento_id
                         ) auditoria_consolidada
                                                 WHERE (

@@ -5,6 +5,7 @@ from starlette.datastructures import UploadFile
 
 from app.services.postgres import (
     atualizar_bsr_erb,
+    excluir_imagem_bsr_erb,
     excluir_bsr_erb,
     inserir_bsr_erb,
     listar_bsr_erb,
@@ -245,6 +246,23 @@ async def post_excluir_bsr_erb(request: Request, registro_id: int):
     res = excluir_bsr_erb(registro_id=registro_id, evento_id=sp_id)
     request.session["flash_error" if res.startswith("ERRO") else "flash_success"] = res
     return RedirectResponse("/bsr-erb", status_code=303)
+
+
+@router.post("/bsr-erb/{registro_id}/imagem/{imagem_id}/excluir")
+async def post_excluir_imagem_bsr_erb(
+    request: Request, registro_id: int, imagem_id: int
+):
+    """Exclui uma foto específica de um registro BSR/ERB."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    res = excluir_imagem_bsr_erb(
+        imagem_id=imagem_id,
+        registro_id=registro_id,
+        evento_id=int(evento_id),
+    )
+    request.session["flash_error" if res.startswith("ERRO") else "flash_success"] = res
+    return RedirectResponse(f"/bsr-erb?editar={registro_id}", status_code=303)
 
 
 @router.post("/api/bsr-erb")

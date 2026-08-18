@@ -27,3 +27,131 @@ reunião
 
 - controles de input um abaixo do outro
 
+
+reunião apresentação do sistema Leonardo e Daniel 
+
+18/08/2026
+
+Modificações solicitadas — AppGrandesEventos
+
+**Reunião:** Status atual do AppEventos  
+**Data:** 18/08/2026  
+**Duração analisada:** 1h24min52s  
+**Contexto:** sistema de monitoração de espectro para grandes eventos, com eventos, emissões, etiquetagem, ocorrências especiais, estações, auditoria e tratamento de pendências.
+
+**Critério do levantamento:** os itens com caixa de seleção representam alterações ou evoluções mencionadas na reunião; ideias explicitamente futuras foram separadas na seção 9; decisões de não alterar determinados comportamentos estão na seção 10; dúvidas que ainda exigem definição estão na seção 11. O arquivo de descrição do projeto foi utilizado somente para contextualizar os nomes e módulos atuais do sistema.
+
+## 1. Acesso, usuários e perfis
+
+- [ ] Restringir a seleção de eventos: cada usuário deve visualizar somente os eventos nos quais está cadastrado. Coordenadores e superusuários devem seguir permissões próprias. **Referência: 00:00:16–00:01:18.**
+- [ ] Controlar a visibilidade dos módulos conforme o perfil do usuário e a configuração do evento. Exemplos discutidos: esconder **Gerenciar Eventos**, **Auditoria** e **Teste de etiquetagem** quando não forem aplicáveis. **Referência: 00:01:20–00:02:18.**
+- [ ] Permitir que o criador/coordenador do evento escolha quais módulos estarão disponíveis naquele evento. **Referência: 00:01:20–00:02:15.**
+- [ ] Criar uma base local com usuários fictícios para testar os perfis e, posteriormente, integrar com a base institucional de fiscais. **Referência: 00:24:48–00:25:11.**
+- [ ] Preservar a possibilidade de um fiscal possuir mais de um papel no mesmo evento, como abordagem, monitoração e coordenação. **Referência: 00:02:53–00:03:45.**
+- [ ] Preservar a possibilidade de múltiplos coordenadores responsáveis pelo mesmo evento. **Referência: 00:03:58–00:04:28.**
+
+## 2. Gerenciamento de eventos
+
+- [ ] Adicionar ao evento uma opção para ativar ou desativar o **Teste de etiquetagem**. **Referência: 00:04:38–00:05:02.**
+- [ ] Permitir configurar no evento a regra de formação/abrangência das etiquetas, incluindo autorização local e autorização válida para todos os locais aplicáveis. **Referência: 00:04:51–00:05:11.**
+- [ ] Substituir o campo livre **Local** do evento por dois campos controlados: **UF** e **Cidade/Município**. A cidade deverá ser escolhida em uma lista, evitando grafias diferentes para o mesmo município. **Referência: 00:09:34–00:12:50.**
+- [ ] Manter o termo **Local** para a posição física de uma estação, como estádio, tribuna de imprensa, centro de monitoração ou área externa. **Referência: 00:09:52–00:12:40.**
+- [ ] Manter os dados históricos existentes ao alterar os campos de localização do evento. **Referência: 00:12:52–00:13:04.**
+- [ ] Recolher/ocultar os formulários detalhados de inclusão e edição. Os campos devem abrir somente quando o usuário clicar em **Novo**, **Editar** ou **Detalhes**. **Referência: 00:13:04–00:14:57.**
+- [ ] Adicionar filtros à listagem de eventos, pelo menos por ano e nome/evento. **Referência: 00:15:02–00:15:37.**
+- [ ] Implementar paginação na listagem de eventos para suportar o crescimento do histórico ao longo dos anos. **Referência: 00:15:17–00:15:43.**
+- [ ] Cadastrar a escala de trabalho dos fiscais por evento, com dias e/ou períodos de atuação. **Referência: 01:01:25–01:02:18.**
+- [ ] Usar a escala para mostrar quem está trabalhando no dia e evitar que o coordenador atribua uma pendência a um fiscal fora de serviço. **Referência: 01:01:25–01:02:18.**
+
+## 3. Estações de monitoração
+
+- [ ] Separar claramente **Nome da estação** e **Local da estação**. O nome deve conter identificações como `RFeye 1`, `RFeye 2` ou `ETM`; o local deve descrever onde ela está instalada. **Referência: 00:23:07–00:23:52 e 00:25:15–00:26:54.**
+- [ ] Mostrar uma coluna **Local** na listagem das estações vinculadas ao evento. **Referência: 00:06:03–00:06:52.**
+- [ ] Manter o local da estação como texto livre, permitindo descrições específicas como “Tribuna de imprensa” ou “Área externa do Maracanã”. **Referência: 00:26:19–00:27:59.**
+- [ ] Manter latitude e longitude como campos independentes do texto de local. Não preencher automaticamente o local com endereço obtido das coordenadas. **Referência: 00:26:00–00:28:32.**
+- [ ] Utilizar as coordenadas futuramente para mostrar as estações em um mapa do evento e para integrações externas. **Referência: 00:27:15–00:28:32.**
+- [ ] Aplicar ao cadastro/edição de estações o mesmo padrão recolhido usado nas demais telas: abrir detalhes somente quando necessário. **Referência: 00:28:46–00:29:08.**
+
+## 4. Inserção de emissões
+
+- [ ] Remover o preenchimento livre do fiscal. Preencher automaticamente com o usuário autenticado. **Referência: 00:30:05–00:30:35.**
+- [ ] Permitir adicionar outro fiscal participante, pois as atividades normalmente podem ser realizadas em dupla. **Referência: 00:30:30–00:30:58.**
+- [ ] Vincular obrigatoriamente cada emissão ao evento atualmente selecionado e preencher automaticamente cidade e demais dados do evento. **Referência: 00:31:40–00:33:40.**
+- [ ] Manter o **Local da emissão** como texto livre, pois a captura pode ocorrer em camarote, box, área de mídia, rua ou outro ponto específico. **Referência: 00:31:57–00:32:39.**
+- [ ] Tornar obrigatório o campo que identifica o equipamento/estação que realizou a captura. **Referência: 00:38:48–00:39:05.**
+- [ ] Preencher a lista de origem da captura com todas as estações cadastradas no evento e com as opções genéricas **Analisador de espectro — campo** e **ETM — campo**. **Referência: 00:37:37–00:39:05.**
+- [ ] Não bloquear a origem da captura com base no perfil do fiscal, pois um fiscal pode eventualmente operar uma estação diferente. **Referência: 00:36:26–00:38:48.**
+- [ ] Manter a inserção manual em tempo real rápida e com poucos passos. **Referência: 00:35:47–00:36:26.**
+- [ ] Restringir o campo de frequência a valores numéricos e acrescentar máscara/orientação visual de formato, incluindo unidade em MHz e exemplo do separador decimal esperado. **Referência: 00:39:20–00:41:05.**
+- [ ] Padronizar a largura de banda por uma lista de valores usuais, começando em torno de 12,5 e incluindo valores como 25, 50, 75 e 100 MHz, evitando entradas livres inconsistentes e permitindo consultas posteriores por sobreposição. A lista completa ainda precisa ser validada. **Referência: 00:41:05–00:43:42.**
+- [ ] Adicionar **SARC** e **Outros** às opções de serviço/faixa relacionada. **Referência: 00:43:34–00:44:55.**
+
+## 5. Interferência, UTE e entidade responsável
+
+- [ ] Exigir para todas as emissões a classificação de interferência: **Sim**, **Não** ou **Indefinido**. A escolha deve estar disponível independentemente da identificação da emissão. **Referência: 00:48:25–00:50:39.**
+- [ ] Impedir a conclusão de uma emissão enquanto a interferência estiver como **Indefinido** ou enquanto existirem informações obrigatórias não resolvidas. **Referência: 00:50:34–00:51:12.**
+- [ ] Padronizar o campo **UTE** como escolha **Sim/Não**. **Referência: 00:51:43–00:52:16.**
+- [ ] Quando UTE for **Sim**, exibir os campos **Processo SEI** e **Ato UTE** e exigir o preenchimento de pelo menos um deles. Quando UTE for **Não**, esses campos devem ficar ocultos ou desabilitados. **Referência: 00:52:16–00:52:55.**
+- [ ] Estruturar a entidade responsável em campos separados, evitando um único texto livre: **Entidade**, indicação de **Estrangeiro**, **CNPJ**, **Contato** e **Observações**. **Referência: 00:55:21–00:57:14.**
+
+## 6. Pendências e tela do coordenador
+
+- [ ] Criar o fluxo de ticket/pendência para que emissões e ocorrências que necessitem tratamento cheguem primeiro à tela do coordenador. **Referência: 00:19:27–00:19:41 e 00:51:12–00:51:36.**
+- [ ] Fazer o coordenador visualizar todas as pendências do evento, realizar a triagem e decidir quais serão enviadas para campo. **Referência: 00:57:27–00:59:14.**
+- [ ] Permitir que o coordenador atribua cada pendência a um fiscal disponível na escala. **Referência: 00:58:20–01:02:18.**
+- [ ] Fazer o fiscal visualizar somente as pendências que lhe foram atribuídas; o coordenador deve visualizar todas. **Referência: 00:59:19–01:01:30.**
+- [ ] Manter o botão/tela **Tratar emissões pendentes**, alterando quantidade e conteúdo conforme o perfil do usuário. **Referência: 00:59:14–00:59:49.**
+- [ ] Criar telas ou modos distintos para a triagem do coordenador e para o tratamento executado pelo fiscal. **Referência: 01:05:54–01:07:33.**
+- [ ] Dar prioridade visual máxima às ocorrências interferentes, utilizando alerta, triângulo vermelho ou ícone de exclamação. **Referência: 00:51:23–00:51:36 e 00:57:51–00:58:20.**
+- [ ] Manter na tela de trabalho apenas itens abertos. Itens concluídos devem sair da fila, mas permanecer disponíveis no histórico. **Referência: 01:08:48–01:09:41.**
+- [ ] Disponibilizar a ação **Salvar e próxima**, gravando o tratamento atual e avançando diretamente para a próxima pendência aberta. **Referência: 01:08:40–01:09:03.**
+- [ ] Permitir que o coordenador consulte itens concluídos e os reabra quando o problema persistir. A reabertura deve devolver o item ao estado pendente. **Referência: 01:09:49–01:10:25.**
+- [ ] Auditar toda a sequência de tratamento: usuário, alterações, conclusões, reaberturas, comentários e fotos. **Referência: 01:08:20–01:08:48.**
+
+## 7. Ocorrências especiais
+
+- [ ] Renomear o módulo **BSR/Jammer e ERB Fake** para **Ocorrências especiais**. **Referência: 01:10:34–01:12:26.**
+- [ ] Tornar o módulo genérico para fatos excepcionais, não apenas interferências: Jammer, ERB Fake, reclamações externas, falhas de Wi‑Fi, incêndios que afetem equipamentos e outras situações relevantes. **Referência: 01:10:49–01:12:19.**
+- [ ] Encaminhar ocorrências especiais que exijam ação para o fluxo de tickets do coordenador. **Referência: 00:19:27–00:19:41.**
+- [ ] Para Jammer de faixa larga, permitir o registro da faixa percebida e evidências nas observações/fotos, sem obrigar uma frequência única. **Referência: 00:18:39–00:19:27.**
+
+## 8. Teste de etiquetagem
+
+- [ ] Manter os tipos de pessoa **Física**, **Jurídica** e **Estrangeira**, exibindo CPF somente para pessoa física, CNPJ somente para pessoa jurídica e nenhum dos dois para estrangeiro. **Referência: 01:13:21–01:13:43.**
+- [ ] Reduzir digitação repetitiva oferecendo consulta, autocomplete ou seleção de dados cadastrados anteriormente, especialmente entidade, contato e outros dados recorrentes. **Referência: 01:14:01–01:15:09.**
+- [ ] Preencher automaticamente o evento/local de etiquetagem conforme o evento e a escala/atribuição do fiscal, evitando que o mesmo local seja digitado dezenas de vezes. **Referência: 01:15:09–01:18:30.**
+- [ ] Quando o fiscal puder atuar em mais de um local no mesmo dia, oferecer seleção do local atual ou avaliar uso de localização do dispositivo. Essa forma final ficou pendente de definição. **Referência: 01:17:27–01:18:30.**
+- [ ] Restringir o fiscal aos testes de etiquetagem dos eventos/locais para os quais foi escalado. **Referência: 01:16:44–01:18:04.**
+- [ ] Tratar etiquetas locais e globais de forma diferente: uma etiqueta local vale apenas para o evento/local correspondente; uma etiqueta “permitida em todos os estádios” deve ser cadastrada uma única vez e aparecer na consulta de todos os eventos. **Referência: 01:18:38–01:20:08.**
+- [ ] Corrigir o nome do campo **Equipamento homologado** para **Tipo de etiqueta**, pois o campo representa a etiqueta atribuída e não a homologação do equipamento. **Referência: 01:20:14–01:20:25.**
+- [ ] Manter os tipos de etiqueta **Permitido**, **Permitido em todos os estádios** e **Não permitido**. **Referência: 01:20:09–01:20:36.**
+- [ ] Exibir e exigir o campo **Número da etiqueta** quando qualquer tipo de etiqueta for selecionado. **Referência: 01:20:36–01:21:03.**
+- [ ] Ao digitar a frequência no teste de etiquetagem, consultar automaticamente as emissões já cadastradas, inclusive as inseridas pelos fiscais de campo. **Referência: 00:55:53–00:57:21 e 01:21:03–01:22:11.**
+- [ ] Detectar conflito por intervalo, considerando frequência central e largura de banda, e alertar também quando houver sobreposição parcial entre emissões. **Referência: 00:41:59–00:42:24 e 01:21:03–01:22:11.**
+- [ ] Corrigir a validação de conflito para que ela avise o usuário já durante a inclusão. O sistema não deve apenas impedir a gravação silenciosamente nem deixar o aviso restrito à edição. **Referência: 01:22:15–01:23:14.**
+- [ ] Priorizar agilidade na tela de etiquetagem, com o menor número possível de campos e operações, pois haverá filas e grande volume de registros. **Referência: 01:17:15–01:17:24.**
+
+## 9. Integrações e relatórios futuros
+
+- [ ] Avaliar integração por API com o **Web Analysis** para importar emissões de pós-processamento automaticamente. A inserção manual deve continuar disponível para monitoração em tempo real. **Referência: 00:27:15–00:28:32 e 00:34:30–00:36:26.**
+- [ ] Avaliar integração com **Mosaico/base de atos** para consultar Processo SEI e Ato UTE sem manter cadastro manual duplicado. **Referência: 00:52:55–00:55:19.**
+- [ ] Criar futuramente relatório consolidado que permita selecionar vários eventos/sedes e concatenar seus resultados. Cada sede/cidade permanece como evento independente. **Referência: 00:06:54–00:08:19.**
+- [ ] Utilizar as coordenadas das estações para uma futura visualização em mapa. **Referência: 00:27:15–00:28:32.**
+
+## 10. Decisões de preservação tomadas na reunião
+
+- **Não unir** os módulos **Inserir emissões** e **Tratar emissões**; eles representam etapas distintas. **Referência: 01:12:37–01:12:48.**
+- **Não restringir rigidamente** a estação/equipamento de captura pelo papel do fiscal; manter a seleção disponível. **Referência: 00:36:26–00:38:48.**
+- **Não substituir** o local detalhado da estação por endereço derivado das coordenadas; manter texto livre e coordenadas separadas. **Referência: 00:26:19–00:28:32.**
+- Para eventos distribuídos, tratar cada cidade/sede como evento independente e consolidar somente nos relatórios. **Referência: 00:06:54–00:08:19.**
+- Preservar múltiplos papéis por fiscal e múltiplos coordenadores por evento. **Referência: 00:02:53–00:04:28.**
+
+## 11. Pontos que ainda precisam de validação
+
+1. Lista exata de valores permitidos para largura de banda.
+2. Fonte oficial da lista de UF e municípios.
+3. Forma de selecionar o local quando o mesmo fiscal estiver escalado em mais de um ponto no mesmo dia.
+4. Disponibilidade e formato das APIs do Web Analysis, Mosaico e base institucional de fiscais.
+5. Regras completas que determinam quais módulos ficam disponíveis para cada perfil e evento.
+6. Critérios exatos de encerramento além da proibição de concluir itens com interferência indefinida.
+7. Necessidade de uma cidade própria para a estação quando ela estiver instalada fora da cidade principal do evento.
