@@ -92,6 +92,20 @@ def _frequencia_da_etiqueta(valor: str) -> float | None:
     return frequencia if frequencia > 0 else None
 
 
+def _largura_da_etiqueta(valor: str) -> float:
+    """Extrai a largura em kHz embutida no texto da frequência."""
+    correspondencia = re.search(r"⌂\s*([\d.,]+)\s*kHz", str(valor or ""), re.I)
+    if not correspondencia:
+        return 0.0
+    try:
+        return max(
+            float(correspondencia.group(1).replace(".", "").replace(",", ".")),
+            0.0,
+        )
+    except ValueError:
+        return 0.0
+
+
 async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
     """Lê e valida fotos anexadas ao equipamento."""
     imagens = []
@@ -257,7 +271,8 @@ async def get_teste_etiquetagem(
 
 @router.get("/api/teste-etiquetagem/verificar-frequencia")
 async def verificar_frequencia_teste(
-    request: Request, frequencia: float, excluir_id: int | None = None
+    request: Request, frequencia: float, largura_khz: float = 0,
+    local: str = "", excluir_id: int | None = None
 ):
     """Consulta equipamentos e referências da frequência no evento atual."""
     evento_id = request.session.get("spreadsheet_id")
@@ -265,7 +280,8 @@ async def verificar_frequencia_teste(
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
     return JSONResponse(
         consultar_equipamentos_frequencia(
-            evento_id=evento_id, freq_digitada=frequencia, excluir_id=excluir_id
+            evento_id=evento_id, freq_digitada=frequencia,
+            largura_khz=largura_khz, localidade=local, excluir_id=excluir_id
         )
     )
 
@@ -379,14 +395,16 @@ async def post_teste_etiquetagem(request: Request):
 
     conflito = (
         verificar_frequencia_etiquetagem(
-            evento_id=evento_id, freq_digitada=frequencia, excluir_id=registro_id
+            evento_id=evento_id, freq_digitada=frequencia, largura_khz=passo_khz,
+            localidade=values["local"], excluir_id=registro_id
         )
         if frequencia is not None
         else None
     )
     if conflito:
         cadastro = consultar_equipamentos_frequencia(
-            evento_id=evento_id, freq_digitada=frequencia, excluir_id=registro_id
+            evento_id=evento_id, freq_digitada=frequencia, largura_khz=passo_khz,
+            localidade=values["local"], excluir_id=registro_id
         )["equipamentos"]
         detalhe = ""
         if cadastro:
@@ -411,6 +429,8 @@ async def post_teste_etiquetagem(request: Request):
             verificar_frequencia_etiquetagem(
                 evento_id=evento_id,
                 freq_digitada=frequencia_cadastrada,
+                largura_khz=_largura_da_etiqueta(frequencia_lista),
+                localidade=values["local"],
                 excluir_id=registro_id,
             )
             if frequencia_cadastrada is not None
@@ -420,6 +440,8 @@ async def post_teste_etiquetagem(request: Request):
             cadastro = consultar_equipamentos_frequencia(
                 evento_id=evento_id,
                 freq_digitada=frequencia_cadastrada,
+                largura_khz=_largura_da_etiqueta(frequencia_lista),
+                localidade=values["local"],
                 excluir_id=registro_id,
             )["equipamentos"]
             detalhe = ""

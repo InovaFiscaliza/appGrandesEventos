@@ -40,11 +40,14 @@
 // ─── Check frequência (online apenas) ────────────────────────
 document.getElementById("freq").addEventListener("change", async function () {
   const val = parseFloat(this.value);
+  const largura = parseFloat(document.getElementById("larg")?.value || "0");
+  const local = document.getElementById("local")?.value || "";
   const warn = document.getElementById("freq-warning");
   const online = !(window.APP_OFFLINE === true) && navigator.onLine;
   if (val > 0 && online) {
     try {
-      const resp = await fetch("/check-freq?freq=" + val);
+      const parametros = new URLSearchParams({ freq: val, larg: largura, local });
+      const resp = await fetch("/check-freq?" + parametros);
       const data = await resp.json();
       if (data.conflito) {
         warn.textContent =
@@ -88,12 +91,15 @@ AppOffline.interceptarSubmit(
   {
     beforeSubmit: async (fd) => {
       const valor = parseFloat(fd.get("freq"));
+      const largura = parseFloat(fd.get("larg") || "0");
+      const local = fd.get("local") || "";
       const warn = document.getElementById("freq-warning");
       if (!(valor > 0) || !navigator.onLine || window.APP_OFFLINE === true) {
         return true;
       }
       try {
-        const resp = await fetch("/check-freq?freq=" + encodeURIComponent(valor));
+        const parametros = new URLSearchParams({ freq: valor, larg: largura, local });
+        const resp = await fetch("/check-freq?" + parametros);
         const data = await resp.json();
         if (!data.conflito) return true;
         warn.textContent =

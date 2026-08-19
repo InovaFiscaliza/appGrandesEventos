@@ -854,43 +854,180 @@ def verificar_frequencia_existente(
     return None
 
 
-def verificar_frequencia_global(
-    _client=None, evento_id=None, freq_digitada=None
-) -> Optional[str]:
-    """Verifica se a frequência existe em ocorrências ou UTE (com detalhe)."""
-    if not freq_digitada or freq_digitada <= 0 or evento_id is None:
-        return None
+def _largura_frequencia_etiqueta(valor: str) -> float:
+    """Extrai a largura em kHz de uma frequência salva na etiqueta."""
+    correspondencia = re.search(r"⌂\s*([\d.,]+)\s*kHz", str(valor or ""), re.I)
+    if not correspondencia:
+        return 0.0
+    numero = correspondencia.group(1).replace(".", "").replace(",", ".")
     try:
-        f_val = round(float(freq_digitada), 3)
+        return max(float(numero), 0.0)
+    except ValueError:
+        return 0.0
+
+
+def consultar_conflitos_frequencia(
+    _client=None,
+    evento_id=None,
+    freq_digitada=None,
+    largura_khz=0,
+    localidade=None,
+    excluir_id=None,
+) -> list[dict]:
+    """Retorna conflitos por sobreposição de banda no evento e local informados."""
+    if evento_id is None or freq_digitada is None:
+        return []
+    try:
+        frequencia = float(freq_digitada)
+        largura = max(float(largura_khz or 0), 0.0)
+    except (TypeError, ValueError):
+        return []
+    if frequencia <= 0:
+        return []
+
+    inicio = frequencia - largura / 2000
+    fim = frequencia + largura / 2000
+    local_normalizado = str(localidade or "").strip().casefold()
+    conflitos = []
+    try:
         with get_engine().connect() as conn:
-            # Ocorrências
-            row = conn.execute(
-                text("""
-                    SELECT COALESCE(e.nome, o.local_regiao)
+            ocorrencias = (
+                conn.execute(
+                    text("""
+                    SELECT o.id, o.frequencia_mhz, COALESCE(o.largura_khz, 0) AS largura_khz,
+                           COALESCE(NULLIF(o.local_regiao, ''), NULLIF(e.local, ''), '') AS local,
+                           COALESCE(e.nome, 'Ocorrência') AS equipamento,
+                           o.identificacao AS etiqueta
                     FROM ocorrencias o
                     LEFT JOIN estacoes e ON e.id = o.estacao_id
-                    WHERE o.evento_id = :ev AND round(o.frequencia_mhz, 3) = :f
-                    LIMIT 1
+                    WHERE o.evento_id = :ev
+                      AND (:local = '' OR lower(trim(COALESCE(o.local_regiao, e.local, ''))) = :local)
+                      AND (CAST(:excluir_id AS BIGINT) IS NULL OR o.id <> CAST(:excluir_id AS BIGINT))
                 """),
-                {"ev": int(evento_id), "f": f_val},
-            ).first()
-            if row:
-                return row[0]
-            # UTE com nome da entidade
-            row = conn.execute(
+                    {
+                        "ev": int(evento_id),
+                        "local": local_normalizado,
+                        "excluir_id": (
+                            int(excluir_id) if str(excluir_id).isdigit() else None
+                        ),
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            for registro in ocorrencias:
+                centro = float(registro["frequencia_mhz"] or 0)
+                banda = max(float(registro["largura_khz"] or 0), 0.0)
+                existente_inicio = centro - banda / 2000
+                existente_fim = centro + banda / 2000
+                if inicio <= existente_fim and fim >= existente_inicio:
+                    conflitos.append(
+                        {
+                            "origem": "Ocorrência",
+                            "id": registro["id"],
+                            "frequencia": centro,
+                            "largura_khz": banda,
+                            "local": registro["local"] or "Local não informado",
+                            "equipamento": registro["equipamento"],
+                            "etiqueta": registro["etiqueta"] or "Não informada",
+                        }
+                    )
+
+            ute = conn.execute(
                 text("""
-                    SELECT 'UTE [Entidade: ' || COALESCE(pais_entidade, 'Não identificada') || ']'
+                    SELECT id, pais_entidade, local, frequencia_mhz
                     FROM tabela_ute
-                    WHERE evento_id = :ev AND round(frequencia_mhz, 3) = :f
-                    LIMIT 1
+                    WHERE evento_id = :ev
+                      AND (:local = '' OR lower(trim(COALESCE(local, ''))) = :local)
                 """),
-                {"ev": int(evento_id), "f": f_val},
-            ).first()
-            if row:
-                return row[0]
-    except Exception:
-        pass
-    return None
+                {"ev": int(evento_id), "local": local_normalizado},
+            ).mappings().all()
+            for registro in ute:
+                centro = float(registro["frequencia_mhz"] or 0)
+                if inicio <= centro <= fim:
+                    conflitos.append(
+                        {
+                            "origem": "Tabela UTE",
+                            "id": registro["id"],
+                            "frequencia": centro,
+                            "largura_khz": 0.0,
+                            "local": registro["local"] or "Local não informado",
+                            "equipamento": registro["pais_entidade"] or "Entidade não informada",
+                            "etiqueta": "Não informada",
+                        }
+                    )
+
+            equipamentos = (
+                conn.execute(
+                    text("""
+                    SELECT t.id, t.entidade, t.cpf_cnpj, t.local, t.tipo_equipamento,
+                           t.numero_etiqueta, selecionada AS frequencia_texto
+                    FROM testes_etiquetagem t
+                    CROSS JOIN LATERAL unnest(t.frequencias_selecionadas) AS selecionada
+                    WHERE t.evento_id = :ev
+                      AND (:local = '' OR lower(trim(COALESCE(t.local, ''))) = :local)
+                      AND (CAST(:excluir_id AS BIGINT) IS NULL OR t.id <> CAST(:excluir_id AS BIGINT))
+                """),
+                    {
+                        "ev": int(evento_id),
+                        "local": local_normalizado,
+                        "excluir_id": (
+                            int(excluir_id) if str(excluir_id).isdigit() else None
+                        ),
+                    },
+                )
+                .mappings()
+                .all()
+            )
+            for registro in equipamentos:
+                texto = str(registro["frequencia_texto"] or "")
+                correspondencia = re.match(r"\s*([\d.,]+)", texto)
+                if not correspondencia:
+                    continue
+                try:
+                    centro = float(correspondencia.group(1).replace(",", "."))
+                except ValueError:
+                    continue
+                banda = _largura_frequencia_etiqueta(texto)
+                existente_inicio = centro - banda / 2000
+                existente_fim = centro + banda / 2000
+                if inicio <= existente_fim and fim >= existente_inicio:
+                    conflitos.append(
+                        {
+                            "origem": "Teste de etiquetagem",
+                            "id": registro["id"],
+                            "frequencia": centro,
+                            "largura_khz": banda,
+                            "local": registro["local"] or "Local não informado",
+                            "equipamento": registro["entidade"] or "Nome não informado",
+                            "etiqueta": registro["numero_etiqueta"] or "Não informada",
+                            "tipo_equipamento": registro["tipo_equipamento"]
+                            or "Não informado",
+                            "cpf_cnpj": registro["cpf_cnpj"] or "Não informado",
+                        }
+                    )
+    except Exception as e:
+        logger.error(f"Erro consultar_conflitos_frequencia: {e}", exc_info=True)
+    return conflitos
+
+
+def verificar_frequencia_global(
+    _client=None, evento_id=None, freq_digitada=None, largura_khz=0, localidade=None
+) -> Optional[str]:
+    """Retorna uma descrição curta do primeiro conflito de frequência."""
+    conflitos = consultar_conflitos_frequencia(
+        evento_id=evento_id,
+        freq_digitada=freq_digitada,
+        largura_khz=largura_khz,
+        localidade=localidade,
+    )
+    if not conflitos:
+        return None
+    conflito = conflitos[0]
+    return (
+        f"{conflito['origem']} {conflito['equipamento']} | "
+        f"etiqueta: {conflito['etiqueta']} | local: {conflito['local']}"
+    )
 
 
 # =========================================================================
@@ -1105,149 +1242,61 @@ def verificar_etiqueta_existente(
 
 
 def verificar_frequencia_etiquetagem(
-    _client=None, evento_id=None, freq_digitada=None, excluir_id=None
+    _client=None,
+    evento_id=None,
+    freq_digitada=None,
+    largura_khz=0,
+    localidade=None,
+    excluir_id=None,
 ) -> Optional[str]:
-    """Retorna a origem de uma frequência já cadastrada no evento, se houver."""
-    if evento_id is None or freq_digitada is None:
+    """Retorna a descrição do primeiro conflito de frequência."""
+    conflitos = consultar_conflitos_frequencia(
+        evento_id=evento_id,
+        freq_digitada=freq_digitada,
+        largura_khz=largura_khz,
+        localidade=localidade,
+        excluir_id=excluir_id,
+    )
+    if not conflitos:
         return None
-    try:
-        frequencia = round(float(freq_digitada), 3)
-    except (TypeError, ValueError):
-        return None
-    if frequencia <= 0:
-        return None
-
-    try:
-        with get_engine().connect() as conn:
-            row = conn.execute(
-                text("""
-                    SELECT COALESCE(e.nome, o.local_regiao, 'Ocorrências')
-                    FROM ocorrencias o
-                    LEFT JOIN estacoes e ON e.id = o.estacao_id
-                    WHERE o.evento_id = :ev
-                      AND round(o.frequencia_mhz, 3) = :freq
-                    LIMIT 1
-                """),
-                {"ev": int(evento_id), "freq": frequencia},
-            ).first()
-            if row:
-                return f"Ocorrências ({row[0]})"
-
-            row = conn.execute(
-                text("""
-                    SELECT 'Tabela UTE'
-                    FROM tabela_ute
-                    WHERE evento_id = :ev
-                      AND round(frequencia_mhz, 3) = :freq
-                    LIMIT 1
-                """),
-                {"ev": int(evento_id), "freq": frequencia},
-            ).first()
-            if row:
-                return row[0]
-
-            row = conn.execute(
-                text("""
-                    SELECT 'Teste de etiquetagem: ' || entidade
-                    FROM testes_etiquetagem t
-                    CROSS JOIN LATERAL unnest(t.frequencias_selecionadas) AS selecionada
-                    WHERE t.evento_id = :ev
-                      AND round(
-                            replace(split_part(selecionada, ' MHz', 1), ',', '.')::numeric,
-                            3
-                          ) = :freq
-                                            AND (
-                                                        CAST(:excluir_id AS BIGINT) IS NULL
-                                                        OR t.id <> CAST(:excluir_id AS BIGINT)
-                                                    )
-                    LIMIT 1
-                """),
-                {"ev": int(evento_id), "freq": frequencia, "excluir_id": excluir_id},
-            ).first()
-            if row:
-                return row[0]
-    except Exception as e:
-        logger.error(f"Erro verificar_frequencia_etiquetagem: {e}", exc_info=True)
-    return None
+    conflito = conflitos[0]
+    return (
+        f"{conflito['origem']}: {conflito['equipamento']} | "
+        f"etiqueta: {conflito['etiqueta']} | local: {conflito['local']}"
+    )
 
 
 def consultar_equipamentos_frequencia(
-    _client=None, evento_id=None, freq_digitada=None, excluir_id=None
+    _client=None,
+    evento_id=None,
+    freq_digitada=None,
+    largura_khz=0,
+    localidade=None,
+    excluir_id=None,
 ) -> dict:
-    """Consulta equipamentos e referências cadastrados na frequência do evento."""
+    """Consulta conflitos detalhados de frequência no evento e local informados."""
     resultado = {"equipamentos": [], "referencias": []}
-    if evento_id is None or freq_digitada is None:
-        return resultado
-    try:
-        frequencia = round(float(freq_digitada), 3)
-    except (TypeError, ValueError):
-        return resultado
-    if frequencia <= 0:
-        return resultado
-
-    try:
-        with get_engine().connect() as conn:
-            equipamentos = (
-                conn.execute(
-                    text("""
-                    SELECT t.id, t.entidade, t.cpf_cnpj, t.contato, t.local,
-                           t.tipo_equipamento, t.numero_etiqueta,
-                           t.equipamento_homologado, selecionada AS frequencia
-                    FROM testes_etiquetagem t
-                    CROSS JOIN LATERAL unnest(t.frequencias_selecionadas) AS selecionada
-                    WHERE t.evento_id = :ev
-                                            AND round(
-                                                        replace(split_part(selecionada, ' MHz', 1), ',', '.')::numeric,
-                                                        3
-                                                    ) = :freq
-                      AND (:excluir_id IS NULL OR t.id <> :excluir_id)
-                    ORDER BY t.id
-                """),
-                    {
-                        "ev": int(evento_id),
-                        "freq": frequencia,
-                        "excluir_id": excluir_id,
-                    },
-                )
-                .mappings()
-                .all()
-            )
-            resultado["equipamentos"] = [dict(row) for row in equipamentos]
-
-            ocorrencias = (
-                conn.execute(
-                    text("""
-                    SELECT 'Ocorrência' AS origem,
-                           COALESCE(e.nome, o.local_regiao, 'Local não informado') AS detalhe
-                    FROM ocorrencias o
-                    LEFT JOIN estacoes e ON e.id = o.estacao_id
-                    WHERE o.evento_id = :ev
-                      AND round(o.frequencia_mhz, 3) = :freq
-                    LIMIT 5
-                """),
-                    {"ev": int(evento_id), "freq": frequencia},
-                )
-                .mappings()
-                .all()
-            )
-            ute = (
-                conn.execute(
-                    text("""
-                    SELECT 'Tabela UTE' AS origem,
-                           COALESCE(pais_entidade, 'Entidade não informada') AS detalhe
-                    FROM tabela_ute
-                    WHERE evento_id = :ev
-                      AND round(frequencia_mhz, 3) = :freq
-                    LIMIT 5
-                """),
-                    {"ev": int(evento_id), "freq": frequencia},
-                )
-                .mappings()
-                .all()
-            )
-            resultado["referencias"] = [dict(row) for row in [*ocorrencias, *ute]]
-    except Exception as e:
-        logger.error(f"Erro consultar_equipamentos_frequencia: {e}", exc_info=True)
+    conflitos = consultar_conflitos_frequencia(
+        evento_id=evento_id,
+        freq_digitada=freq_digitada,
+        largura_khz=largura_khz,
+        localidade=localidade,
+        excluir_id=excluir_id,
+    )
+    resultado["equipamentos"] = [
+        c for c in conflitos if c["origem"] == "Teste de etiquetagem"
+    ]
+    resultado["referencias"] = [
+        {
+            "origem": c["origem"],
+            "detalhe": (
+                f"{c['equipamento']} | etiqueta: {c['etiqueta']} | "
+                f"local: {c['local']} | {c['frequencia']:.3f} MHz / {c['largura_khz']:.3f} kHz"
+            ),
+        }
+        for c in conflitos
+        if c["origem"] != "Teste de etiquetagem"
+    ]
     return resultado
 
 
@@ -1573,10 +1622,17 @@ def inserir_emissao_I_W(
         return False
     try:
         freq = float(dados_formulario.get("Frequência em MHz", 0))
-        conflito = verificar_frequencia_global(evento_id=evento_id, freq_digitada=freq)
+        largura = float(dados_formulario.get("Largura em kHz", 0) or 0)
+        localidade = dados_formulario.get("Local/Região", "")
+        conflito = verificar_frequencia_global(
+            evento_id=evento_id,
+            freq_digitada=freq,
+            largura_khz=largura,
+            localidade=localidade,
+        )
         if conflito:
             raise FrequenciaOcupadaError(
-                f"A frequência {freq:.3f} MHz já está ocupada: {conflito}."
+                f"Conflito de frequência: {freq:.3f} MHz / {largura:.3f} kHz | {conflito}."
             )
 
         dia = dados_formulario.get("Dia")

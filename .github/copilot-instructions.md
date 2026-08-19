@@ -55,6 +55,7 @@ requisitos/                # Documentação de requisitos
 ## Padrões de Código
 
 ### Python
+
 - **Versão**: Python 3.13+ (type hints obrigatórios, union types com `X | Y`)
 - **Identação**: 4 espaços (PEP 8)
 - **Docstrings**: """Docstrings descritivas""" em módulos e funções públicas
@@ -64,6 +65,7 @@ requisitos/                # Documentação de requisitos
 - **Erros**: try/except com logging, evitar silenciar exceções
 
 ### Legibilidade para Usuários Humanos
+
 - Escrever código para ser lido e mantido por pessoas, não apenas para executar.
 - Preferir nomes descritivos, fluxo explícito e funções pequenas a abreviações, compactação excessiva ou lógica indireta.
 - Manter formatação consistente e separar responsabilidades quando um trecho ficar difícil de entender.
@@ -72,6 +74,7 @@ requisitos/                # Documentação de requisitos
 - Ao alterar código existente, preservar o estilo local e deixar a intenção da mudança evidente.
 
 ### FastAPI (principal)
+
 - Rotas definidas com `APIRouter()` nomeado como `router`
 - Templates Jinja2 carregados com `Jinja2Templates(directory="app/templates")`
 - Sessão gerenciada via `SessionMiddleware` com cookie assinado
@@ -81,6 +84,7 @@ requisitos/                # Documentação de requisitos
 - Flash messages via `request.session.pop("flash_success/error", None)`
 
 ### Frontend (HTML/CSS/JS)
+
 - HTML com Jinja2 (herança via `{% extends "base.html" %}`)
 - CSS em `app/static/style.css`
 - JavaScript modular em `app/static/*.js`
@@ -88,11 +92,13 @@ requisitos/                # Documentação de requisitos
 - PWA: arquivos em `app/static/` (sw.js, manifest.json, offline.html)
 
 ### Configurações
+
 - Constantes centralizadas em `app/config.py`
 - Conexão DB em `app/services/db.py` (lê: env → secrets.toml → fallback local)
 - Variáveis de ambiente: `DATABASE_URL`
 
 ### Scripts
+
 - `sys.path.insert(0, ".")` necessário para executar scripts da raiz
 - Execução via `uv run scripts/<script>.py` ou `python <script>.py`
 
@@ -109,7 +115,7 @@ requisitos/                # Documentação de requisitos
 ## Lembretes Funcionais — Fotos
 
 - Fotos de BSR/Jammer e ERB Fake devem ser nomeadas automaticamente nesta ordem:
-    `NomeEvento_Classificacao_ID_Registro_Data_Hora_Sequencia.extensao`.
+  `NomeEvento_Classificacao_ID_Registro_Data_Hora_Sequencia.extensao`.
 - O nome deve preservar a extensão original e substituir caracteres inválidos por `_`.
 - O nome da foto deve aparecer somente no popup de visualização ampliada, centralizado abaixo da imagem; não exibir nomes nas listas e miniaturas para evitar poluição visual.
 - Ao editar um registro BSR/Jammer ou ERB Fake, as fotos já anexadas devem aparecer no formulário junto com o controle para incluir novas fotos.
@@ -122,3 +128,13 @@ requisitos/                # Documentação de requisitos
 - Toda alteração relevante deve registrar origem, registro afetado, usuário, campo alterado, valor anterior e valor novo.
 - Inclusões e exclusões de imagens, registros e vínculos também devem gerar auditoria específica.
 - Antes de concluir uma alteração, verificar se a consulta de auditoria consegue exibir o novo registro corretamente.
+
+## Lembrete Obrigatório — Validação de Frequências
+
+- No **Teste de etiquetagem** e no **Cadastro de emissões**, toda frequência incluída ou alterada deve ser consultada no banco antes da conclusão.
+- A frequência central utilizada pelo equipamento, somada à sua banda ocupada, não pode conflitar com outro equipamento utilizado no mesmo evento e na mesma localidade.
+- A consulta deve ocorrer tanto para um novo registro quanto para a edição de um registro existente, desconsiderando o próprio registro em edição quando aplicável.
+- Se houver conflito com equipamento, emissão ou outro cadastro, a tela deve alertar imediatamente o fiscal responsável pelo processo, identificando a entidade, o tipo, a etiqueta e o local quando esses dados estiverem disponíveis.
+- O alerta deve aparecer durante a inclusão/alteração e não pode ficar restrito a uma mensagem genérica após o salvamento.
+- A validação de interface não substitui a validação no backend: o backend deve repetir a consulta no salvamento para impedir inconsistências, inclusive nos fluxos offline/API.
+- A comparação deve usar a precisão normalizada definida pelo sistema e, quando aplicável, considerar a sobreposição entre frequência central e largura de banda.

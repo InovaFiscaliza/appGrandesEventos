@@ -186,7 +186,9 @@ async def post_inserir(request: Request):
     except ValueError:
         larg = 0.0
 
-    conflito = verificar_frequencia_global(evento_id=sp_id, freq_digitada=freq)
+    conflito = verificar_frequencia_global(
+        evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
+    )
 
     try:
         dia_obj = datetime.strptime(dia_str, "%Y-%m-%d").date()
@@ -283,11 +285,15 @@ async def post_inserir(request: Request):
 
 
 @router.get("/check-freq")
-async def check_freq(request: Request, freq: float = 0.0):
+async def check_freq(
+    request: Request, freq: float = 0.0, larg: float = 0.0, local: str = ""
+):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id or freq <= 0:
         return {"conflito": None}
-    conflito = verificar_frequencia_global(evento_id=sp_id, freq_digitada=freq)
+    conflito = verificar_frequencia_global(
+        evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
+    )
     return {"conflito": conflito}
 
 

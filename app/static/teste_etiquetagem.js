@@ -131,7 +131,10 @@
     }
     try {
       const registro = form.querySelector('input[name="registro_id"]')?.value;
-      const parametros = new URLSearchParams({ frequencia: String(numero) });
+      const larguraTexto = document.getElementById('passo')?.value || '';
+      const largura = Number(larguraTexto.replace(/\./g, '').replace(',', '.').replace(/\s*kHz/i, '')) || 0;
+      const local = document.getElementById('local')?.value || '';
+      const parametros = new URLSearchParams({ frequencia: String(numero), largura_khz: largura, local });
       if (registro) parametros.set('excluir_id', registro);
       const resposta = await fetch(`/api/teste-etiquetagem/verificar-frequencia?${parametros}`);
       if (!resposta.ok) return null;
@@ -298,9 +301,6 @@
     }
 
     const consulta = await consultarFrequencia(valor);
-    if (consulta && (consulta.equipamentos.length > 0 || consulta.referencias.length > 0)) {
-      return;
-    }
 
     if (frequenciaJaNaLista(valor)) {
       exibirConsulta(
@@ -316,6 +316,7 @@
       [...lista.options].forEach((opcao) => { opcao.selected = false; });
       lista.querySelector(`option[value="${CSS.escape(texto)}"]`).selected = true;
       manterUmaSelecao();
+      atualizarFrequenciasEnviadas();
       consultarFrequencia(valor);
       return;
     }
@@ -334,6 +335,10 @@
     if (remover.disabled || lista.selectedOptions.length === 0) return;
     [...lista.selectedOptions].forEach((opcao) => opcao.remove());
     atualizarEstadoRemover();
+    atualizarFrequenciasEnviadas();
+  });
+
+  form.addEventListener('submit', () => {
     atualizarFrequenciasEnviadas();
   });
 
