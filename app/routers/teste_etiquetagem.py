@@ -14,9 +14,11 @@ from app.services.postgres import (
     listar_testes_etiquetagem,
     consultar_equipamentos_frequencia,
     obter_teste_etiquetagem,
+    obter_evento,
     verificar_etiqueta_existente,
     verificar_frequencia_etiquetagem,
 )
+from app.services.permissoes import MODULO_TESTE_ETIQUETAGEM, modulo_disponivel
 from app.utils.formatters import _img_b64
 
 router = APIRouter()
@@ -149,6 +151,21 @@ def _ctx(request: Request, **kwargs):
     }
 
 
+def _bloquear_modulo_se_desativado(request: Request):
+    """Impede o acesso ao módulo quando o evento não usa etiquetagem."""
+    evento_id = request.session.get("spreadsheet_id")
+    evento = (
+        obter_evento(int(evento_id)) if evento_id and str(evento_id).isdigit() else None
+    )
+    if evento and not modulo_disponivel(
+        MODULO_TESTE_ETIQUETAGEM,
+        evento=evento,
+        tipo_usuario=request.session.get("tipo_usuario"),
+    ):
+        return RedirectResponse("/menu", status_code=303)
+    return None
+
+
 def _form_values(form) -> dict:
     frequencias_selecionadas = form.getlist("frequencias_selecionadas")
     return {
@@ -218,6 +235,9 @@ def _render_form(
 async def get_teste_etiquetagem(
     request: Request, edit_id: int | None = None, consultar: bool = False
 ):
+    bloqueio = _bloquear_modulo_se_desativado(request)
+    if bloqueio:
+        return bloqueio
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
@@ -275,6 +295,12 @@ async def verificar_frequencia_teste(
     local: str = "",
     excluir_id: int | None = None,
 ):
+    bloqueio = _bloquear_modulo_se_desativado(request)
+    if bloqueio:
+        return JSONResponse(
+            {"erro": "Teste de etiquetagem não disponível neste evento."},
+            status_code=404,
+        )
     """Consulta equipamentos e referências da frequência no evento atual."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
@@ -292,6 +318,9 @@ async def verificar_frequencia_teste(
 
 @router.post("/teste_etiquetagem", response_class=HTMLResponse)
 async def post_teste_etiquetagem(request: Request):
+    bloqueio = _bloquear_modulo_se_desativado(request)
+    if bloqueio:
+        return bloqueio
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return RedirectResponse("/", status_code=302)
@@ -397,6 +426,9 @@ async def consultar_testes_etiquetagem(request: Request):
 
 @router.post("/teste_etiquetagem/excluir")
 async def excluir_teste_etiquetagem_rota(request: Request):
+    bloqueio = _bloquear_modulo_se_desativado(request)
+    if bloqueio:
+        return bloqueio
     """Exclui um registro de etiquetagem do evento atual."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:

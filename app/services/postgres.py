@@ -251,6 +251,7 @@ def criar_evento(
     processo_sei: str | None = None,
     periodo_inicio: str | None = None,
     periodo_fim: str | None = None,
+    teste_etiquetagem: bool = True,
     unidades_executantes: list[str] | None = None,
     observacoes: str | None = None,
     estacoes: list[str | dict] | None = None,
@@ -264,11 +265,11 @@ def criar_evento(
                 INSERT INTO eventos
                     (nome, latitude, longitude, fuso_horario, cidade, uf,
                      acao_fiscalizacao, processo_sei,
-                     periodo_inicio, periodo_fim, observacoes)
+                     periodo_inicio, periodo_fim, teste_etiquetagem, observacoes)
                 VALUES
                     (:nome, :latitude, :longitude, :fuso_horario, :cidade, :uf,
                     :acao_fiscalizacao, :processo_sei,
-                    :periodo_inicio, :periodo_fim, :observacoes)
+                    :periodo_inicio, :periodo_fim, :teste_etiquetagem, :observacoes)
                 RETURNING id
             """),
             {
@@ -282,6 +283,7 @@ def criar_evento(
                 "processo_sei": processo_sei,
                 "periodo_inicio": periodo_inicio,
                 "periodo_fim": periodo_fim,
+                "teste_etiquetagem": teste_etiquetagem,
                 "observacoes": observacoes,
             },
         ).scalar_one()
@@ -491,7 +493,7 @@ def listar_eventos_detalhes() -> list[dict]:
                           JOIN fiscais f ON f.id = ec.fiscal_id
                           WHERE ec.evento_id = e.id
                       ) AS coordenador_responsavel,
-                      periodo_inicio, periodo_fim, observacoes,
+                      periodo_inicio, periodo_fim, teste_etiquetagem, observacoes,
                       COALESCE((
                           SELECT string_agg(eu.unidade_sigla, ', ' ORDER BY eu.unidade_sigla)
                           FROM eventos_unidades_executantes eu
@@ -567,7 +569,7 @@ def obter_evento(evento_id: int) -> dict | None:
                           JOIN fiscais f ON f.id = ec.fiscal_id
                           WHERE ec.evento_id = e.id
                       ) AS coordenador_responsavel,
-                      periodo_inicio, periodo_fim, observacoes
+                      periodo_inicio, periodo_fim, teste_etiquetagem, observacoes
                 FROM eventos e
                 WHERE e.id = :id
             """),
@@ -600,6 +602,7 @@ def registrar_auditoria_evento(
         ("unidades_executantes", "Unidades executantes"),
         ("periodo_inicio", "Período inicial"),
         ("periodo_fim", "Período final"),
+        ("teste_etiquetagem", "Teste de etiquetagem neste evento"),
         ("observacoes", "Observações"),
     )
 
@@ -751,6 +754,7 @@ def atualizar_evento(
     processo_sei: str | None = None,
     periodo_inicio: str | None = None,
     periodo_fim: str | None = None,
+    teste_etiquetagem: bool = True,
     unidades_executantes: list[str] | None = None,
     observacoes: str | None = None,
     coordenadores: list[str] | None = None,
@@ -769,6 +773,7 @@ def atualizar_evento(
                     processo_sei = :processo_sei,
                     periodo_inicio = :periodo_inicio,
                     periodo_fim = :periodo_fim,
+                    teste_etiquetagem = :teste_etiquetagem,
                     observacoes = :observacoes
                 WHERE id = :id
             """),
@@ -783,6 +788,7 @@ def atualizar_evento(
                 "processo_sei": processo_sei,
                 "periodo_inicio": periodo_inicio,
                 "periodo_fim": periodo_fim,
+                "teste_etiquetagem": teste_etiquetagem,
                 "observacoes": observacoes,
             },
         )

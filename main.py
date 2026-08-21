@@ -29,7 +29,8 @@ from app.routers import (
     tabela_ute,
     teste_etiquetagem,
 )
-from app.services.postgres import buscar_planilhas
+from app.services.postgres import buscar_planilhas, obter_evento
+from app.services.permissoes import permissoes_interface
 
 _inicio_aplicacao = time.perf_counter()
 
@@ -43,10 +44,6 @@ def _mensagem_inicializacao(mensagem: str) -> None:
 _mensagem_inicializacao("Módulos Python carregados")
 app = FastAPI(title="AppEventos", docs_url=None, redoc_url=None)
 _mensagem_inicializacao("Aplicação FastAPI criada")
-
-# Sessão via cookie assinado; secret aleatório por inicialização (aceitável para este app)
-app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
-_mensagem_inicializacao("Middleware de sessão configurado")
 
 
 @app.on_event("startup")
@@ -72,6 +69,14 @@ async def carregar_eventos_no_request(request: Request, call_next):
     _mensagem_inicializacao(
         f"Requisição recebida: {request.method} {caminho}; carregando eventos"
     )
+    evento_id = request.session.get("spreadsheet_id")
+    evento_atual = (
+        obter_evento(int(evento_id)) if evento_id and str(evento_id).isdigit() else None
+    )
+    request.state.permissoes = permissoes_interface(
+        evento=evento_atual,
+        tipo_usuario=request.session.get("tipo_usuario"),
+    )
     # A tela de histórico já possui o evento na sessão. Não bloqueie sua
     # abertura com a consulta síncrona da lista completa de eventos.
     if caminho == "/consultar/historico":
@@ -90,6 +95,12 @@ async def carregar_eventos_no_request(request: Request, call_next):
         f"{request.method} {caminho} ({resposta.status_code})"
     )
     return resposta
+
+
+# Sessão via cookie assinado; registrada depois do middleware de carregamento
+# para que request.session esteja disponível ao calcular as permissões.
+app.add_middleware(SessionMiddleware, secret_key=secrets.token_hex(32))
+_mensagem_inicializacao("Middleware de sessão configurado")
 
 
 # Arquivos estáticos (CSS, imagens)

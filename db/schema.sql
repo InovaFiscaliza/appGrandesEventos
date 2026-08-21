@@ -23,12 +23,14 @@ CREATE TABLE IF NOT EXISTS eventos (
     processo_sei    TEXT,
     periodo_inicio  DATE,
     periodo_fim     DATE,
+    teste_etiquetagem BOOLEAN NOT NULL DEFAULT TRUE,
     observacoes     TEXT,
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE eventos ADD COLUMN IF NOT EXISTS cidade TEXT;
 ALTER TABLE eventos ADD COLUMN IF NOT EXISTS uf CHAR(2);
+ALTER TABLE eventos ADD COLUMN IF NOT EXISTS teste_etiquetagem BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE eventos DROP COLUMN IF EXISTS local;
 
 CREATE TABLE IF NOT EXISTS unidades_executantes (

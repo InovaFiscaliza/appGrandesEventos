@@ -119,6 +119,7 @@ async def post_criar_evento(request: Request):
     processo_sei = str(form.get("processo_sei", "")).strip()
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
     periodo_fim = str(form.get("periodo_fim", "")).strip()
+    teste_etiquetagem = str(form.get("teste_etiquetagem", "sim")).strip() == "sim"
     unidades_executantes = form.getlist("unidades_executantes")
     fiscais_evento = form.getlist("fiscais_evento")
     coordenadores_evento = [
@@ -155,6 +156,7 @@ async def post_criar_evento(request: Request):
             processo_sei=processo_sei or None,
             periodo_inicio=periodo_inicio or None,
             periodo_fim=periodo_fim or None,
+            teste_etiquetagem=teste_etiquetagem,
             unidades_executantes=unidades_executantes,
             fiscais=fiscais_evento,
             coordenadores=coordenadores_evento,
@@ -187,6 +189,7 @@ async def post_editar_evento(request: Request, evento_id: int):
     processo_sei = str(form.get("processo_sei", "")).strip()
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
     periodo_fim = str(form.get("periodo_fim", "")).strip()
+    teste_etiquetagem = str(form.get("teste_etiquetagem", "sim")).strip() == "sim"
     unidades_executantes = form.getlist("unidades_executantes")
     fiscais_evento = form.getlist("fiscais_evento")
     coordenadores_evento = [
@@ -230,6 +233,7 @@ async def post_editar_evento(request: Request, evento_id: int):
             processo_sei=processo_sei or None,
             periodo_inicio=periodo_inicio or None,
             periodo_fim=periodo_fim or None,
+            teste_etiquetagem=teste_etiquetagem,
             observacoes=observacoes or None,
             coordenadores=coordenadores_evento,
         )

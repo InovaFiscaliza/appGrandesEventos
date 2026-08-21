@@ -34,9 +34,9 @@
     <a href="/consultar">Pendências</a><span aria-current="page">Histórico</span>
     {% elif caminho_atual.startswith('/consultar') %}
     <span aria-current="page">Pendências</span>
-    {% elif caminho_atual.startswith('/teste_etiquetagem/consultar') %}
+    {% elif request.state.permissoes.teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem/consultar') %}
     <a href="/teste_etiquetagem">Etiquetagem</a><span aria-current="page">Registros</span>
-    {% elif caminho_atual.startswith('/teste_etiquetagem') %}
+    {% elif request.state.permissoes.teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem') %}
     <span aria-current="page">Etiquetagem</span>
     {% elif caminho_atual.startswith('/bsr-erb') %}
     <span aria-current="page">Interferências</span>

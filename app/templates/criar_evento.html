@@ -141,6 +141,13 @@
             </div>
         </div>
         <div class="form-group">
+            <label for="teste-etiquetagem-evento">Este evento possui teste de etiquetagem?</label>
+            <select class="form-control" id="teste-etiquetagem-evento" name="teste_etiquetagem">
+                <option value="sim"{% if not evento or evento.teste_etiquetagem %} selected{% endif %}>Sim</option>
+                <option value="nao"{% if evento and not evento.teste_etiquetagem %} selected{% endif %}>Não</option>
+            </select>
+        </div>
+        <div class="form-group">
             <label for="observacoes-evento">Observações</label>
             <textarea class="form-control" id="observacoes-evento" name="observacoes" rows="4">{{ evento.observacoes if evento and evento.observacoes else '' }}</textarea>
         </div>
