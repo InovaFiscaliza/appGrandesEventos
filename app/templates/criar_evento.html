@@ -11,7 +11,7 @@
     <div class="table-scroll">
         <table class="ute-table">
             <thead>
-                <tr><th>ID</th><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Local</th><th>Ação de Fiscalização</th><th>Unidades Executantes</th><th>Fiscais participantes</th><th>Estações</th><th>Processo SEI</th><th>Coordenador Responsável</th><th>Período</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
+                <tr><th>ID</th><th>Evento</th><th>Latitude</th><th>Longitude</th><th>Cidade</th><th>UF</th><th>Ação de Fiscalização</th><th>Unidades Executantes</th><th>Fiscais participantes</th><th>Estações</th><th>Processo SEI</th><th>Coordenador Responsável</th><th>Período</th><th>Observações</th><th class="evento-acao">Ação</th></tr>
             </thead>
             <tbody>
                 {% for item in eventos %}
@@ -20,7 +20,8 @@
                     <td>{{ item.nome }}</td>
                     <td>{{ item.latitude or "-" }}</td>
                     <td>{{ item.longitude or "-" }}</td>
-                    <td>{{ item.local or "-" }}</td>
+                    <td>{{ item.cidade or "-" }}</td>
+                    <td>{{ item.uf or "-" }}</td>
                     <td>{{ item.acao_fiscalizacao or "-" }}</td>
                     <td>{{ item.unidades_executantes or "-" }}</td>
                     <td>{{ item.fiscais_participantes or "-" }}</td>
@@ -57,9 +58,25 @@
                 <input class="form-control" id="longitude-evento" type="number" name="longitude" value="{{ evento.longitude if evento and evento.longitude is not none else '' }}" step="any" min="-180" max="180">
             </div>
         </div>
-        <div class="form-group">
-            <label for="local-evento">Local</label>
-            <input class="form-control" id="local-evento" type="text" name="local" value="{{ evento.local if evento and evento.local else '' }}">
+        <div class="form-cols">
+            <div class="form-group">
+                <label for="uf-evento">UF</label>
+                <select class="form-control" id="uf-evento" name="uf">
+                    <option value="">Selecione a UF</option>
+                    {% for sigla in ufs %}
+                    <option value="{{ sigla }}"{% if evento and evento.uf == sigla %} selected{% endif %}>{{ sigla }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="cidade-evento">Cidade</label>
+                <select class="form-control" id="cidade-evento" name="cidade" disabled>
+                    <option value="">Selecione primeiro a UF</option>
+                    {% for municipio in municipios %}
+                    <option value="{{ municipio.nome }}" data-uf="{{ municipio.uf }}"{% if evento and evento.cidade == municipio.nome %} selected{% endif %}>{{ municipio.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
         <div class="form-group">
             <label for="acao-fiscalizacao-evento">Ação de Fiscalização</label>
@@ -192,16 +209,68 @@
     </section>
 </div>
 
+<script>
+    (() => {
+        const ufSelect = document.getElementById("uf-evento");
+        const cidadeSelect = document.getElementById("cidade-evento");
+        if (!ufSelect || !cidadeSelect) return;
+
+        const cidadeInicial = cidadeSelect.value;
+        const atualizarCidades = () => {
+            const ufSelecionada = ufSelect.value;
+            const opcoes = [...cidadeSelect.options];
+            let cidadeValida = false;
+
+            opcoes.forEach((opcao, indice) => {
+                if (indice === 0) {
+                    opcao.hidden = Boolean(ufSelecionada);
+                    return;
+                }
+                const visivel = opcao.dataset.uf === ufSelecionada;
+                opcao.hidden = !visivel;
+                if (visivel && opcao.value === cidadeSelect.value) cidadeValida = true;
+            });
+
+            cidadeSelect.disabled = !ufSelecionada;
+            if (!ufSelecionada) {
+                cidadeSelect.value = "";
+                cidadeSelect.options[0].textContent = "Selecione primeiro a UF";
+            } else if (!cidadeValida) {
+                cidadeSelect.value = "";
+                cidadeSelect.options[0].textContent = "Selecione a cidade";
+            }
+        };
+
+        ufSelect.addEventListener("change", atualizarCidades);
+        if (ufSelect.value && cidadeInicial) cidadeSelect.value = cidadeInicial;
+        atualizarCidades();
+    })();
+</script>
+
 {% if evento %}
 <section class="form-card font-semi-bold">
     <h5 class="teq-title">Estações do evento</h5>
     {% if estacoes %}
     <div class="table-scroll">
         <table class="ute-table estacoes-evento-table">
-            <thead><tr><th>Estação</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>Estação</th>
+                    <th>Modelo do equipamento</th>
+                    <th>Local</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                </tr>
+            </thead>
             <tbody>
                 {% for estacao in estacoes %}
-                <tr><td>{{ estacao.nome }}</td></tr>
+                <tr>
+                    <td>{{ estacao.nome }}</td>
+                    <td>{{ estacao.modelo_equipamento or "-" }}</td>
+                    <td>{{ estacao.local or "-" }}</td>
+                    <td>{{ estacao.latitude if estacao.latitude is not none else "-" }}</td>
+                    <td>{{ estacao.longitude if estacao.longitude is not none else "-" }}</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>

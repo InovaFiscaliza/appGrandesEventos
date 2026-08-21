@@ -38,31 +38,35 @@
 })();
 
 // ─── Check frequência (online apenas) ────────────────────────
-document.getElementById("freq").addEventListener("change", async function () {
-  const val = parseFloat(this.value);
+async function consultarConflitoFrequencia() {
+  const val = parseFloat(document.getElementById("freq")?.value || "0");
   const largura = parseFloat(document.getElementById("larg")?.value || "0");
   const local = document.getElementById("local")?.value || "";
   const warn = document.getElementById("freq-warning");
   const online = !(window.APP_OFFLINE === true) && navigator.onLine;
-  if (val > 0 && online) {
-    try {
-      const parametros = new URLSearchParams({ freq: val, larg: largura, local });
-      const resp = await fetch("/check-freq?" + parametros);
-      const data = await resp.json();
-      if (data.conflito) {
-        warn.textContent =
-          "⚠️ AVISO (apenas): Essa frequência consta na Planilha - Aba: " +
-          data.conflito;
-        warn.style.display = "block";
-      } else {
-        warn.style.display = "none";
-      }
-    } catch (e) {
+  if (!warn) return;
+  if (!(val > 0) || !online) {
+    warn.style.display = "none";
+    return;
+  }
+  try {
+    const parametros = new URLSearchParams({ freq: val, larg: largura, local });
+    const resp = await fetch("/check-freq?" + parametros);
+    const data = await resp.json();
+    if (data.conflito) {
+      warn.textContent =
+        "⚠️ AVISO: existe equipamento usando essa frequência: " + data.conflito;
+      warn.style.display = "block";
+    } else {
       warn.style.display = "none";
     }
-  } else {
+  } catch (e) {
     warn.style.display = "none";
   }
+}
+
+["freq", "larg", "local"].forEach((id) => {
+  document.getElementById(id)?.addEventListener("change", consultarConflitoFrequencia);
 });
 
 // ─── Interceptação de submit offline ─────────────────────────
@@ -103,11 +107,10 @@ AppOffline.interceptarSubmit(
         const data = await resp.json();
         if (!data.conflito) return true;
         warn.textContent =
-          "⚠️ Não é possível inserir: essa frequência já está ocupada (" +
+          "⚠️ Aviso: existe equipamento usando essa frequência (" +
           data.conflito + ").";
         warn.style.display = "block";
-        document.getElementById("freq").focus();
-        return false;
+        return true;
       } catch (e) {
         return true;
       }

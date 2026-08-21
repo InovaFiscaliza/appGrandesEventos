@@ -89,6 +89,7 @@ requisitos/                # Documentação de requisitos
 - CSS em `app/static/style.css`
 - JavaScript modular em `app/static/*.js`
 - Botões padronizados com altura via variável CSS `BTN_HEIGHT`
+- Botões de adicionar representados por `+` devem seguir o padrão visual `.teq-list-btn` do teste de etiquetagem e ficar alinhados à direita quando estiverem acima de um campo.
 - PWA: arquivos em `app/static/` (sw.js, manifest.json, offline.html)
 
 ### Configurações
@@ -132,9 +133,10 @@ requisitos/                # Documentação de requisitos
 ## Lembrete Obrigatório — Validação de Frequências
 
 - No **Teste de etiquetagem** e no **Cadastro de emissões**, toda frequência incluída ou alterada deve ser consultada no banco antes da conclusão.
-- A frequência central utilizada pelo equipamento, somada à sua banda ocupada, não pode conflitar com outro equipamento utilizado no mesmo evento e na mesma localidade.
+- No teste de etiquetagem, comparar a frequência central e a banda ocupada também com as emissões cadastradas no mesmo evento e localidade, inclusive as emissões dos fiscais de campo.
+- Essa comparação é somente informativa: deve alertar o fiscal com a frequência central, a banda e os dados disponíveis da emissão, mas nunca impedir a inclusão, edição ou conclusão do teste de etiquetagem.
 - A consulta deve ocorrer tanto para um novo registro quanto para a edição de um registro existente, desconsiderando o próprio registro em edição quando aplicável.
 - Se houver conflito com equipamento, emissão ou outro cadastro, a tela deve alertar imediatamente o fiscal responsável pelo processo, identificando a entidade, o tipo, a etiqueta e o local quando esses dados estiverem disponíveis.
 - O alerta deve aparecer durante a inclusão/alteração e não pode ficar restrito a uma mensagem genérica após o salvamento.
-- A validação de interface não substitui a validação no backend: o backend deve repetir a consulta no salvamento para impedir inconsistências, inclusive nos fluxos offline/API.
+- A validação de interface não substitui a consulta no backend: o backend deve repetir a consulta no salvamento para gerar o mesmo alerta, inclusive nos fluxos offline/API, sem bloquear a conclusão por conflito de frequência.
 - A comparação deve usar a precisão normalizada definida pelo sistema e, quando aplicável, considerar a sobreposição entre frequência central e largura de banda.

@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS eventos (
     latitude        NUMERIC(9,6),
     longitude       NUMERIC(9,6),
     fuso_horario    TEXT DEFAULT 'America/Sao_Paulo',
-    local           TEXT,
+    cidade          TEXT,
+    uf              CHAR(2),
     acao_fiscalizacao TEXT,
     processo_sei    TEXT,
     periodo_inicio  DATE,
@@ -25,6 +26,10 @@ CREATE TABLE IF NOT EXISTS eventos (
     observacoes     TEXT,
     criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE eventos ADD COLUMN IF NOT EXISTS cidade TEXT;
+ALTER TABLE eventos ADD COLUMN IF NOT EXISTS uf CHAR(2);
+ALTER TABLE eventos DROP COLUMN IF EXISTS local;
 
 CREATE TABLE IF NOT EXISTS unidades_executantes (
     sigla TEXT PRIMARY KEY,
@@ -42,6 +47,16 @@ CREATE TABLE IF NOT EXISTS fiscais (
 );
 
 CREATE INDEX IF NOT EXISTS idx_fiscais_nome ON fiscais (nome);
+
+CREATE TABLE IF NOT EXISTS municipios (
+    codigo_ibge BIGINT PRIMARY KEY,
+    nome        TEXT NOT NULL,
+    uf          CHAR(2) NOT NULL,
+    UNIQUE (nome, uf)
+);
+
+CREATE INDEX IF NOT EXISTS idx_municipios_uf_nome
+    ON municipios (uf, nome);
 
 CREATE TABLE IF NOT EXISTS eventos_fiscais (
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,

@@ -47,16 +47,16 @@ Modificações solicitadas — AppGrandesEventos
 - [ ] Controlar a visibilidade dos módulos conforme o perfil do usuário e a configuração do evento. Exemplos discutidos: esconder **Gerenciar Eventos**, **Auditoria** e **Teste de etiquetagem** quando não forem aplicáveis. **Referência: 00:01:20–00:02:18.**
 - [ ] Permitir que o criador/coordenador do evento escolha quais módulos estarão disponíveis naquele evento. **Referência: 00:01:20–00:02:15.**
 - [ ] Criar uma base local com usuários fictícios para testar os perfis e, posteriormente, integrar com a base institucional de fiscais. **Referência: 00:24:48–00:25:11.**
-- [ ] Preservar a possibilidade de um fiscal possuir mais de um papel no mesmo evento, como abordagem, monitoração e coordenação. **Referência: 00:02:53–00:03:45.**
-- [ ] Preservar a possibilidade de múltiplos coordenadores responsáveis pelo mesmo evento. **Referência: 00:03:58–00:04:28.**
+- [X] Preservar a possibilidade de um fiscal possuir mais de um papel no mesmo evento, como abordagem, monitoração e coordenação. **Referência: 00:02:53–00:03:45.**
+- [X] Preservar a possibilidade de múltiplos coordenadores responsáveis pelo mesmo evento. **Referência: 00:03:58–00:04:28.**
 
 ## 2. Gerenciamento de eventos
 
 - [ ] Adicionar ao evento uma opção para ativar ou desativar o **Teste de etiquetagem**. **Referência: 00:04:38–00:05:02.**
 - [ ] Permitir configurar no evento a regra de formação/abrangência das etiquetas, incluindo autorização local e autorização válida para todos os locais aplicáveis. **Referência: 00:04:51–00:05:11.**
-- [ ] Substituir o campo livre **Local** do evento por dois campos controlados: **UF** e **Cidade/Município**. A cidade deverá ser escolhida em uma lista, evitando grafias diferentes para o mesmo município. **Referência: 00:09:34–00:12:50.**
-- [ ] Manter o termo **Local** para a posição física de uma estação, como estádio, tribuna de imprensa, centro de monitoração ou área externa. **Referência: 00:09:52–00:12:40.**
-- [ ] Manter os dados históricos existentes ao alterar os campos de localização do evento. **Referência: 00:12:52–00:13:04.**
+- [X] Substituir o campo livre **Local** do evento por dois campos controlados: **UF** e **Cidade/Município**. A cidade deverá ser escolhida em uma lista, evitando grafias diferentes para o mesmo município. **Referência: 00:09:34–00:12:50.**
+- [X] Manter o termo **Local** para a posição física de uma estação, como estádio, tribuna de imprensa, centro de monitoração ou área externa. **Referência: 00:09:52–00:12:40.**
+- [X] Manter os dados históricos existentes ao alterar os campos de localização do evento. **Referência: 00:12:52–00:13:04.**
 - [ ] Recolher/ocultar os formulários detalhados de inclusão e edição. Os campos devem abrir somente quando o usuário clicar em **Novo**, **Editar** ou **Detalhes**. **Referência: 00:13:04–00:14:57.**
 - [ ] Adicionar filtros à listagem de eventos, pelo menos por ano e nome/evento. **Referência: 00:15:02–00:15:37.**
 - [ ] Implementar paginação na listagem de eventos para suportar o crescimento do histórico ao longo dos anos. **Referência: 00:15:17–00:15:43.**
@@ -155,3 +155,9 @@ Modificações solicitadas — AppGrandesEventos
 5. Regras completas que determinam quais módulos ficam disponíveis para cada perfil e evento.
 6. Critérios exatos de encerramento além da proibição de concluir itens com interferência indefinida.
 7. Necessidade de uma cidade própria para a estação quando ela estiver instalada fora da cidade principal do evento.
+
+
+
+No Ato tem essas informações
+
+Na pesquisa de UTE e no Teste e Etiquetagem o fiscal vai precisar ter essas informações de UTE para validar. E precisa ser algo dinâmico.

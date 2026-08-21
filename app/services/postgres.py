@@ -245,7 +245,8 @@ def criar_evento(
     latitude: float | None = None,
     longitude: float | None = None,
     fuso_horario: str = "America/Sao_Paulo",
-    local: str | None = None,
+    cidade: str | None = None,
+    uf: str | None = None,
     acao_fiscalizacao: str | None = None,
     processo_sei: str | None = None,
     periodo_inicio: str | None = None,
@@ -261,11 +262,11 @@ def criar_evento(
         evento_id = conn.execute(
             text("""
                 INSERT INTO eventos
-                    (nome, latitude, longitude, fuso_horario, local,
+                    (nome, latitude, longitude, fuso_horario, cidade, uf,
                      acao_fiscalizacao, processo_sei,
                      periodo_inicio, periodo_fim, observacoes)
                 VALUES
-                    (:nome, :latitude, :longitude, :fuso_horario, :local,
+                    (:nome, :latitude, :longitude, :fuso_horario, :cidade, :uf,
                     :acao_fiscalizacao, :processo_sei,
                     :periodo_inicio, :periodo_fim, :observacoes)
                 RETURNING id
@@ -275,7 +276,8 @@ def criar_evento(
                 "latitude": latitude,
                 "longitude": longitude,
                 "fuso_horario": fuso_horario,
-                "local": local,
+                "cidade": cidade,
+                "uf": uf,
                 "acao_fiscalizacao": acao_fiscalizacao,
                 "processo_sei": processo_sei,
                 "periodo_inicio": periodo_inicio,
@@ -481,7 +483,7 @@ def listar_eventos_detalhes() -> list[dict]:
     """Retorna os eventos cadastrados com seus dados e vínculos resumidos."""
     with get_engine().connect() as conn:
         rows = conn.execute(text("""
-                  SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.local,
+                  SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.cidade, e.uf,
                       acao_fiscalizacao, processo_sei,
                       (
                           SELECT string_agg(f.nome, ', ' ORDER BY f.nome)
@@ -515,13 +517,49 @@ def listar_eventos_detalhes() -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def listar_municipios() -> list[dict]:
+    """Retorna os municípios cadastrados, agrupáveis por UF no formulário."""
+    with get_engine().connect() as conn:
+        rows = conn.execute(text("""
+                SELECT codigo_ibge, nome, uf
+                FROM municipios
+                ORDER BY uf, nome
+            """)).mappings().all()
+    return [dict(row) for row in rows]
+
+
+def listar_ufs_municipios() -> list[str]:
+    """Retorna as UFs presentes na tabela oficial de municípios."""
+    with get_engine().connect() as conn:
+        return list(
+            conn.execute(text("SELECT DISTINCT uf FROM municipios ORDER BY uf"))
+            .scalars()
+            .all()
+        )
+
+
+def cidade_pertence_uf(cidade: str, uf: str) -> bool:
+    """Verifica no banco se a cidade pertence à UF selecionada."""
+    with get_engine().connect() as conn:
+        return bool(
+            conn.execute(
+                text("""
+                    SELECT 1 FROM municipios
+                    WHERE lower(nome) = lower(:cidade) AND uf = :uf
+                    LIMIT 1
+                """),
+                {"cidade": cidade, "uf": uf},
+            ).first()
+        )
+
+
 def obter_evento(evento_id: int) -> dict | None:
     """Retorna um evento pelo identificador."""
     with get_engine().connect() as conn:
         row = (
             conn.execute(
                 text("""
-                  SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.local,
+                  SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.cidade, e.uf,
                       e.acao_fiscalizacao, e.processo_sei,
                       (
                           SELECT string_agg(f.nome, ', ' ORDER BY f.nome)
@@ -553,7 +591,8 @@ def registrar_auditoria_evento(
         ("latitude", "Latitude"),
         ("longitude", "Longitude"),
         ("fuso_horario", "Fuso horário"),
-        ("local", "Local"),
+        ("cidade", "Cidade"),
+        ("uf", "UF"),
         ("acao_fiscalizacao", "Ação de fiscalização"),
         ("processo_sei", "Processo SEI"),
         ("coordenadores", "Coordenadores responsáveis"),
@@ -644,15 +683,17 @@ def criar_estacao(
     nome: str,
     modelo: str | None = None,
     local: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> int:
     """Adiciona uma estação a um evento e retorna seu identificador."""
     with get_engine().begin() as conn:
         return conn.execute(
             text("""
                 INSERT INTO estacoes
-                    (evento_id, nome, modelo_equipamento, local)
+                    (evento_id, nome, modelo_equipamento, local, latitude, longitude)
                 VALUES
-                    (:evento_id, :nome, :modelo, :local)
+                    (:evento_id, :nome, :modelo, :local, :latitude, :longitude)
                 RETURNING id
             """),
             {
@@ -660,6 +701,8 @@ def criar_estacao(
                 "nome": nome,
                 "modelo": modelo,
                 "local": local,
+                "latitude": latitude,
+                "longitude": longitude,
             },
         ).scalar_one()
 
@@ -670,6 +713,8 @@ def atualizar_estacao(
     nome: str,
     modelo: str | None = None,
     local: str | None = None,
+    latitude: float | None = None,
+    longitude: float | None = None,
 ) -> None:
     """Atualiza os dados de uma estação vinculada ao evento informado."""
     with get_engine().begin() as conn:
@@ -678,7 +723,9 @@ def atualizar_estacao(
                 UPDATE estacoes
                 SET nome = :nome,
                     modelo_equipamento = :modelo,
-                    local = :local
+                    local = :local,
+                    latitude = :latitude,
+                    longitude = :longitude
                 WHERE id = :estacao_id AND evento_id = :evento_id
             """),
             {
@@ -687,6 +734,8 @@ def atualizar_estacao(
                 "nome": nome,
                 "modelo": modelo,
                 "local": local,
+                "latitude": latitude,
+                "longitude": longitude,
             },
         )
 
@@ -696,7 +745,8 @@ def atualizar_evento(
     nome: str,
     latitude: float | None = None,
     longitude: float | None = None,
-    local: str | None = None,
+    cidade: str | None = None,
+    uf: str | None = None,
     acao_fiscalizacao: str | None = None,
     processo_sei: str | None = None,
     periodo_inicio: str | None = None,
@@ -713,7 +763,8 @@ def atualizar_evento(
                 SET nome = :nome,
                     latitude = :latitude,
                     longitude = :longitude,
-                    local = :local,
+                    cidade = :cidade,
+                    uf = :uf,
                     acao_fiscalizacao = :acao_fiscalizacao,
                     processo_sei = :processo_sei,
                     periodo_inicio = :periodo_inicio,
@@ -726,7 +777,8 @@ def atualizar_evento(
                 "nome": nome,
                 "latitude": latitude,
                 "longitude": longitude,
-                "local": local,
+                "cidade": cidade,
+                "uf": uf,
                 "acao_fiscalizacao": acao_fiscalizacao,
                 "processo_sei": processo_sei,
                 "periodo_inicio": periodo_inicio,
@@ -837,18 +889,6 @@ def verificar_frequencia_existente(
             ).first()
             if row:
                 return row[0]
-            # Checa UTE
-            row = conn.execute(
-                text("""
-                    SELECT 'Tabela UTE'
-                    FROM tabela_ute
-                    WHERE evento_id = :ev AND round(frequencia_mhz, 3) = :f
-                    LIMIT 1
-                """),
-                {"ev": int(evento_id), "f": f_val},
-            ).first()
-            if row:
-                return row[0]
     except Exception:
         pass
     return None
@@ -933,30 +973,6 @@ def consultar_conflitos_frequencia(
                         }
                     )
 
-            ute = conn.execute(
-                text("""
-                    SELECT id, pais_entidade, local, frequencia_mhz
-                    FROM tabela_ute
-                    WHERE evento_id = :ev
-                      AND (:local = '' OR lower(trim(COALESCE(local, ''))) = :local)
-                """),
-                {"ev": int(evento_id), "local": local_normalizado},
-            ).mappings().all()
-            for registro in ute:
-                centro = float(registro["frequencia_mhz"] or 0)
-                if inicio <= centro <= fim:
-                    conflitos.append(
-                        {
-                            "origem": "Tabela UTE",
-                            "id": registro["id"],
-                            "frequencia": centro,
-                            "largura_khz": 0.0,
-                            "local": registro["local"] or "Local não informado",
-                            "equipamento": registro["pais_entidade"] or "Entidade não informada",
-                            "etiqueta": "Não informada",
-                        }
-                    )
-
             equipamentos = (
                 conn.execute(
                     text("""
@@ -1028,6 +1044,25 @@ def verificar_frequencia_global(
         f"{conflito['origem']} {conflito['equipamento']} | "
         f"etiqueta: {conflito['etiqueta']} | local: {conflito['local']}"
     )
+
+
+def verificar_equipamento_frequencia(
+    _client=None, evento_id=None, freq_digitada=None, largura_khz=0, localidade=None
+) -> Optional[str]:
+    """Retorna apenas o alerta de equipamento do teste de etiquetagem."""
+    conflitos = consultar_conflitos_frequencia(
+        evento_id=evento_id,
+        freq_digitada=freq_digitada,
+        largura_khz=largura_khz,
+        localidade=localidade,
+    )
+    for conflito in conflitos:
+        if conflito["origem"] == "Teste de etiquetagem":
+            return (
+                f"equipamento: {conflito['equipamento']} | "
+                f"etiqueta: {conflito['etiqueta']} | local: {conflito['local']}"
+            )
+    return None
 
 
 # =========================================================================
@@ -1622,18 +1657,6 @@ def inserir_emissao_I_W(
         return False
     try:
         freq = float(dados_formulario.get("Frequência em MHz", 0))
-        largura = float(dados_formulario.get("Largura em kHz", 0) or 0)
-        localidade = dados_formulario.get("Local/Região", "")
-        conflito = verificar_frequencia_global(
-            evento_id=evento_id,
-            freq_digitada=freq,
-            largura_khz=largura,
-            localidade=localidade,
-        )
-        if conflito:
-            raise FrequenciaOcupadaError(
-                f"Conflito de frequência: {freq:.3f} MHz / {largura:.3f} kHz | {conflito}."
-            )
 
         dia = dados_formulario.get("Dia")
         if hasattr(dia, "strftime"):

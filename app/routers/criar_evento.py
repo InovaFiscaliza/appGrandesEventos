@@ -22,6 +22,9 @@ from app.services.postgres import (
     obter_snapshot_auditoria_evento,
     atualizar_fiscais_evento,
     excluir_fiscal,
+    listar_municipios,
+    listar_ufs_municipios,
+    cidade_pertence_uf,
 )
 from app.utils.formatters import _img_b64
 from app.config import TITULO_PRINCIPAL
@@ -65,6 +68,8 @@ async def get_criar_evento(request: Request):
             evento=evento,
             estacoes=estacoes,
             eventos=listar_eventos_detalhes(),
+            municipios=listar_municipios(),
+            ufs=listar_ufs_municipios(),
             unidades_executantes=listar_unidades_executantes(),
             fiscais=listar_fiscais(),
             flash_error=request.session.pop("flash_error", None),
@@ -108,7 +113,8 @@ async def post_excluir_fiscal(fiscal_id: int):
 async def post_criar_evento(request: Request):
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
-    local = str(form.get("local", "")).strip()
+    cidade = str(form.get("cidade", "")).strip()
+    uf = str(form.get("uf", "")).strip().upper()
     acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
     processo_sei = str(form.get("processo_sei", "")).strip()
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
@@ -123,6 +129,9 @@ async def post_criar_evento(request: Request):
     longitude_texto = str(form.get("longitude", "")).strip()
     if not nome:
         request.session["flash_error"] = "Informe o nome do evento."
+        return RedirectResponse("/criar-evento", status_code=303)
+    if cidade and uf and not cidade_pertence_uf(cidade, uf):
+        request.session["flash_error"] = "Selecione uma cidade e UF válidas."
         return RedirectResponse("/criar-evento", status_code=303)
 
     try:
@@ -140,7 +149,8 @@ async def post_criar_evento(request: Request):
             nome=nome,
             latitude=latitude,
             longitude=longitude,
-            local=local or None,
+            cidade=cidade or None,
+            uf=uf or None,
             acao_fiscalizacao=acao_fiscalizacao or None,
             processo_sei=processo_sei or None,
             periodo_inicio=periodo_inicio or None,
@@ -171,7 +181,8 @@ async def post_criar_evento(request: Request):
 async def post_editar_evento(request: Request, evento_id: int):
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
-    local = str(form.get("local", "")).strip()
+    cidade = str(form.get("cidade", "")).strip()
+    uf = str(form.get("uf", "")).strip().upper()
     acao_fiscalizacao = str(form.get("acao_fiscalizacao", "")).strip()
     processo_sei = str(form.get("processo_sei", "")).strip()
     periodo_inicio = str(form.get("periodo_inicio", "")).strip()
@@ -187,6 +198,9 @@ async def post_editar_evento(request: Request, evento_id: int):
 
     if not nome:
         request.session["flash_error"] = "Informe o nome do evento."
+        return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
+    if cidade and uf and not cidade_pertence_uf(cidade, uf):
+        request.session["flash_error"] = "Selecione uma cidade e UF válidas."
         return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
 
     try:
@@ -210,7 +224,8 @@ async def post_editar_evento(request: Request, evento_id: int):
             nome=nome,
             latitude=latitude,
             longitude=longitude,
-            local=local or None,
+            cidade=cidade or None,
+            uf=uf or None,
             acao_fiscalizacao=acao_fiscalizacao or None,
             processo_sei=processo_sei or None,
             periodo_inicio=periodo_inicio or None,

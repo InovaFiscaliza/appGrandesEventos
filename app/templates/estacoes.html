@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 {% include "partials/header.html" %}
+<link rel="stylesheet" href="/static/rf-fusion/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+{% if flash_success %}<div class="flash flash-success estacoes-mensagem">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error estacoes-mensagem">{{ flash_error }}</div>{% endif %}
 
-<div class="form-card rf-entry-card font-semi-bold">
+<div class="form-card rf-entry-card estacoes-cadastro-card font-semi-bold">
     <h5 class="teq-title">Cadastro de Estações</h5>
     <form method="get" action="/estacoes" class="rf-entry-form">
         <div class="form-group">
@@ -37,14 +39,92 @@
                 </select>
             </div>
         </div>
-        <div class="form-group">
-            <label for="local-estacao">Local <span class="required">*</span></label>
-            <input class="form-control" id="local-estacao" type="text" name="local" required>
+        <div class="estacao-coordenadas">
+            <div class="form-group estacao-local">
+                <div class="estacao-campo-cabecalho">
+                    <label for="local-estacao">Local <span class="required">*</span></label>
+                    {% if evento and evento.latitude is not none and evento.longitude is not none %}
+                    <button type="button" id="abrir-mapa-estacao" class="teq-list-btn mapa-estacao-abrir" aria-label="Selecionar local no mapa" title="Selecionar local no mapa">+</button>
+                    {% endif %}
+                </div>
+                <input class="form-control" id="local-estacao" type="text" name="local" required>
+            </div>
+            <div class="form-cols estacao-latitude-longitude">
+                <div class="form-group">
+                    <label for="latitude-estacao">Latitude <span class="required">*</span></label>
+                    <input class="form-control" id="latitude-estacao" type="number" name="latitude" step="any" min="-90" max="90" required>
+                </div>
+                <div class="form-group">
+                    <label for="longitude-estacao">Longitude <span class="required">*</span></label>
+                    <input class="form-control" id="longitude-estacao" type="number" name="longitude" step="any" min="-180" max="180" required>
+                </div>
+            </div>
         </div>
         <button type="submit" class="btn btn-submit font-semi-bold">Cadastrar estação</button>
     </form>
     {% endif %}
 </div>
+
+{% if evento and evento.latitude is not none and evento.longitude is not none %}
+<div id="popup-mapa-estacao" class="popup-mapa-estacao" hidden>
+    <div class="popup-mapa-estacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-mapa-estacao">
+        <div class="popup-mapa-estacao-cabecalho">
+            <h2 id="titulo-mapa-estacao">Selecionar posição da estação</h2>
+            <button type="button" id="fechar-mapa-estacao" class="popup-mapa-estacao-fechar" aria-label="Fechar mapa">×</button>
+        </div>
+        <div id="mapa-estacao" class="mapa-estacao" data-latitude="{{ evento.latitude }}" data-longitude="{{ evento.longitude }}"></div>
+        <small class="form-help mapa-estacao-ajuda">Clique no mapa para preencher latitude e longitude.</small>
+    </div>
+</div>
+<script>
+    (() => {
+        const mapaElement = document.getElementById("mapa-estacao");
+        const abrirBotao = document.getElementById("abrir-mapa-estacao");
+        const popup = document.getElementById("popup-mapa-estacao");
+        const fecharBotao = document.getElementById("fechar-mapa-estacao");
+        const localInput = document.getElementById("local-estacao");
+        const latitudeInput = document.getElementById("latitude-estacao");
+        const longitudeInput = document.getElementById("longitude-estacao");
+        if (!mapaElement || !abrirBotao || !popup || !fecharBotao || !localInput || !latitudeInput || !longitudeInput || typeof L === "undefined") return;
+
+        const latitudeEvento = Number(mapaElement.dataset.latitude);
+        const longitudeEvento = Number(mapaElement.dataset.longitude);
+        const mapa = L.map(mapaElement).setView([latitudeEvento, longitudeEvento], 13);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap contributors",
+            maxZoom: 19,
+        }).addTo(mapa);
+        const fecharPopup = () => { popup.hidden = true; };
+        abrirBotao.addEventListener("click", () => {
+            popup.hidden = false;
+            setTimeout(() => mapa.invalidateSize(), 100);
+        });
+        fecharBotao.addEventListener("click", fecharPopup);
+        popup.addEventListener("click", (evento) => {
+            if (evento.target === popup) fecharPopup();
+        });
+
+        let marcador;
+        mapa.on("click", (evento) => {
+            const latitude = evento.latlng.lat.toFixed(6);
+            const longitude = evento.latlng.lng.toFixed(6);
+            latitudeInput.value = latitude;
+            longitudeInput.value = longitude;
+            if (marcador) marcador.setLatLng(evento.latlng);
+            else marcador = L.marker(evento.latlng).addTo(mapa);
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
+                headers: { Accept: "application/json" },
+            })
+                .then((resposta) => resposta.ok ? resposta.json() : null)
+                .then((dados) => {
+                    if (dados && dados.display_name) localInput.value = dados.display_name;
+                })
+                .catch(() => {});
+            fecharPopup();
+        });
+    })();
+</script>
+{% endif %}
 
 {% if evento_id %}
 <section class="form-card font-semi-bold">
@@ -52,13 +132,15 @@
     {% if estacoes %}
     <div class="table-scroll">
         <table class="ute-table estacoes-evento-table">
-            <thead><tr><th>Identificação</th><th>Modelo</th><th>Local</th><th>Ação</th></tr></thead>
+            <thead><tr><th>Identificação</th><th>Modelo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Ação</th></tr></thead>
             <tbody>
             {% for estacao in estacoes %}
             <tr>
                 <td><input class="form-control" type="text" name="nome" value="{{ estacao.nome }}" form="editar-estacao-{{ estacao.id }}" required></td>
                 <td><select class="form-control" name="modelo" form="editar-estacao-{{ estacao.id }}"><option value="">Selecione</option>{% for modelo in modelos %}<option value="{{ modelo }}" {% if modelo == estacao.modelo_equipamento %}selected{% endif %}>{{ modelo }}</option>{% endfor %}</select></td>
                 <td><input class="form-control" type="text" name="local" value="{{ estacao.local or '' }}" form="editar-estacao-{{ estacao.id }}"></td>
+                <td>{{ estacao.latitude or '' }}</td>
+                <td>{{ estacao.longitude or '' }}</td>
                 <td class="estacao-acao"><form id="editar-estacao-{{ estacao.id }}" method="post" action="/estacoes/{{ estacao.id }}/editar"><input type="hidden" name="evento_id" value="{{ evento_id }}"><button type="submit" class="btn btn-submit font-semi-bold">Editar</button></form></td>
             </tr>
             {% endfor %}

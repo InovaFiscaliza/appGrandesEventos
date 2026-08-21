@@ -12,7 +12,7 @@ from app.services.postgres import (
     inserir_emissao_I_W,
     listar_estacoes_evento,
     obter_fuso_horario_evento,
-    verificar_frequencia_global,
+    verificar_equipamento_frequencia,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import (
@@ -186,7 +186,7 @@ async def post_inserir(request: Request):
     except ValueError:
         larg = 0.0
 
-    conflito = verificar_frequencia_global(
+    conflito = verificar_equipamento_frequencia(
         evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
     )
 
@@ -250,7 +250,10 @@ async def post_inserir(request: Request):
     if ok:
         msg = "Emissão inserida com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Registrar Emissão."
         if conflito:
-            msg = f"⚠️ AVISO: Frequência consta na Planilha - Aba: {conflito}. " + msg
+            msg = (
+                f"⚠️ AVISO: existe equipamento usando essa frequência ({conflito}). "
+                + msg
+            )
         request.session["flash_success"] = msg
         return RedirectResponse("/inserir", status_code=303)
 
@@ -291,7 +294,7 @@ async def check_freq(
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id or freq <= 0:
         return {"conflito": None}
-    conflito = verificar_frequencia_global(
+    conflito = verificar_equipamento_frequencia(
         evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
     )
     return {"conflito": conflito}

@@ -31,7 +31,7 @@ TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
 
 
 def _formatar_banda(valor: int) -> str:
-    """Formata a largura de banda em kHz para exibição no formulário."""
+    """Formata a largura de banda em kHz para exibição do formulário."""
     return f"{valor:,}".replace(",", ".") + " kHz"
 
 
@@ -55,7 +55,6 @@ def _validar_cpf_cnpj(documento: str) -> bool:
     numeros = "".join(caractere for caractere in documento if caractere.isdigit())
     if len(numeros) not in {11, 14} or len(set(numeros)) == 1:
         return False
-
     if len(numeros) == 11:
         soma = sum(
             int(numero) * (10 - indice) for indice, numero in enumerate(numeros[:9])
@@ -68,7 +67,6 @@ def _validar_cpf_cnpj(documento: str) -> bool:
         )
         segundo = (soma * 10 % 11) % 10
         return segundo == int(numeros[10])
-
     pesos = (5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
     soma = sum(int(numero) * peso for numero, peso in zip(numeros[:12], pesos))
     primeiro = 0 if soma % 11 < 2 else 11 - soma % 11
@@ -271,8 +269,11 @@ async def get_teste_etiquetagem(
 
 @router.get("/api/teste-etiquetagem/verificar-frequencia")
 async def verificar_frequencia_teste(
-    request: Request, frequencia: float, largura_khz: float = 0,
-    local: str = "", excluir_id: int | None = None
+    request: Request,
+    frequencia: float,
+    largura_khz: float = 0,
+    local: str = "",
+    excluir_id: int | None = None,
 ):
     """Consulta equipamentos e referências da frequência no evento atual."""
     evento_id = request.session.get("spreadsheet_id")
@@ -280,8 +281,11 @@ async def verificar_frequencia_teste(
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
     return JSONResponse(
         consultar_equipamentos_frequencia(
-            evento_id=evento_id, freq_digitada=frequencia,
-            largura_khz=largura_khz, localidade=local, excluir_id=excluir_id
+            evento_id=evento_id,
+            freq_digitada=frequencia,
+            largura_khz=largura_khz,
+            localidade=local,
+            excluir_id=excluir_id,
         )
     )
 
@@ -301,81 +305,9 @@ async def post_teste_etiquetagem(request: Request):
     ]
     values["modo_consulta"] = bool(form.get("modo_consulta"))
     registro_id = form.get("registro_id")
-    if registro_id and str(registro_id).isdigit():
-        values["imagens"] = carregar_imagens_teste_etiquetagem(
-            evento_id=evento_id, teste_id=registro_id
-        )
-    erros = list(erros_imagens)
-    invalid_fields = []
 
-    def adicionar_erro(mensagem: str, campo: str | None = None):
-        erros.append(mensagem)
-        if campo and campo not in invalid_fields:
-            invalid_fields.append(campo)
-
-    if values["licenca"] not in LICENCAS:
-        adicionar_erro("Tipo de licença inválido")
-    if values["perfil"] not in PERFIS:
-        adicionar_erro("Perfil inválido")
-    if not values["entidade"]:
-        adicionar_erro("Entidade", "entidade")
-    if not values["local"]:
-        adicionar_erro("Local", "local")
-    if values["permissao"] not in PERMISSOES:
-        adicionar_erro("Permissão inválida")
-    if not values["tipo_equipamento"]:
-        adicionar_erro("Tipo do equipamento", "tipo_equipamento")
-    if not values["numero_etiqueta"]:
-        adicionar_erro("Número da etiqueta", "numero_etiqueta")
-    if values["cpf_cnpj"] and not _validar_cpf_cnpj(values["cpf_cnpj"]):
-        adicionar_erro("CPF/CNPJ inválido", "cpf_cnpj")
-    if not values["frequencias_selecionadas"]:
-        adicionar_erro("Selecione ao menos uma frequência", "frequencias_selecionadas")
-
-    frequencias_normalizadas = []
-    for frequencia_lista in values["frequencias_selecionadas"]:
-        frequencia_lista_numero = _frequencia_da_etiqueta(frequencia_lista)
-        if frequencia_lista_numero is None:
-            adicionar_erro("Frequência inválida na lista", "frequencias_selecionadas")
-            continue
-        frequencias_normalizadas.append(round(frequencia_lista_numero, 3))
-    if len(frequencias_normalizadas) != len(set(frequencias_normalizadas)):
-        adicionar_erro(
-            "A lista não pode conter a mesma frequência mais de uma vez",
-            "frequencias_selecionadas",
-        )
-    frequencia = None
-    if values["frequencia_mhz"]:
-        try:
-            frequencia = float(values["frequencia_mhz"].replace(",", "."))
-            if frequencia <= 0:
-                frequencia = None
-        except (AttributeError, ValueError):
-            frequencia = None
-
-    passo_khz = None
-    if values["passo"]:
-        try:
-            passo_khz = float(
-                values["passo"]
-                .lower()
-                .replace("khz", "")
-                .strip()
-                .replace(".", "")
-                .replace(",", ".")
-            )
-            if passo_khz <= 0 or passo_khz > 100_000:
-                raise ValueError
-        except (AttributeError, ValueError):
-            adicionar_erro("Passo de frequência inválido", "passo")
-
-    if erros:
-        return _render_form(
-            request,
-            values,
-            "Preencha os campos corretamente: " + ", ".join(dict.fromkeys(erros)) + ".",
-            invalid_fields,
-        )
+    frequencia = _frequencia_da_etiqueta(values["frequencia_mhz"])
+    passo_khz = _largura_da_etiqueta(values["passo"])
 
     etiqueta_existente = verificar_etiqueta_existente(
         numero_etiqueta=values["numero_etiqueta"],
@@ -393,71 +325,33 @@ async def post_teste_etiquetagem(request: Request):
             ["numero_etiqueta"],
         )
 
-    conflito = (
-        verificar_frequencia_etiquetagem(
-            evento_id=evento_id, freq_digitada=frequencia, largura_khz=passo_khz,
-            localidade=values["local"], excluir_id=registro_id
-        )
-        if frequencia is not None
-        else None
-    )
-    if conflito:
-        cadastro = consultar_equipamentos_frequencia(
-            evento_id=evento_id, freq_digitada=frequencia, largura_khz=passo_khz,
-            localidade=values["local"], excluir_id=registro_id
-        )["equipamentos"]
-        detalhe = ""
-        if cadastro:
-            equipamento = cadastro[0]
-            detalhe = (
-                f" Equipamento com essa frequência já cadastrado: {equipamento['entidade'] or 'nome não informado'} |"
-                f" CPF/CNPJ: {equipamento['cpf_cnpj'] or 'não informado'};"
-                f" tipo: {equipamento['tipo_equipamento'] or 'não informado'};"
-                f" etiqueta: {equipamento['numero_etiqueta'] or 'não informada'};"
-                f" local: {equipamento['local'] or 'não informado'}."
-            )
-        return _render_form(
-            request,
-            values,
-            f"Frequência {values['frequencia_mhz']} MHz já cadastrada em {conflito}.{detalhe}",
-            ["frequencia_mhz"],
-        )
-
+    alertas_frequencia = []
+    consultas = []
+    if frequencia is not None:
+        consultas.append((frequencia, passo_khz or 0, values["frequencia_mhz"]))
     for frequencia_lista in values["frequencias_selecionadas"]:
         frequencia_cadastrada = _frequencia_da_etiqueta(frequencia_lista)
-        conflito_lista = (
-            verificar_frequencia_etiquetagem(
-                evento_id=evento_id,
-                freq_digitada=frequencia_cadastrada,
-                largura_khz=_largura_da_etiqueta(frequencia_lista),
-                localidade=values["local"],
-                excluir_id=registro_id,
-            )
-            if frequencia_cadastrada is not None
-            else None
-        )
-        if conflito_lista:
-            cadastro = consultar_equipamentos_frequencia(
-                evento_id=evento_id,
-                freq_digitada=frequencia_cadastrada,
-                largura_khz=_largura_da_etiqueta(frequencia_lista),
-                localidade=values["local"],
-                excluir_id=registro_id,
-            )["equipamentos"]
-            detalhe = ""
-            if cadastro:
-                equipamento = cadastro[0]
-                detalhe = (
-                    f" Equipamento com essa frequência já cadastrado: {equipamento['entidade'] or 'nome não informado'} |"
-                    f" CPF/CNPJ: {equipamento['cpf_cnpj'] or 'não informado'};"
-                    f" etiqueta: {equipamento['numero_etiqueta'] or 'não informada'}."
+        if frequencia_cadastrada is not None:
+            consultas.append(
+                (
+                    frequencia_cadastrada,
+                    _largura_da_etiqueta(frequencia_lista),
+                    frequencia_lista,
                 )
-            return _render_form(
-                request,
-                values,
-                f"Frequência {frequencia_lista} já cadastrada em {conflito_lista}.{detalhe}",
-                ["frequencias_selecionadas"],
             )
+    for frequencia_consulta, largura_consulta, rotulo in consultas:
+        consulta = consultar_equipamentos_frequencia(
+            evento_id=evento_id,
+            freq_digitada=frequencia_consulta,
+            largura_khz=largura_consulta,
+            localidade=values["local"],
+            excluir_id=registro_id,
+        )
+        alertas_frequencia.extend(
+            f"{rotulo}: {referencia.get('detalhe', 'emissão cadastrada')}"
+            for referencia in consulta.get("referencias", [])
+            if referencia.get("origem") == "Ocorrência"
+        )
 
     dados = values
     dados["imagens"] = imagens
@@ -470,6 +364,11 @@ async def post_teste_etiquetagem(request: Request):
     if resultado.startswith("ERRO"):
         return _render_form(request, values, resultado)
 
+    if alertas_frequencia:
+        resultado += (
+            " ⚠️ AVISO: a frequência central e a banda informadas coincidem "
+            "com emissão(ões) cadastrada(s): " + " ; ".join(alertas_frequencia)
+        )
     request.session["flash_success"] = resultado
     if registro_id:
         consulta_query = "&consultar=1" if values["modo_consulta"] else ""
