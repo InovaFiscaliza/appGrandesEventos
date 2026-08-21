@@ -57,7 +57,7 @@ Modificações solicitadas — AppGrandesEventos
 - [X] Substituir o campo livre **Local** do evento por dois campos controlados: **UF** e **Cidade/Município**. A cidade deverá ser escolhida em uma lista, evitando grafias diferentes para o mesmo município. **Referência: 00:09:34–00:12:50.**
 - [X] Manter o termo **Local** para a posição física de uma estação, como estádio, tribuna de imprensa, centro de monitoração ou área externa. **Referência: 00:09:52–00:12:40.**
 - [X] Manter os dados históricos existentes ao alterar os campos de localização do evento. **Referência: 00:12:52–00:13:04.**
-- [ ] Recolher/ocultar os formulários detalhados de inclusão e edição. Os campos devem abrir somente quando o usuário clicar em **Novo**, **Editar** ou **Detalhes**. **Referência: 00:13:04–00:14:57.**
+- [X] Recolher/ocultar os formulários detalhados de inclusão e edição. Os campos devem abrir somente quando o usuário clicar em **Novo**, **Editar** ou **Detalhes**. **Referência: 00:13:04–00:14:57.**
 - [ ] Adicionar filtros à listagem de eventos, pelo menos por ano e nome/evento. **Referência: 00:15:02–00:15:37.**
 - [ ] Implementar paginação na listagem de eventos para suportar o crescimento do histórico ao longo dos anos. **Referência: 00:15:17–00:15:43.**
 - [ ] Cadastrar a escala de trabalho dos fiscais por evento, com dias e/ou períodos de atuação. **Referência: 01:01:25–01:02:18.**
@@ -110,7 +110,7 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 7. Ocorrências especiais
 
-- [ ] Renomear o módulo **BSR/Jammer e ERB Fake** para **Ocorrências especiais**. **Referência: 01:10:34–01:12:26.**
+- [X] Renomear o módulo **BSR/Jammer e ERB Fake** para **Ocorrências especiais**. **Referência: 01:10:34–01:12:26.**
 - [ ] Tornar o módulo genérico para fatos excepcionais, não apenas interferências: Jammer, ERB Fake, reclamações externas, falhas de Wi‑Fi, incêndios que afetem equipamentos e outras situações relevantes. **Referência: 01:10:49–01:12:19.**
 - [ ] Encaminhar ocorrências especiais que exijam ação para o fluxo de tickets do coordenador. **Referência: 00:19:27–00:19:41.**
 - [ ] Para Jammer de faixa larga, permitir o registro da faixa percebida e evidências nas observações/fotos, sem obrigar uma frequência única. **Referência: 00:18:39–00:19:27.**

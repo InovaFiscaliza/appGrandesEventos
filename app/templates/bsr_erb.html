@@ -1,26 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
 {% include "partials/header.html" %}
+<link rel="stylesheet" href="/static/rf-fusion/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 
+{% if mostrar_form %}
 <div class="form-card rf-entry-card font-semi-bold">
-    <h5 style="margin-bottom:0.75rem">Registrar Jammer ou ERB Fake</h5>
+    <h5 style="margin-bottom:0.75rem">Registrar ocorrência especial</h5>
     <div id="offline-aviso-bsr" class="flash flash-error" style="display:none">
       ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
     </div>
     <form method="post" action="{{ '/bsr-erb/' ~ registro_edicao.id ~ '/editar' if registro_edicao else '/bsr-erb' }}" id="form-bsr-erb" class="rf-entry-form" enctype="multipart/form-data">
         <div class="form-group">
-            <label>Tipo <span class="required">*</span></label>
-            <div class="radio-group">
-                <label><input type="radio" name="tipo" value="BSR/Jammer" {% if tipo != "ERB Fake" %}checked{% endif %}> BSR/Jammer</label>
-                <label><input type="radio" name="tipo" value="ERB Fake" {% if tipo == "ERB Fake" %}checked{% endif %}> ERB Fake</label>
+            <label for="tipo-ocorrencia">Tipo <span class="required">*</span></label>
+            <div class="select-shell">
+                <select id="tipo-ocorrencia" name="tipo" class="form-control" required>
+                    <option value=""></option>
+                    {% for tipo_opcao in tipo_opcoes %}
+                    <option value="{{ tipo_opcao }}" {% if tipo == tipo_opcao %}selected{% endif %}>{{ tipo_opcao }}</option>
+                    {% endfor %}
+                    {% if tipo and tipo not in tipo_opcoes %}
+                    <option value="{{ tipo }}" selected>{{ tipo }}</option>
+                    {% endif %}
+                </select>
             </div>
         </div>
         <div class="form-group">
-            <label>Local <span class="required">*</span></label>
-            <input class="form-control" type="text" name="regiao" value="{{ regiao or '' }}">
+            <div class="estacao-campo-cabecalho">
+                <label for="local-ocorrencia">Local <span class="required">*</span></label>
+                {% if evento and evento.latitude is not none and evento.longitude is not none %}
+                <button type="button" id="abrir-mapa-ocorrencia" class="teq-list-btn mapa-estacao-abrir" aria-label="Selecionar local no mapa" title="Selecionar local no mapa">+</button>
+                {% endif %}
+            </div>
+            <input class="form-control" id="local-ocorrencia" type="text" name="regiao" value="{{ regiao or '' }}">
         </div>
         <div class="form-cols">
             <div class="form-group">
@@ -57,9 +72,75 @@
         </div>
     </form>
 </div>
+{% endif %}
+
+{% if mostrar_form and evento and evento.latitude is not none and evento.longitude is not none %}
+<div id="popup-mapa-ocorrencia" class="popup-mapa-estacao" hidden>
+    <div class="popup-mapa-estacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-mapa-ocorrencia">
+        <div class="popup-mapa-estacao-cabecalho">
+            <h2 id="titulo-mapa-ocorrencia">Selecionar posição da ocorrência</h2>
+            <button type="button" id="fechar-mapa-ocorrencia" class="popup-mapa-estacao-fechar" aria-label="Fechar mapa">×</button>
+        </div>
+        <div id="mapa-ocorrencia" class="mapa-estacao" data-latitude="{{ evento.latitude }}" data-longitude="{{ evento.longitude }}"></div>
+        <small class="form-help mapa-estacao-ajuda">Clique no mapa para preencher local, latitude e longitude.</small>
+    </div>
+</div>
+<script>
+    (() => {
+        const mapaElement = document.getElementById("mapa-ocorrencia");
+        const abrirBotao = document.getElementById("abrir-mapa-ocorrencia");
+        const popup = document.getElementById("popup-mapa-ocorrencia");
+        const fecharBotao = document.getElementById("fechar-mapa-ocorrencia");
+        const localInput = document.getElementById("local-ocorrencia");
+        const latitudeInput = document.querySelector('input[name="lat"]');
+        const longitudeInput = document.querySelector('input[name="lon"]');
+        if (!mapaElement || !abrirBotao || !popup || !fecharBotao || !localInput || !latitudeInput || !longitudeInput || typeof L === "undefined") return;
+
+        const mapa = L.map(mapaElement).setView([
+            Number(mapaElement.dataset.latitude),
+            Number(mapaElement.dataset.longitude),
+        ], 13);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap contributors",
+            maxZoom: 19,
+        }).addTo(mapa);
+        const fecharPopup = () => { popup.hidden = true; };
+        abrirBotao.addEventListener("click", () => {
+            popup.hidden = false;
+            setTimeout(() => mapa.invalidateSize(), 100);
+        });
+        fecharBotao.addEventListener("click", fecharPopup);
+        popup.addEventListener("click", (evento) => {
+            if (evento.target === popup) fecharPopup();
+        });
+
+        let marcador;
+        mapa.on("click", (evento) => {
+            const latitude = evento.latlng.lat.toFixed(6);
+            const longitude = evento.latlng.lng.toFixed(6);
+            latitudeInput.value = latitude;
+            longitudeInput.value = longitude;
+            if (marcador) marcador.setLatLng(evento.latlng);
+            else marcador = L.marker(evento.latlng).addTo(mapa);
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
+                headers: { Accept: "application/json" },
+            })
+                .then((resposta) => resposta.ok ? resposta.json() : null)
+                .then((dados) => {
+                    if (dados && dados.display_name) localInput.value = dados.display_name;
+                })
+                .catch(() => {});
+            fecharPopup();
+        });
+    })();
+</script>
+{% endif %}
 
 <section class="form-card font-semi-bold">
-    <h5 class="teq-title">Registros cadastrados</h5>
+    <div class="section-heading">
+        <h5 class="teq-title">Ocorrências cadastradas</h5>
+        <a href="/bsr-erb?novo=1" class="btn">Nova ocorrência</a>
+    </div>
     {% if registros %}
     <div class="table-scroll">
         <table class="ute-table">

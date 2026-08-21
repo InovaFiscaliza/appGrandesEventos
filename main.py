@@ -3,6 +3,7 @@ Entry point da aplicação AppEventos (FastAPI + Jinja2).
 
 Executar com:
     uv run main.py
+    ngrok http 8501
     uv run uvicorn main:app --reload --port 8501
   ou:
     uvicorn main:app --reload --port 8501

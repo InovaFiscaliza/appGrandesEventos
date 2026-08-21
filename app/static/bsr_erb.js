@@ -1,4 +1,4 @@
-// Aviso offline + interceptação de submit da tela BSR/ERB Fake
+// Aviso offline + interceptação de submit das ocorrências especiais
 (function () {
   const aviso = document.getElementById("offline-aviso-bsr");
   if (aviso) aviso.style.display = "none";
@@ -71,7 +71,7 @@
       return;
     }
     const dados = {
-      tipo: fd.get("tipo") || "BSR/Jammer",
+      tipo: fd.get("tipo") || "Jammer",
       regiao: fd.get("regiao") || "",
       lat: fd.get("lat") || "",
       lon: fd.get("lon") || "",

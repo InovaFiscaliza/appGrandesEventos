@@ -23,19 +23,19 @@
         </div>
     </form>
 
-    {% if evento_id %}
-    <form method="post" action="/estacoes" class="rf-entry-form">
+    {% if evento_id and mostrar_form %}
+    <form method="post" action="{{ '/estacoes/' ~ estacao_edicao.id ~ '/editar' if estacao_edicao else '/estacoes' }}" class="rf-entry-form">
         <input type="hidden" name="evento_id" value="{{ evento_id }}">
         <div class="form-group">
             <label for="nome-estacao">Identificação da estação <span class="required">*</span></label>
-            <input class="form-control" id="nome-estacao" type="text" name="nome" required>
+            <input class="form-control" id="nome-estacao" type="text" name="nome" value="{{ estacao_edicao.nome if estacao_edicao else '' }}" required>
         </div>
         <div class="form-group">
             <label for="modelo-estacao">Modelo <span class="required">*</span></label>
             <div class="select-shell">
                 <select class="form-control" id="modelo-estacao" name="modelo" required>
-                    <option value="">Selecione o modelo</option>
-                    {% for modelo in modelos %}<option value="{{ modelo }}">{{ modelo }}</option>{% endfor %}
+                    <option value=""></option>
+                    {% for modelo in modelos %}<option value="{{ modelo }}" {% if estacao_edicao and estacao_edicao.modelo_equipamento == modelo %}selected{% endif %}>{{ modelo }}</option>{% endfor %}
                 </select>
             </div>
         </div>
@@ -44,32 +44,35 @@
                 <div class="estacao-campo-cabecalho">
                     <label for="local-estacao">Local <span class="required">*</span></label>
                     {% if evento and evento.latitude is not none and evento.longitude is not none %}
-                    <button type="button" id="abrir-mapa-estacao" class="teq-list-btn mapa-estacao-abrir" aria-label="Selecionar local no mapa" title="Selecionar local no mapa">+</button>
+                    <button type="button" id="abrir-mapa-estacao" class="teq-list-btn mapa-estacao-abrir" data-sem-confirmacao aria-label="Selecionar local no mapa" title="Selecionar local no mapa">+</button>
                     {% endif %}
                 </div>
-                <input class="form-control" id="local-estacao" type="text" name="local" required>
+                <input class="form-control" id="local-estacao" type="text" name="local" value="{{ estacao_edicao.local if estacao_edicao else '' }}" required>
             </div>
             <div class="form-cols estacao-latitude-longitude">
                 <div class="form-group">
                     <label for="latitude-estacao">Latitude <span class="required">*</span></label>
-                    <input class="form-control" id="latitude-estacao" type="number" name="latitude" step="any" min="-90" max="90" required>
+                    <input class="form-control" id="latitude-estacao" type="number" name="latitude" step="any" min="-90" max="90" value="{{ estacao_edicao.latitude if estacao_edicao else '' }}" required>
                 </div>
                 <div class="form-group">
                     <label for="longitude-estacao">Longitude <span class="required">*</span></label>
-                    <input class="form-control" id="longitude-estacao" type="number" name="longitude" step="any" min="-180" max="180" required>
+                    <input class="form-control" id="longitude-estacao" type="number" name="longitude" step="any" min="-180" max="180" value="{{ estacao_edicao.longitude if estacao_edicao else '' }}" required>
                 </div>
             </div>
         </div>
-        <button type="submit" class="btn btn-submit font-semi-bold">Cadastrar estação</button>
+        <div class="inserir-acoes">
+            <button type="submit" class="btn btn-submit font-semi-bold">{{ 'Salvar alterações' if estacao_edicao else 'Cadastrar estação' }}</button>
+            {% if estacao_edicao %}<a href="/estacoes?evento_id={{ evento_id }}" class="btn btn-back">Cancelar</a>{% endif %}
+        </div>
     </form>
     {% endif %}
 </div>
 
-{% if evento and evento.latitude is not none and evento.longitude is not none %}
+{% if mostrar_form and evento and evento.latitude is not none and evento.longitude is not none %}
 <div id="popup-mapa-estacao" class="popup-mapa-estacao" hidden>
     <div class="popup-mapa-estacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-mapa-estacao">
         <div class="popup-mapa-estacao-cabecalho">
-            <h2 id="titulo-mapa-estacao">Selecionar posição da estação</h2>
+            <h2 id="titulo-mapa-estacao">{{ 'Editar posição da estação' if estacao_edicao else 'Selecionar posição da estação' }}</h2>
             <button type="button" id="fechar-mapa-estacao" class="popup-mapa-estacao-fechar" aria-label="Fechar mapa">×</button>
         </div>
         <div id="mapa-estacao" class="mapa-estacao" data-latitude="{{ evento.latitude }}" data-longitude="{{ evento.longitude }}"></div>
@@ -128,7 +131,10 @@
 
 {% if evento_id %}
 <section class="form-card font-semi-bold">
-    <h5 class="teq-title">Estações cadastradas</h5>
+    <div class="section-heading">
+        <h5 class="teq-title">Estações cadastradas</h5>
+        <a href="/estacoes?evento_id={{ evento_id }}&novo=1" class="btn">Cadastrar nova estação</a>
+    </div>
     {% if estacoes %}
     <div class="table-scroll">
         <table class="ute-table estacoes-evento-table">
@@ -136,12 +142,12 @@
             <tbody>
             {% for estacao in estacoes %}
             <tr>
-                <td><input class="form-control" type="text" name="nome" value="{{ estacao.nome }}" form="editar-estacao-{{ estacao.id }}" required></td>
-                <td><select class="form-control" name="modelo" form="editar-estacao-{{ estacao.id }}"><option value="">Selecione</option>{% for modelo in modelos %}<option value="{{ modelo }}" {% if modelo == estacao.modelo_equipamento %}selected{% endif %}>{{ modelo }}</option>{% endfor %}</select></td>
-                <td><input class="form-control" type="text" name="local" value="{{ estacao.local or '' }}" form="editar-estacao-{{ estacao.id }}"></td>
+                <td>{{ estacao.nome }}</td>
+                <td>{{ estacao.modelo_equipamento }}</td>
+                <td>{{ estacao.local or '' }}</td>
                 <td>{{ estacao.latitude or '' }}</td>
                 <td>{{ estacao.longitude or '' }}</td>
-                <td class="estacao-acao"><form id="editar-estacao-{{ estacao.id }}" method="post" action="/estacoes/{{ estacao.id }}/editar"><input type="hidden" name="evento_id" value="{{ evento_id }}"><button type="submit" class="btn btn-submit font-semi-bold">Editar</button></form></td>
+                <td class="estacao-acao"><a class="btn btn-submit font-semi-bold" href="/estacoes?evento_id={{ evento_id }}&editar={{ estacao.id }}">Editar</a></td>
             </tr>
             {% endfor %}
             </tbody>

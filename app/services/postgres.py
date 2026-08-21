@@ -72,7 +72,7 @@ def _nome_imagem_bsr_erb(
     nome_original: str,
     indice: int,
 ) -> str:
-    """Gera nome padronizado para fotos de BSR/Jammer e ERB Fake."""
+    """Gera nome padronizado para fotos de ocorrências especiais."""
     extensao = ""
     if "." in nome_original:
         extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
@@ -1755,7 +1755,7 @@ def inserir_bsr_erb(
     observacoes="",
     imagens=None,
 ) -> str:
-    """Insere registro de BSR/Jammer ou ERB Fake."""
+    """Insere registro de ocorrência especial."""
     if evento_id is None:
         return "ERRO: evento_id não informado."
     try:
@@ -1880,7 +1880,7 @@ def atualizar_bsr_erb(
                 .first()
             )
             if anterior is None:
-                return "ERRO: Registro BSR/ERB não encontrado."
+                return "ERRO: Ocorrência especial não encontrada."
             atualizado = conn.execute(
                 text("""
                     UPDATE bsr_erb
@@ -1899,7 +1899,7 @@ def atualizar_bsr_erb(
                 },
             ).rowcount
             if not atualizado:
-                return "ERRO: Registro BSR/ERB não encontrado."
+                return "ERRO: Ocorrência especial não encontrada."
 
             valores_novos = {
                 "Tipo": tipo,
@@ -2012,7 +2012,7 @@ def excluir_bsr_erb(
                 },
             ).rowcount
             if not atualizado:
-                return "ERRO: Registro BSR/ERB não encontrado ou já excluído."
+                return "ERRO: Ocorrência especial não encontrada ou já excluída."
             conn.execute(
                 text("""
                     INSERT INTO auditoria_bsr_erb (
@@ -2028,7 +2028,7 @@ def excluir_bsr_erb(
                     "valor": "Registro marcado como excluído",
                 },
             )
-        return "Registro BSR/ERB excluído com sucesso."
+        return "Ocorrência especial excluída com sucesso."
     except Exception as e:
         return f"ERRO: {e}"
 
@@ -2521,7 +2521,7 @@ def consultar_auditoria_evento(
                             UNION ALL
 
                             SELECT
-                                'BSR/ERB' AS origem,
+                                'Ocorrências especiais' AS origem,
                                 auditoria.bsr_erb_id AS registro_id,
                                 COALESCE(
                                     NULLIF(CONCAT_WS(' - ', bsr.tipo, bsr.regiao), ''),

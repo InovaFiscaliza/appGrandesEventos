@@ -32,9 +32,23 @@ async def get_estacoes(request: Request):
     evento_id = request.query_params.get("evento_id") or request.session.get(
         "spreadsheet_id"
     )
+    mostrar_form = request.query_params.get("novo") == "1"
+    editar_id = request.query_params.get("editar")
     estacoes = listar_estacoes_evento(int(evento_id)) if evento_id else []
     eventos = listar_eventos_detalhes()
     evento = next((item for item in eventos if str(item["id"]) == str(evento_id)), None)
+    estacao_edicao = next(
+        (
+            estacao
+            for estacao in estacoes
+            if editar_id and str(estacao["id"]) == str(editar_id)
+        ),
+        None,
+    )
+    if editar_id and estacao_edicao is None:
+        request.session["flash_error"] = "Estação não encontrada para edição."
+        return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
+    mostrar_form = mostrar_form or estacao_edicao is not None
     return templates.TemplateResponse(
         request,
         "estacoes.html",
@@ -45,6 +59,8 @@ async def get_estacoes(request: Request):
             evento_id=str(evento_id) if evento_id else "",
             estacoes=estacoes,
             modelos=MODELOS_EQUIPAMENTO,
+            mostrar_form=mostrar_form,
+            estacao_edicao=estacao_edicao,
             flash_error=request.session.pop("flash_error", None),
             flash_success=request.session.pop("flash_success", None),
         ),
@@ -72,8 +88,11 @@ async def post_estacao(request: Request):
         request.session["flash_error"] = (
             "Informe evento, identificação, modelo, local, latitude e longitude da estação."
         )
-        return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
+        return RedirectResponse(
+            f"/estacoes?evento_id={evento_id}&novo=1", status_code=303
+        )
 
+    erro = False
     try:
         latitude = float(latitude_texto) if latitude_texto else None
         longitude = float(longitude_texto) if longitude_texto else None
@@ -91,12 +110,15 @@ async def post_estacao(request: Request):
         )
         request.session["flash_success"] = "Estação cadastrada com sucesso."
     except IntegrityError:
+        erro = True
         request.session["flash_error"] = (
             "Já existe uma estação com essa identificação no evento."
         )
     except ValueError:
+        erro = True
         request.session["flash_error"] = "Informe latitude e longitude válidas."
-    return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
+    sufixo = "&novo=1" if erro else ""
+    return RedirectResponse(f"/estacoes?evento_id={evento_id}{sufixo}", status_code=303)
 
 
 @router.post("/estacoes/{estacao_id}/editar")
@@ -109,12 +131,15 @@ async def post_editar_estacao(request: Request, estacao_id: int):
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
 
-    if not evento_id.isdigit() or not nome:
+    if not evento_id.isdigit() or not nome or not modelo or not local:
         request.session["flash_error"] = (
-            "Informe o evento e a identificação da estação."
+            "Informe evento, identificação, modelo e local da estação."
         )
-        return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
+        return RedirectResponse(
+            f"/estacoes?evento_id={evento_id}&editar={estacao_id}", status_code=303
+        )
 
+    erro = False
     try:
         latitude = float(latitude_texto) if latitude_texto else None
         longitude = float(longitude_texto) if longitude_texto else None
@@ -133,9 +158,12 @@ async def post_editar_estacao(request: Request, estacao_id: int):
         )
         request.session["flash_success"] = "Estação atualizada com sucesso."
     except IntegrityError:
+        erro = True
         request.session["flash_error"] = (
             "Já existe uma estação com essa identificação no evento."
         )
     except ValueError:
+        erro = True
         request.session["flash_error"] = "Informe latitude e longitude válidas."
-    return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
+    sufixo = f"&editar={estacao_id}" if erro else ""
+    return RedirectResponse(f"/estacoes?evento_id={evento_id}{sufixo}", status_code=303)

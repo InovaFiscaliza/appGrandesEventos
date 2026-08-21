@@ -233,7 +233,10 @@ def _render_form(
 
 @router.get("/teste_etiquetagem", response_class=HTMLResponse)
 async def get_teste_etiquetagem(
-    request: Request, edit_id: int | None = None, consultar: bool = False
+    request: Request,
+    edit_id: int | None = None,
+    consultar: bool = True,
+    novo: bool = False,
 ):
     bloqueio = _bloquear_modulo_se_desativado(request)
     if bloqueio:
@@ -262,7 +265,7 @@ async def get_teste_etiquetagem(
         "imagens": [],
         "imagens_excluir": [],
         "invalid_fields": [],
-        "modo_consulta": consultar,
+        "modo_consulta": consultar and not novo,
     }
     if edit_id is not None:
         registro = obter_teste_etiquetagem(evento_id=sp_id, registro_id=edit_id)
@@ -279,8 +282,12 @@ async def get_teste_etiquetagem(
         _ctx(
             request,
             values=values,
-            modo_consulta=consultar,
-            registros=(listar_testes_etiquetagem(evento_id=sp_id) if consultar else []),
+            modo_consulta=consultar and not novo,
+            registros=(
+                listar_testes_etiquetagem(evento_id=sp_id)
+                if consultar and not novo
+                else []
+            ),
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),

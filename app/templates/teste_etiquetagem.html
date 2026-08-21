@@ -87,10 +87,14 @@
     {% else %}
     <div class="flash flash-success">Nenhum registro de etiquetagem cadastrado neste evento.</div>
     {% endif %}
+    <div class="teq-actions teq-consulta-actions">
+        <a href="/teste_etiquetagem?novo=1" class="btn teq-btn">Novo teste</a>
+    </div>
     {% endif %}
 
     {% if values.registro_id %}<div class="teq-editing-note">Editando registro #{{ values.registro_id }}</div>{% endif %}
 
+    {% if not modo_consulta or values.registro_id %}
     <form class="teq-form rf-entry-form" method="post" action="/teste_etiquetagem" enctype="multipart/form-data" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
         {% if modo_consulta %}<input type="hidden" name="modo_consulta" value="1">{% endif %}
         {% if values.registro_id %}<input type="hidden" name="registro_id" value="{{ values.registro_id }}">{% endif %}
@@ -247,6 +251,7 @@
             <button class="btn teq-btn" type="reset">Limpar formulário</button>
         </div>
     </form>
+    {% endif %}
 </div>
 <script src="/static/teste_etiquetagem.js?v=12"></script>
 <script src="/static/upload-imagens.js?v=4"></script>

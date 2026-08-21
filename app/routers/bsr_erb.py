@@ -9,6 +9,7 @@ from app.services.postgres import (
     excluir_bsr_erb,
     inserir_bsr_erb,
     listar_bsr_erb,
+    obter_evento,
 )
 from app.utils.formatters import _img_b64, _normalize_coord, _valid_coord
 from app.config import TITULO_PRINCIPAL
@@ -18,6 +19,15 @@ templates = Jinja2Templates(directory="app/templates")
 EXTENSOES_IMAGEM = {".jpeg", ".jpg", ".png"}
 TIPOS_IMAGEM = {"image/jpeg", "image/png"}
 TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
+TIPOS_OCORRENCIA = (
+    "Jammer",
+    "ERB Fake",
+    "Reclamação externa",
+    "Falha de Wi-Fi",
+    "Incêndio que afeta equipamentos",
+    "Outra situação relevante",
+)
+TIPOS_OCORRENCIA_VALIDOS = set(TIPOS_OCORRENCIA) | {"BSR/Jammer"}
 
 
 async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
@@ -71,7 +81,9 @@ async def get_bsr_erb(request: Request):
     if not request.session.get("spreadsheet_id"):
         return RedirectResponse("/", status_code=302)
     registros = listar_bsr_erb(int(request.session["spreadsheet_id"]))
+    evento = obter_evento(int(request.session["spreadsheet_id"]))
     editar_id = request.query_params.get("editar")
+    novo = request.query_params.get("novo") == "1"
     registro_edicao = None
     if editar_id and editar_id.isdigit():
         registro_edicao = next(
@@ -79,20 +91,23 @@ async def get_bsr_erb(request: Request):
             None,
         )
         if registro_edicao is None:
-            request.session["flash_error"] = "Registro BSR/ERB não encontrado."
+            request.session["flash_error"] = "Ocorrência especial não encontrada."
             return RedirectResponse("/bsr-erb", status_code=303)
     return templates.TemplateResponse(
         request,
         "bsr_erb.html",
         _ctx(
             request,
-            tipo=registro_edicao["tipo"] if registro_edicao else "BSR/Jammer",
+            tipo=registro_edicao["tipo"] if registro_edicao else "Jammer",
+            tipo_opcoes=TIPOS_OCORRENCIA,
             regiao=registro_edicao["regiao"] if registro_edicao else "",
             lat=registro_edicao["latitude"] if registro_edicao else "",
             lon=registro_edicao["longitude"] if registro_edicao else "",
             observacoes=registro_edicao["observacoes"] if registro_edicao else "",
             registros=registros,
             registro_edicao=registro_edicao,
+            evento=evento,
+            mostrar_form=bool(registro_edicao or novo),
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -107,7 +122,7 @@ async def post_bsr_erb(request: Request):
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
-    tipo = form.get("tipo", "BSR/Jammer")
+    tipo = form.get("tipo", "Jammer")
     regiao = form.get("regiao", "").strip()
     lat = form.get("lat", "").strip()
     lon = form.get("lon", "").strip()
@@ -117,6 +132,8 @@ async def post_bsr_erb(request: Request):
     lon = _normalize_coord(lon)
 
     error = "; ".join(erros_imagens) if erros_imagens else None
+    if tipo not in TIPOS_OCORRENCIA_VALIDOS:
+        error = "Selecione um tipo de ocorrência especial válido."
     if not regiao:
         error = "O campo 'Local' é obrigatório."
     elif not _valid_coord(lat, -90.0, 90.0):
@@ -136,6 +153,10 @@ async def post_bsr_erb(request: Request):
                 lon=lon,
                 observacoes=observacoes,
                 registros=listar_bsr_erb(int(sp_id)),
+                registro_edicao=None,
+                mostrar_form=True,
+                tipo_opcoes=TIPOS_OCORRENCIA,
+                evento=obter_evento(int(sp_id)),
                 flash_error=error,
                 flash_success=None,
             ),
@@ -163,6 +184,10 @@ async def post_bsr_erb(request: Request):
                 lon=lon,
                 observacoes=observacoes,
                 registros=listar_bsr_erb(int(sp_id)),
+                registro_edicao=None,
+                mostrar_form=True,
+                tipo_opcoes=TIPOS_OCORRENCIA,
+                evento=obter_evento(int(sp_id)),
                 flash_error=res,
                 flash_success=None,
             ),
@@ -180,13 +205,15 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
-    tipo = form.get("tipo", "BSR/Jammer")
+    tipo = form.get("tipo", "Jammer")
     regiao = form.get("regiao", "").strip()
     lat = _normalize_coord(form.get("lat", "").strip())
     lon = _normalize_coord(form.get("lon", "").strip())
     observacoes = form.get("observacoes", "").strip()
 
     error = "; ".join(erros_imagens) if erros_imagens else None
+    if tipo not in TIPOS_OCORRENCIA_VALIDOS:
+        error = "Selecione um tipo de ocorrência especial válido."
     if not regiao:
         error = "O campo 'Local' é obrigatório."
     elif not _valid_coord(lat, -90.0, 90.0):
@@ -215,6 +242,9 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
                 observacoes=observacoes,
                 registros=listar_bsr_erb(int(sp_id)),
                 registro_edicao=registro_edicao,
+                mostrar_form=True,
+                tipo_opcoes=TIPOS_OCORRENCIA,
+                evento=obter_evento(int(sp_id)),
                 flash_error=error,
                 flash_success=None,
             ),
@@ -276,11 +306,16 @@ async def api_bsr_erb(request: Request):
     except Exception:
         return JSONResponse({"erro": "JSON inválido"}, status_code=400)
 
-    tipo = dados.get("tipo", "BSR/Jammer")
+    tipo = dados.get("tipo", "Jammer")
     regiao = dados.get("regiao", "").strip()
     lat = _normalize_coord(dados.get("lat", ""))
     lon = _normalize_coord(dados.get("lon", ""))
     observacoes = dados.get("observacoes", "").strip()
+
+    if tipo not in TIPOS_OCORRENCIA_VALIDOS:
+        return JSONResponse(
+            {"erro": "Tipo de ocorrência especial inválido"}, status_code=400
+        )
 
     if not regiao:
         return JSONResponse({"erro": "Campo 'Local' obrigatório"}, status_code=400)
