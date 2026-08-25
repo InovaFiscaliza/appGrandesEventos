@@ -428,6 +428,340 @@ def listar_coordenadores_evento(evento_id: int) -> list[int]:
         return vinculados
 
 
+def listar_tickets_evento(evento_id: int) -> list[dict]:
+    """Lista tickets de coordenação com uma ou mais emissões vinculadas."""
+    with get_engine().connect() as conn:
+        rows = (
+            conn.execute(
+                text("""
+                  SELECT t.id, t.evento_id, t.status, t.prioridade, t.observacoes,
+                      string_agg(DISTINCT o.id::text, ', ' ORDER BY o.id::text) AS ocorrencia_ids,
+                      string_agg(DISTINCT COALESCE(o.identificacao, 'Emissão #' || o.id::text), ', ' ORDER BY COALESCE(o.identificacao, 'Emissão #' || o.id::text)) AS identificacao,
+                      string_agg(DISTINCT COALESCE(o.local_regiao, 'Não informado'), ', ' ORDER BY COALESCE(o.local_regiao, 'Não informado')) AS local_regiao,
+                      string_agg(DISTINCT o.frequencia_mhz::text, ', ' ORDER BY o.frequencia_mhz::text) AS frequencia_mhz,
+                      string_agg(DISTINCT o.largura_khz::text, ', ' ORDER BY o.largura_khz::text) AS largura_khz,
+                      array_remove(array_agg(DISTINCT tf.fiscal_id), NULL) AS fiscal_ids,
+                       COALESCE(
+                           string_agg(DISTINCT f.nome, ', ' ORDER BY f.nome),
+                           ''
+                       ) AS fiscais
+                FROM tickets t
+                LEFT JOIN ticket_ocorrencias toco ON toco.ticket_id = t.id
+                LEFT JOIN ocorrencias o ON o.id = toco.ocorrencia_id
+                LEFT JOIN ticket_fiscais tf ON tf.ticket_id = t.id
+                LEFT JOIN fiscais f ON f.id = tf.fiscal_id
+                WHERE t.evento_id = :evento_id
+                GROUP BY t.id, t.evento_id, t.status, t.prioridade, t.observacoes
+                ORDER BY
+                    CASE t.status
+                        WHEN 'pendente' THEN 0
+                        WHEN 'em_andamento' THEN 1
+                        ELSE 2
+                    END,
+                    CASE t.prioridade
+                        WHEN 'alta' THEN 0
+                        WHEN 'normal' THEN 1
+                        ELSE 2
+                    END,
+                    t.id
+            """),
+                {"evento_id": int(evento_id)},
+            )
+            .mappings()
+            .all()
+        )
+    tickets = []
+    for row in rows:
+        ticket = dict(row)
+        ticket["fiscal_ids"] = [
+            int(fiscal_id) for fiscal_id in (ticket.get("fiscal_ids") or [])
+        ]
+        tickets.append(ticket)
+    return tickets
+
+
+def listar_emissoes_evento(evento_id: int) -> list[dict]:
+    """Lista somente as emissões com situação pendente para criação de tickets."""
+    with get_engine().connect() as conn:
+        rows = (
+            conn.execute(
+                text("""
+                SELECT o.id, o.identificacao, o.fiscal, o.local_regiao, o.data,
+                       o.hora, o.frequencia_mhz, o.largura_khz, o.situacao,
+                       vinculacao.ticket_id AS ticket_id_vinculado,
+                       (vinculacao.ticket_id IS NOT NULL) AS ja_possui_ticket
+                FROM ocorrencias o
+                LEFT JOIN LATERAL (
+                    SELECT t.id AS ticket_id
+                    FROM ticket_ocorrencias toco
+                    JOIN tickets t ON t.id = toco.ticket_id
+                    WHERE toco.ocorrencia_id = o.id
+                      AND t.evento_id = :evento_id
+                    ORDER BY t.id DESC
+                    LIMIT 1
+                ) vinculacao ON true
+                WHERE o.evento_id = :evento_id
+                  AND lower(trim(o.situacao)) = 'pendente'
+                ORDER BY data DESC NULLS LAST, hora DESC NULLS LAST, id DESC
+            """),
+                {"evento_id": int(evento_id)},
+            )
+            .mappings()
+            .all()
+        )
+    return [dict(row) for row in rows]
+
+
+def obter_emissao_evento(evento_id: int, ocorrencia_id: int) -> dict | None:
+    """Retorna os detalhes de uma emissão específica do evento."""
+    with get_engine().connect() as conn:
+        registro = (
+            conn.execute(
+                text("""
+                SELECT o.id, o.identificacao, o.local_regiao, o.fiscal,
+                       o.data, o.hora, o.frequencia_mhz, o.largura_khz,
+                       o.faixa, o.autorizado, o.ute, o.processo_sei_ute,
+                       o.observacoes, o.alguem_ciente, o.interferente,
+                       o.situacao, COALESCE(e.nome, '') AS estacao_nome
+                FROM ocorrencias o
+                LEFT JOIN estacoes e ON e.id = o.estacao_id
+                WHERE o.evento_id = :evento_id AND o.id = :ocorrencia_id
+            """),
+                {
+                    "evento_id": int(evento_id),
+                    "ocorrencia_id": int(ocorrencia_id),
+                },
+            )
+            .mappings()
+            .first()
+        )
+    return dict(registro) if registro else None
+
+
+def salvar_ticket_evento(
+    evento_id: int,
+    ocorrencia_ids: list[int],
+    prioridade: str = "normal",
+    observacoes: str | None = None,
+    fiscal_ids: list[int] | None = None,
+) -> int:
+    """Cria um ticket vinculado a uma ou mais emissões pendentes."""
+    with get_engine().begin() as conn:
+        ids = list(dict.fromkeys(int(item) for item in ocorrencia_ids))
+        if not ids:
+            raise ValueError("Selecione ao menos uma emissão para abrir o ticket.")
+
+        emissao_count = conn.execute(
+            text("""
+                SELECT count(*)
+                FROM ocorrencias
+                WHERE evento_id = :evento_id
+                  AND id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
+                  AND lower(trim(situacao)) = 'pendente'
+            """),
+            {"evento_id": int(evento_id), "ocorrencia_ids": ids},
+        ).scalar_one()
+        if int(emissao_count) != len(ids):
+            raise ValueError(
+                "Somente emissões pendentes do evento podem receber tickets de fiscalização."
+            )
+
+        emissao_ja_vinculada = conn.execute(
+            text("""
+                SELECT count(*)
+                FROM ocorrencias o
+                WHERE o.evento_id = :evento_id
+                  AND o.id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
+                  AND EXISTS (
+                      SELECT 1
+                      FROM ticket_ocorrencias toco
+                      JOIN tickets t ON t.id = toco.ticket_id
+                      WHERE toco.ocorrencia_id = o.id
+                        AND t.evento_id = :evento_id
+                  )
+            """),
+            {"evento_id": int(evento_id), "ocorrencia_ids": ids},
+        ).scalar_one()
+        if int(emissao_ja_vinculada) > 0:
+            raise ValueError(
+                "Uma ou mais emissões selecionadas já estão vinculadas a ticket."
+            )
+
+        ticket_id = conn.execute(
+            text("""
+                INSERT INTO tickets (evento_id, prioridade, observacoes)
+                VALUES (:evento_id, :prioridade, :observacoes)
+                RETURNING id
+            """),
+            {
+                "evento_id": int(evento_id),
+                "prioridade": prioridade,
+                "observacoes": observacoes,
+            },
+        ).scalar_one()
+
+        conn.execute(
+            text("""
+                INSERT INTO ticket_ocorrencias (ticket_id, ocorrencia_id)
+                SELECT :ticket_id, unnest(CAST(:ocorrencia_ids AS BIGINT[]))
+            """),
+            {"ticket_id": int(ticket_id), "ocorrencia_ids": ids},
+        )
+
+        conn.execute(
+            text("DELETE FROM ticket_fiscais WHERE ticket_id = :ticket_id"),
+            {"ticket_id": int(ticket_id)},
+        )
+        for fiscal_id in list(dict.fromkeys(int(item) for item in (fiscal_ids or []))):
+            conn.execute(
+                text("""
+                    INSERT INTO ticket_fiscais (ticket_id, fiscal_id)
+                    VALUES (:ticket_id, :fiscal_id)
+                    ON CONFLICT DO NOTHING
+                """),
+                {"ticket_id": int(ticket_id), "fiscal_id": int(fiscal_id)},
+            )
+        return int(ticket_id)
+
+
+def salvar_escala_evento(
+    evento_id: int,
+    fiscal_id: int,
+    data_trabalho: str,
+    turno_inicio: str | None = None,
+    turno_fim: str | None = None,
+    observacoes: str | None = None,
+) -> None:
+    """Salva a escala de trabalho de um fiscal para um evento."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO escalas_trabalho (
+                    evento_id, fiscal_id, data_trabalho,
+                    turno_inicio, turno_fim, observacoes
+                )
+                VALUES (
+                    :evento_id, :fiscal_id, :data_trabalho,
+                    :turno_inicio, :turno_fim, :observacoes
+                )
+            """),
+            {
+                "evento_id": int(evento_id),
+                "fiscal_id": int(fiscal_id),
+                "data_trabalho": data_trabalho,
+                "turno_inicio": turno_inicio,
+                "turno_fim": turno_fim,
+                "observacoes": observacoes,
+            },
+        )
+
+
+def listar_escalas_evento(evento_id: int) -> list[dict]:
+    """Lista a escala de trabalho por evento."""
+    with get_engine().connect() as conn:
+        rows = (
+            conn.execute(
+                text("""
+                SELECT e.id, e.evento_id, e.data_trabalho, e.turno_inicio,
+                       e.turno_fim, e.observacoes, f.nome AS fiscal_nome
+                FROM escalas_trabalho e
+                JOIN fiscais f ON f.id = e.fiscal_id
+                WHERE e.evento_id = :evento_id
+                ORDER BY e.data_trabalho, f.nome
+            """),
+                {"evento_id": int(evento_id)},
+            )
+            .mappings()
+            .all()
+        )
+    return [dict(row) for row in rows]
+
+
+def atualizar_ticket_evento(
+    ticket_id: int,
+    evento_id: int,
+    status: str,
+    fiscal_ids: list[int] | None = None,
+    observacoes: str | None = None,
+    prioridade: str | None = None,
+) -> None:
+    """Atualiza status, prioridade, observações e a lista de fiscais do ticket."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                UPDATE tickets
+                SET status = :status,
+                    prioridade = COALESCE(:prioridade, prioridade),
+                    observacoes = :observacoes,
+                    atualizado_em = now()
+                WHERE id = :ticket_id AND evento_id = :evento_id
+            """),
+            {
+                "ticket_id": int(ticket_id),
+                "evento_id": int(evento_id),
+                "status": status,
+                "prioridade": prioridade,
+                "observacoes": observacoes,
+            },
+        )
+
+        if status == "concluido":
+            # Ao encerrar o ticket, libera somente emissões com situação
+            # pendente para que possam voltar à fila de tickets.
+            conn.execute(
+                text("""
+                    DELETE FROM ticket_ocorrencias toco
+                    USING ocorrencias o
+                    WHERE toco.ticket_id = :ticket_id
+                      AND o.id = toco.ocorrencia_id
+                      AND o.evento_id = :evento_id
+                      AND lower(trim(COALESCE(o.situacao, ''))) = 'pendente'
+                """),
+                {
+                    "ticket_id": int(ticket_id),
+                    "evento_id": int(evento_id),
+                },
+            )
+
+        if fiscal_ids is not None:
+            conn.execute(
+                text("DELETE FROM ticket_fiscais WHERE ticket_id = :ticket_id"),
+                {"ticket_id": int(ticket_id)},
+            )
+            for fiscal_id in list(
+                dict.fromkeys(int(item) for item in (fiscal_ids or []))
+            ):
+                conn.execute(
+                    text("""
+                        INSERT INTO ticket_fiscais (ticket_id, fiscal_id)
+                        VALUES (:ticket_id, :fiscal_id)
+                        ON CONFLICT DO NOTHING
+                    """),
+                    {"ticket_id": int(ticket_id), "fiscal_id": int(fiscal_id)},
+                )
+
+
+def cancelar_ticket_evento(ticket_id: int, evento_id: int) -> None:
+    """Cancela o ticket e libera suas emissões para novos vínculos."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                UPDATE tickets
+                SET status = 'concluido',
+                    atualizado_em = now()
+                WHERE id = :ticket_id AND evento_id = :evento_id
+            """),
+            {
+                "ticket_id": int(ticket_id),
+                "evento_id": int(evento_id),
+            },
+        )
+        conn.execute(
+            text("DELETE FROM ticket_ocorrencias WHERE ticket_id = :ticket_id"),
+            {"ticket_id": int(ticket_id)},
+        )
+
+
 def atualizar_fiscais_evento(evento_id: int, fiscais: list[str]) -> None:
     """Substitui os fiscais participantes do evento."""
     with get_engine().begin() as conn:
@@ -638,6 +972,50 @@ def registrar_auditoria_evento(
                     (:evento_id, :usuario_fiscal, :campo, :valor_anterior, :valor_novo)
             """),
             alteracoes,
+        )
+
+
+def registrar_login_evento(evento_id: int, usuario_fiscal: str) -> None:
+    """Registra o acesso de um usuário ao evento na auditoria do sistema."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO auditoria_eventos
+                    (evento_id, usuario_fiscal, campo, valor_anterior, valor_novo)
+                VALUES
+                    (:evento_id, :usuario_fiscal, 'Login no sistema', NULL,
+                     'Acesso realizado no evento')
+            """),
+            {
+                "evento_id": int(evento_id),
+                "usuario_fiscal": usuario_fiscal,
+            },
+        )
+
+
+def registrar_auditoria_coordenacao(
+    evento_id: int,
+    usuario_fiscal: str,
+    acao: str,
+    valor_anterior: str | None,
+    valor_novo: str | None,
+) -> None:
+    """Registra uma ação da coordenação na auditoria consolidada do evento."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                INSERT INTO auditoria_eventos
+                    (evento_id, usuario_fiscal, campo, valor_anterior, valor_novo)
+                VALUES
+                    (:evento_id, :usuario_fiscal, :campo, :valor_anterior, :valor_novo)
+            """),
+            {
+                "evento_id": int(evento_id),
+                "usuario_fiscal": usuario_fiscal,
+                "campo": f"Coordenação - {acao}",
+                "valor_anterior": valor_anterior,
+                "valor_novo": valor_novo,
+            },
         )
 
 
@@ -2550,9 +2928,17 @@ def consultar_auditoria_evento(
                             UNION ALL
 
                             SELECT
-                                'Evento' AS origem,
+                                CASE
+                                    WHEN auditoria.campo LIKE 'Coordenação - %'
+                                        THEN 'Coordenação'
+                                    ELSE 'Evento'
+                                END AS origem,
                                 auditoria.evento_id AS registro_id,
-                                evento.nome AS registro,
+                                CASE
+                                    WHEN auditoria.campo LIKE 'Coordenação - %'
+                                        THEN split_part(auditoria.valor_novo, ';', 1)
+                                    ELSE evento.nome
+                                END AS registro,
                                 auditoria.usuario_fiscal,
                                 auditoria.campo,
                                 auditoria.valor_anterior,

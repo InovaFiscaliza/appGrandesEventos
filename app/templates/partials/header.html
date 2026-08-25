@@ -8,7 +8,7 @@
     <form id="evento-form" class="evento-switcher" method="post" action="/">
         <label for="evento-combo">Evento:</label>
         <select id="evento-combo" name="evento_key" data-evento-atual="{{ evento_nome }}" required>
-            {% for nome, evento_id in request.state.eventos.items() %}
+            {% for nome, evento_id in (request.state.eventos|default({})).items() %}
             <option value="{{ nome }}|||{{ evento_id }}" {% if nome == evento_nome %}selected{% endif %}>{{ nome }}</option>
             {% else %}
             <option value="">Nenhum evento disponível</option>
@@ -34,9 +34,9 @@
     <a href="/consultar">Pendências</a><span aria-current="page">Histórico</span>
     {% elif caminho_atual.startswith('/consultar') %}
     <span aria-current="page">Pendências</span>
-    {% elif request.state.permissoes.teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem/consultar') %}
+    {% elif (request.state.permissoes|default({})).teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem/consultar') %}
     <a href="/teste_etiquetagem">Etiquetagem</a><span aria-current="page">Registros</span>
-    {% elif request.state.permissoes.teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem') %}
+    {% elif (request.state.permissoes|default({})).teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem') %}
     <span aria-current="page">Etiquetagem</span>
     {% elif caminho_atual.startswith('/bsr-erb') %}
     <span aria-current="page">Ocorrências especiais</span>
@@ -45,5 +45,6 @@
     {% elif caminho_atual.startswith('/ute') %}
     <span aria-current="page">UTE</span>
     {% endif %}
+    <a class="rf-nav-sair" href="/logout" data-confirmacao-msg="Deseja sair da aplicação?">Sair</a>
 </nav>
 </header>

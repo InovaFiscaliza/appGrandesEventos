@@ -12,6 +12,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 ORIGENS_AUDITORIA = (
     "Evento",
+    "Coordenação",
     "Emissão",
     "Teste de etiquetagem",
     "Ocorrências especiais",

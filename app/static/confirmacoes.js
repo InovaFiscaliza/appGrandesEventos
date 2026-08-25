@@ -52,6 +52,13 @@
 
   function mensagemPara(botao) {
     const formulario = botao?.form;
+    const mensagemExplita = (
+      botao?.getAttribute("data-confirmacao-msg")
+      || formulario?.getAttribute("data-confirmacao-msg")
+    );
+    if (mensagemExplita) {
+      return mensagemExplita;
+    }
     const destino = formulario?.getAttribute("action") || botao?.getAttribute("href") || "";
     const texto = [
       botao?.textContent,
@@ -68,6 +75,12 @@
   }
 
   document.addEventListener("submit", (evento) => {
+    if (
+      evento.target?.hasAttribute("data-sem-confirmacao")
+      || evento.submitter?.hasAttribute("data-sem-confirmacao")
+    ) {
+      return;
+    }
     const mensagem = mensagemPara(evento.submitter);
     if (!mensagem || confirmacoesLiberadas.has(evento.target)) return;
     evento.preventDefault();
@@ -82,7 +95,7 @@
   document.addEventListener("click", (evento) => {
     const botao = evento.target.closest("button, a");
     if (!botao || botao.tagName === "BUTTON" && botao.type === "submit") return;
-    if (botao.tagName === "A") return;
+    if (botao.tagName === "A" && !botao.hasAttribute("data-confirmacao-msg")) return;
     if (botao.hasAttribute("data-sem-confirmacao")) return;
     if (botao.hasAttribute("data-confirmacao-imagem")) return;
     if (confirmacoesLiberadas.has(botao)) return;

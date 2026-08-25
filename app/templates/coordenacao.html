@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+<section class="module-section coordenacao-tela">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">COORDENAÇÃO</span>
+            <h1 class="wf-screen-title margin-bottom-l">Coordenação do evento</h1>
+        </div>
+    </div>
+
+    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden;">
+        <div class="coordenacao-tabs" role="tablist" aria-label="Abas de coordenação" style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.25rem; padding:0 0 .5rem 0; border-bottom:1px solid #e7ebf1; align-items:flex-end;">
+            <button type="button" class="tab-button active" data-tab="tickets" role="tab" aria-selected="true" aria-controls="tab-tickets" style="min-width:160px; height:42px; padding:0 1rem; border:1px solid #dfe6ef; border-bottom-color:#ffffff; border-radius:10px 10px 0 0; background:linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%); color:#123a62; font-weight:600; letter-spacing:.01em; box-shadow:0 1px 0 rgba(18,58,98,.05); position:relative; top:1px; transition:all .2s ease; text-align:left;">Tickets</button>
+            <button type="button" class="tab-button" data-tab="escala" role="tab" aria-selected="false" aria-controls="tab-escala" style="min-width:160px; height:40px; padding:0 1rem; border:1px solid transparent; border-bottom-color:#e7ebf1; border-radius:10px 10px 0 0; background:transparent; color:#607389; font-weight:500; letter-spacing:.01em; transition:all .2s ease; text-align:left;">Escala</button>
+        </div>
+
+        <div id="tab-tickets" class="tab-panel active" role="tabpanel" aria-label="Tickets de trabalho">
+
+    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-bottom:1.25rem;">
+        <h2 class="font-semi-bold margin-bottom-m">Emissões pendentes</h2>
+        <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
+            Linhas em cinza indicam emissões já vinculadas a ticket.
+        </p>
+        <div class="table-scroll" role="region" aria-label="Emissões pendentes para criação de tickets" tabindex="0" style="margin-bottom:1rem;">
+            <table class="ute-table">
+                <thead>
+                    <tr>
+                        <th aria-label="Selecionar"></th>
+                        <th>ID</th>
+                        <th>Identificação</th>
+                        <th>Frequência</th>
+                        <th>Largura</th>
+                        <th>Fiscal</th>
+                        <th>Local</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emissao in emissões %}
+                    <tr{% if emissao.ja_possui_ticket %} class="emissao-ja-vinculada"{% endif %}>
+                        <td>
+                            <input type="checkbox" name="ocorrencia_ids" value="{{ emissao.id }}" form="ticket-form" aria-label="Selecionar emissão {{ emissao.id }}" {% if emissao.ja_possui_ticket %}disabled title="Emissão já vinculada ao ticket #{{ emissao.ticket_id_vinculado }}"{% endif %}>
+                        </td>
+                        <td>
+                            <button type="button" class="emissao-id-btn" data-emissao-id="{{ emissao.id }}">{{ emissao.id }}</button>
+                        </td>
+                        <td>
+                            {{ emissao.identificacao or ('Emissão #' ~ emissao.id) }}
+                            {% if emissao.ja_possui_ticket %}
+                            <span class="text-neutral-6 font-size-s">(ticket #{{ emissao.ticket_id_vinculado }})</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ emissao.frequencia_mhz or '-' }}{% if emissao.frequencia_mhz %} MHz{% endif %}</td>
+                        <td>{{ emissao.largura_khz or '-' }}{% if emissao.largura_khz %} kHz{% endif %}</td>
+                        <td>{{ emissao.fiscal or 'Sem fiscal' }}</td>
+                        <td>{{ emissao.local_regiao or 'Não informado' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7">Nenhuma emissão pendente disponível para criação de tickets.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <form id="ticket-form" method="post" action="/coordenacao/ticket" data-sem-confirmacao>
+            <button type="button" id="abrir-popup-ticket" class="btn btn-primary" data-sem-confirmacao>Criar novo ticket</button>
+
+            <div id="popup-criar-ticket" class="popup-ticket" hidden>
+                <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-criar-ticket-titulo">
+                    <div class="popup-ticket-cabecalho">
+                        <h2 id="popup-criar-ticket-titulo">Criar novo ticket</h2>
+                        <button type="button" class="popup-ticket-fechar" id="fechar-popup-ticket" aria-label="Fechar criação">×</button>
+                    </div>
+
+                    <div class="ticket-edicao-campos">
+                        <div class="ticket-edicao-item">
+                            <label for="prioridade_ticket">Prioridade</label>
+                            <select id="prioridade_ticket" name="prioridade" class="ticket-status-select" required>
+                                <option value="alta">Alta</option>
+                                <option value="normal" selected>Normal</option>
+                                <option value="baixa">Baixa</option>
+                            </select>
+                        </div>
+
+                        <div class="ticket-edicao-item ticket-edicao-observacoes">
+                            <label for="observacoes_ticket">Observações</label>
+                            <textarea id="observacoes_ticket" name="observacoes" rows="3" class="form-control"></textarea>
+                        </div>
+
+                        <div class="ticket-edicao-item ticket-edicao-fiscais">
+                            <label>Fiscais atribuídos</label>
+                            <div class="ticket-fiscais-grid">
+                                {% for fiscal in fiscais %}
+                                <label>
+                                    <input type="checkbox" name="fiscais" value="{{ fiscal.id }}">
+                                    <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }}</span>
+                                </label>
+                                {% else %}
+                                <span class="fiscais-vazio">Nenhum fiscal do evento cadastrado.</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ticket-edicao-acoes">
+                        <button type="submit" class="btn btn-primary">Salvar ticket</button>
+                        <button type="button" class="btn-ticket-mini" id="cancelar-popup-ticket">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb;">
+        <h2 class="font-semi-bold margin-bottom-m">Tickets abertos</h2>
+        {% if tickets %}
+        <div class="table-scroll" role="region" aria-label="Tickets abertos" tabindex="0">
+            <table class="ute-table tickets-tabela">
+                <thead>
+                    <tr>
+                        <th>Ticket</th>
+                        <th>Emissões</th>
+                        <th>Local</th>
+                        <th>Status</th>
+                        <th>Prioridade</th>
+                        <th>Frequência</th>
+                        <th>Largura</th>
+                        <th>Observações</th>
+                        <th>Fiscais</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tickets %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td>
+                            <div>{{ item.identificacao or 'Não informado' }}</div>
+                            <div class="font-size-s text-neutral-6">IDs: {{ item.ocorrencia_ids or '-' }}</div>
+                        </td>
+                        <td>{{ item.local_regiao or 'Não informado' }}</td>
+                        <td>{{ item.status }}</td>
+                        <td>{{ item.prioridade }}</td>
+                        <td>{{ item.frequencia_mhz or '-' }}{% if item.frequencia_mhz %} MHz{% endif %}</td>
+                        <td>{{ item.largura_khz or '-' }}{% if item.largura_khz %} kHz{% endif %}</td>
+                        <td>{{ item.observacoes or '-' }}</td>
+                        <td>{{ item.fiscais or 'Nenhum fiscal atribuído' }}</td>
+                        <td class="ticket-acoes">
+                            <button type="button" class="btn-ticket-mini js-abrir-popup-editar" data-ticket-id="{{ item.id }}" data-status="{{ item.status }}" data-prioridade="{{ item.prioridade }}" data-observacoes="{{ item.observacoes or '' }}" data-fiscal-ids="{{ (item.fiscal_ids or [])|join(',') }}">Editar</button>
+                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/cancelar" class="ticket-acao-inline" data-sem-confirmacao>
+                                <button type="submit" class="btn-ticket-mini">Cancelar ticket</button>
+                            </form>
+                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/status" class="ticket-acao-inline" data-sem-confirmacao>
+                                <input type="hidden" name="status" value="concluido">
+                                <button type="submit" class="btn-ticket-mini btn-ticket-encerrar">Encerrar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>Nenhum ticket aberto para este evento.</p>
+        {% endif %}
+    </div>
+
+        </div>
+
+        <div id="tab-escala" class="tab-panel" role="tabpanel" aria-label="Escala de trabalho" hidden>
+            <div class="card background-neutral-0 padding-l border-radius-m" style="border:1px solid #e5e7eb;">
+                <h2 class="font-semi-bold margin-bottom-m">Escala de trabalho</h2>
+                {% if escalas %}
+                <ul style="padding-left: 1.2rem; margin: 0;">
+                    {% for item in escalas %}
+                    <li>
+                        <strong>{{ item.fiscal_nome }}</strong> — {{ item.data_trabalho }}
+                        {% if item.turno_inicio or item.turno_fim %}
+                        ({{ item.turno_inicio or '--' }} às {{ item.turno_fim or '--' }})
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p>Nenhuma escala cadastrada.</p>
+                {% endif %}
+
+                <form method="post" action="/coordenacao/escala" style="margin-top: 1.25rem;">
+                    <div class="form-group">
+                        <label for="fiscal_id">Fiscal</label>
+                        <select id="fiscal_id" name="fiscal_id" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for fiscal in fiscais %}
+                            <option value="{{ fiscal.id }}">{{ fiscal.nome }} - {{ fiscal.local_anatel }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="data_trabalho">Data</label>
+                        <input id="data_trabalho" name="data_trabalho" class="form-control" type="date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="turno_inicio">Início</label>
+                        <input id="turno_inicio" name="turno_inicio" class="form-control" type="time">
+                    </div>
+                    <div class="form-group">
+                        <label for="turno_fim">Fim</label>
+                        <input id="turno_fim" name="turno_fim" class="form-control" type="time">
+                    </div>
+                    <div class="form-group">
+                        <label for="observacoes_escala">Observações</label>
+                        <textarea id="observacoes_escala" name="observacoes" class="form-control" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar escala</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="popup-editar-ticket" class="popup-ticket" hidden>
+        <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-editar-ticket-titulo">
+            <div class="popup-ticket-cabecalho">
+                <h2 id="popup-editar-ticket-titulo">Editar ticket</h2>
+                <button type="button" class="popup-ticket-fechar" id="fechar-popup-editar-ticket" aria-label="Fechar edição">×</button>
+            </div>
+
+            <form id="form-editar-ticket" method="post" action="/coordenacao/ticket/0/status" data-sem-confirmacao>
+                <div class="ticket-edicao-campos">
+                    <div class="ticket-edicao-item">
+                        <label for="editar_ticket_status">Status</label>
+                        <select id="editar_ticket_status" name="status" class="ticket-status-select" required>
+                            <option value="pendente">Pendente</option>
+                            <option value="em_andamento">Em andamento</option>
+                            <option value="concluido">Concluído</option>
+                        </select>
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="editar_ticket_prioridade">Prioridade</label>
+                        <select id="editar_ticket_prioridade" name="prioridade" class="ticket-status-select" required>
+                            <option value="alta">Alta</option>
+                            <option value="normal">Normal</option>
+                            <option value="baixa">Baixa</option>
+                        </select>
+                    </div>
+
+                    <div class="ticket-edicao-item ticket-edicao-observacoes">
+                        <label for="editar_ticket_observacoes">Observações</label>
+                        <textarea id="editar_ticket_observacoes" name="observacoes" rows="3" class="form-control"></textarea>
+                    </div>
+
+                    <div class="ticket-edicao-item ticket-edicao-fiscais">
+                        <label>Fiscais atribuídos</label>
+                        <div class="ticket-fiscais-grid">
+                            {% for fiscal in fiscais %}
+                            <label>
+                                <input type="checkbox" name="fiscais" value="{{ fiscal.id }}" class="editar-ticket-fiscal">
+                                <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }}</span>
+                            </label>
+                            {% else %}
+                            <span class="fiscais-vazio">Nenhum fiscal do evento cadastrado.</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ticket-edicao-acoes">
+                    <button type="submit" class="btn btn-primary">Salvar alterações</button>
+                    <button type="button" class="btn-ticket-mini" id="cancelar-popup-editar-ticket">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="popup-detalhe-emissao" class="popup-ticket" hidden>
+        <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-detalhe-emissao-titulo">
+            <div class="popup-ticket-cabecalho">
+                <h2 id="popup-detalhe-emissao-titulo">Detalhes da emissão</h2>
+                <button type="button" class="popup-ticket-fechar" id="fechar-popup-detalhe-emissao" aria-label="Fechar detalhes">×</button>
+            </div>
+
+            <div id="popup-detalhe-emissao-corpo" class="emissao-detalhe-corpo">
+                <p class="text-neutral-6">Carregando detalhes...</p>
+            </div>
+        </div>
+    </div>
+</section>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+
+        tabButtons.forEach((button) => {
+            button.addEventListener('click', function () {
+                const target = button.dataset.tab;
+
+                tabButtons.forEach((btn) => {
+                    const isActive = btn === button;
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-selected', String(isActive));
+                    btn.style.background = isActive
+                        ? 'linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%)'
+                        : 'transparent';
+                    btn.style.color = isActive ? '#123a62' : '#607389';
+                    btn.style.border = isActive ? '1px solid #dfe6ef' : '1px solid transparent';
+                    btn.style.borderBottomColor = isActive ? '#ffffff' : '#e7ebf1';
+                    btn.style.boxShadow = isActive ? '0 1px 0 rgba(18,58,98,.05)' : 'none';
+                    btn.style.position = 'relative';
+                    btn.style.top = isActive ? '1px' : '0';
+                    btn.style.height = isActive ? '42px' : '40px';
+                    btn.style.fontWeight = isActive ? '600' : '500';
+                    btn.style.textAlign = 'left';
+                });
+
+                tabPanels.forEach((panel) => {
+                    const active = panel.id === 'tab-' + target;
+                    panel.classList.toggle('active', active);
+                    panel.hidden = !active;
+                });
+            });
+        });
+
+        const botaoAbrir = document.getElementById('abrir-popup-ticket');
+        const popup = document.getElementById('popup-criar-ticket');
+        const botaoFechar = document.getElementById('fechar-popup-ticket');
+        const botaoCancelar = document.getElementById('cancelar-popup-ticket');
+        const popupEditar = document.getElementById('popup-editar-ticket');
+        const formEditar = document.getElementById('form-editar-ticket');
+        const botoesAbrirEditar = document.querySelectorAll('.js-abrir-popup-editar');
+        const botaoFecharEditar = document.getElementById('fechar-popup-editar-ticket');
+        const botaoCancelarEditar = document.getElementById('cancelar-popup-editar-ticket');
+        const campoStatusEditar = document.getElementById('editar_ticket_status');
+        const campoPrioridadeEditar = document.getElementById('editar_ticket_prioridade');
+        const campoObservacoesEditar = document.getElementById('editar_ticket_observacoes');
+        const fiscaisEditar = document.querySelectorAll('.editar-ticket-fiscal');
+        const botoesEmissaoId = document.querySelectorAll('.emissao-id-btn');
+        const popupDetalheEmissao = document.getElementById('popup-detalhe-emissao');
+        const fecharPopupDetalheEmissaoBotao = document.getElementById('fechar-popup-detalhe-emissao');
+        const corpoPopupDetalheEmissao = document.getElementById('popup-detalhe-emissao-corpo');
+
+        const fecharPopup = () => {
+            if (popup) {
+                popup.hidden = true;
+            }
+        };
+
+        if (botaoAbrir && popup) {
+            botaoAbrir.addEventListener('click', function () {
+                popup.hidden = false;
+            });
+        }
+
+        if (botaoFechar) {
+            botaoFechar.addEventListener('click', fecharPopup);
+        }
+
+        if (botaoCancelar) {
+            botaoCancelar.addEventListener('click', fecharPopup);
+        }
+
+        if (popup) {
+            popup.addEventListener('click', function (event) {
+                if (event.target === popup) {
+                    fecharPopup();
+                }
+            });
+        }
+
+        const fecharPopupEditar = () => {
+            if (popupEditar) {
+                popupEditar.hidden = true;
+            }
+        };
+
+        botoesAbrirEditar.forEach((botao) => {
+            botao.addEventListener('click', function () {
+                if (!popupEditar || !formEditar) {
+                    return;
+                }
+
+                const ticketId = botao.dataset.ticketId;
+                const status = botao.dataset.status || 'pendente';
+                const prioridade = botao.dataset.prioridade || 'normal';
+                const observacoes = botao.dataset.observacoes || '';
+                const fiscaisIds = (botao.dataset.fiscalIds || '')
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean);
+
+                formEditar.action = '/coordenacao/ticket/' + ticketId + '/status';
+                campoStatusEditar.value = status;
+                campoPrioridadeEditar.value = prioridade;
+                campoObservacoesEditar.value = observacoes;
+
+                fiscaisEditar.forEach((input) => {
+                    input.checked = fiscaisIds.includes(input.value);
+                });
+
+                popupEditar.hidden = false;
+            });
+        });
+
+        if (botaoFecharEditar) {
+            botaoFecharEditar.addEventListener('click', fecharPopupEditar);
+        }
+
+        if (botaoCancelarEditar) {
+            botaoCancelarEditar.addEventListener('click', fecharPopupEditar);
+        }
+
+        if (popupEditar) {
+            popupEditar.addEventListener('click', function (event) {
+                if (event.target === popupEditar) {
+                    fecharPopupEditar();
+                }
+            });
+        }
+
+        const renderDetalheLinha = (rotulo, valor) => {
+            const texto = valor === null || valor === undefined || String(valor).trim() === ''
+                ? '-'
+                : String(valor);
+            return '<div class="emissao-detalhe-item"><strong>' + rotulo + ':</strong> <span>' + texto + '</span></div>';
+        };
+
+        const renderImagens = (imagens) => {
+            if (!Array.isArray(imagens) || imagens.length === 0) {
+                return '<p class="text-neutral-6">Sem fotos anexadas.</p>';
+            }
+            const itens = imagens.map((imagem) => {
+                const nome = imagem.nome_arquivo || 'Imagem';
+                return ''
+                    + '<figure class="emissao-foto-item">'
+                    + '  <img src="' + imagem.url + '" alt="' + nome.replace(/\"/g, '&quot;') + '">'
+                    + '  <figcaption>' + nome + '</figcaption>'
+                    + '</figure>';
+            }).join('');
+            return '<div class="emissao-fotos-grid">' + itens + '</div>';
+        };
+
+        const abrirPopupDetalheEmissao = async (emissaoId) => {
+            if (!popupDetalheEmissao || !corpoPopupDetalheEmissao) {
+                return;
+            }
+            popupDetalheEmissao.hidden = false;
+            corpoPopupDetalheEmissao.innerHTML = '<p class="text-neutral-6">Carregando detalhes...</p>';
+
+            try {
+                const resposta = await fetch('/coordenacao/api/emissao/' + emissaoId, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!resposta.ok) {
+                    throw new Error('Falha ao carregar a emissão.');
+                }
+                const emissao = await resposta.json();
+
+                const detalhes = [
+                    renderDetalheLinha('ID', emissao.id),
+                    renderDetalheLinha('Identificação', emissao.identificacao),
+                    renderDetalheLinha('Local', emissao.local_regiao),
+                    renderDetalheLinha('Fiscal', emissao.fiscal),
+                    renderDetalheLinha('Data', emissao.data),
+                    renderDetalheLinha('Hora', emissao.hora),
+                    renderDetalheLinha('Frequência (MHz)', emissao.frequencia_mhz),
+                    renderDetalheLinha('Largura (kHz)', emissao.largura_khz),
+                    renderDetalheLinha('Faixa', emissao.faixa),
+                    renderDetalheLinha('Autorizado', emissao.autorizado),
+                    renderDetalheLinha('UTE', emissao.ute),
+                    renderDetalheLinha('Processo SEI UTE', emissao.processo_sei_ute),
+                    renderDetalheLinha('Observações', emissao.observacoes),
+                    renderDetalheLinha('Alguém mais ciente', emissao.alguem_ciente),
+                    renderDetalheLinha('Interferente', emissao.interferente),
+                    renderDetalheLinha('Situação', emissao.situacao),
+                    renderDetalheLinha('Estação', emissao.estacao_nome),
+                ].join('');
+
+                corpoPopupDetalheEmissao.innerHTML = ''
+                    + '<div class="emissao-detalhe-grid">' + detalhes + '</div>'
+                    + '<h3 class="emissao-fotos-titulo">Fotos</h3>'
+                    + renderImagens(emissao.imagens);
+            } catch (erro) {
+                corpoPopupDetalheEmissao.innerHTML = '<p class="flash flash-error">Não foi possível carregar os detalhes da emissão.</p>';
+            }
+        };
+
+        const fecharPopupDetalheEmissao = () => {
+            if (popupDetalheEmissao) {
+                popupDetalheEmissao.hidden = true;
+            }
+        };
+
+        botoesEmissaoId.forEach((botao) => {
+            botao.addEventListener('click', function () {
+                const emissaoId = botao.dataset.emissaoId;
+                if (emissaoId) {
+                    abrirPopupDetalheEmissao(emissaoId);
+                }
+            });
+        });
+
+        if (fecharPopupDetalheEmissaoBotao) {
+            fecharPopupDetalheEmissaoBotao.addEventListener('click', fecharPopupDetalheEmissao);
+        }
+
+        if (popupDetalheEmissao) {
+            popupDetalheEmissao.addEventListener('click', function (event) {
+                if (event.target === popupDetalheEmissao) {
+                    fecharPopupDetalheEmissao();
+                }
+            });
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && popup && !popup.hidden) {
+                fecharPopup();
+            }
+            if (event.key === 'Escape' && popupEditar && !popupEditar.hidden) {
+                fecharPopupEditar();
+            }
+            if (event.key === 'Escape' && popupDetalheEmissao && !popupDetalheEmissao.hidden) {
+                fecharPopupDetalheEmissao();
+            }
+        });
+    });
+</script>
+{% endblock %}

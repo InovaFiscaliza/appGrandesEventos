@@ -78,6 +78,63 @@ CREATE TABLE IF NOT EXISTS eventos_coordenadores (
 CREATE INDEX IF NOT EXISTS idx_eventos_coordenadores_fiscal
     ON eventos_coordenadores (fiscal_id);
 
+CREATE TABLE IF NOT EXISTS tickets (
+    id BIGSERIAL PRIMARY KEY,
+    evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    ocorrencia_id BIGINT REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    fiscal_id BIGINT REFERENCES fiscais(id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'em_andamento', 'concluido')),
+    prioridade TEXT NOT NULL DEFAULT 'normal' CHECK (prioridade IN ('baixa', 'normal', 'alta')),
+    observacoes TEXT,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+    atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tickets_evento_status
+    ON tickets (evento_id, status, fiscal_id);
+
+CREATE TABLE IF NOT EXISTS ticket_ocorrencias (
+    ticket_id BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    ocorrencia_id BIGINT NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    PRIMARY KEY (ticket_id, ocorrencia_id)
+);
+
+INSERT INTO ticket_ocorrencias (ticket_id, ocorrencia_id)
+SELECT id, ocorrencia_id
+FROM tickets
+WHERE ocorrencia_id IS NOT NULL
+ON CONFLICT DO NOTHING;
+
+ALTER TABLE tickets ALTER COLUMN ocorrencia_id DROP NOT NULL;
+ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_evento_id_ocorrencia_id_key;
+
+CREATE INDEX IF NOT EXISTS idx_ticket_ocorrencias_ocorrencia
+    ON ticket_ocorrencias (ocorrencia_id);
+
+CREATE TABLE IF NOT EXISTS ticket_fiscais (
+    ticket_id BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    fiscal_id BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
+    PRIMARY KEY (ticket_id, fiscal_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_fiscais_fiscal
+    ON ticket_fiscais (fiscal_id);
+
+CREATE TABLE IF NOT EXISTS escalas_trabalho (
+    id BIGSERIAL PRIMARY KEY,
+    evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    fiscal_id BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
+    data_trabalho DATE NOT NULL,
+    turno_inicio TIME,
+    turno_fim TIME,
+    observacoes TEXT,
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (evento_id, fiscal_id, data_trabalho, turno_inicio, turno_fim)
+);
+
+CREATE INDEX IF NOT EXISTS idx_escalas_trabalho_evento_data
+    ON escalas_trabalho (evento_id, data_trabalho, fiscal_id);
+
 ALTER TABLE eventos DROP COLUMN IF EXISTS coordenador_responsavel;
 
 CREATE TABLE IF NOT EXISTS eventos_unidades_executantes (

@@ -112,6 +112,7 @@ requisitos/                # Documentação de requisitos
 - Interface responsiva e mobile-first (app usado em campo com celular)
 - Ícones: emojis (📋, 📝, 📵, etc.) nos botões
 - Flash messages para feedback ao usuário
+- Em tabelas com ações, a célula de botões deve ocupar somente o espaço necessário dos botões (sem largura fixa sobrando).
 
 ## Lembretes Funcionais — Fotos
 

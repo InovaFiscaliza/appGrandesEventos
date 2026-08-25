@@ -13,7 +13,7 @@ import secrets
 import time
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -22,6 +22,7 @@ from app.routers import (
     bsr_erb,
     busca,
     consultar,
+    coordenacao,
     criar_evento,
     estacoes,
     inserir,
@@ -30,7 +31,11 @@ from app.routers import (
     tabela_ute,
     teste_etiquetagem,
 )
-from app.services.postgres import buscar_planilhas, obter_evento
+from app.services.postgres import (
+    buscar_planilhas,
+    listar_coordenadores_evento,
+    obter_evento,
+)
 from app.services.permissoes import permissoes_interface
 
 _inicio_aplicacao = time.perf_counter()
@@ -67,6 +72,12 @@ async def carregar_eventos_no_request(request: Request, call_next):
         resposta = await call_next(request)
         return resposta
 
+    rotas_livres = {"/", "/logout"}
+    possui_evento = bool(request.session.get("spreadsheet_id"))
+    possui_usuario = bool(request.session.get("fiscal_id"))
+    if caminho not in rotas_livres and (not possui_evento or not possui_usuario):
+        return RedirectResponse("/", status_code=302)
+
     _mensagem_inicializacao(
         f"Requisição recebida: {request.method} {caminho}; carregando eventos"
     )
@@ -74,9 +85,17 @@ async def carregar_eventos_no_request(request: Request, call_next):
     evento_atual = (
         obter_evento(int(evento_id)) if evento_id and str(evento_id).isdigit() else None
     )
+    fiscal_id = request.session.get("fiscal_id")
+    coordenador_evento = (
+        bool(fiscal_id)
+        and evento_id is not None
+        and str(fiscal_id).isdigit()
+        and int(fiscal_id) in listar_coordenadores_evento(int(evento_id))
+    )
     request.state.permissoes = permissoes_interface(
         evento=evento_atual,
         tipo_usuario=request.session.get("tipo_usuario"),
+        coordenador_evento=coordenador_evento,
     )
     # A tela de histórico já possui o evento na sessão. Não bloqueie sua
     # abertura com a consulta síncrona da lista completa de eventos.
@@ -121,6 +140,7 @@ app.include_router(menu.router)
 app.include_router(auditoria.router)
 app.include_router(inserir.router)
 app.include_router(consultar.router)
+app.include_router(coordenacao.router)
 app.include_router(criar_evento.router)
 app.include_router(estacoes.router)
 app.include_router(bsr_erb.router)
