@@ -2931,12 +2931,16 @@ def consultar_auditoria_evento(
                                 CASE
                                     WHEN auditoria.campo LIKE 'Coordenação - %'
                                         THEN 'Coordenação'
+                                    WHEN auditoria.campo = 'Login no sistema'
+                                        THEN 'Login'
                                     ELSE 'Evento'
                                 END AS origem,
                                 auditoria.evento_id AS registro_id,
                                 CASE
                                     WHEN auditoria.campo LIKE 'Coordenação - %'
                                         THEN split_part(auditoria.valor_novo, ';', 1)
+                                    WHEN auditoria.campo = 'Login no sistema'
+                                        THEN 'Acesso ao sistema'
                                     ELSE evento.nome
                                 END AS registro,
                                 auditoria.usuario_fiscal,

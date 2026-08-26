@@ -11,6 +11,7 @@ from app.utils.formatters import _img_b64
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 ORIGENS_AUDITORIA = (
+    "Login",
     "Evento",
     "Coordenação",
     "Emissão",
