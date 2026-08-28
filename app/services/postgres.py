@@ -491,11 +491,19 @@ def listar_emissoes_evento(evento_id: int) -> list[dict]:
         rows = (
             conn.execute(
                 text("""
-                SELECT o.id, o.identificacao, o.fiscal, o.local_regiao, o.data,
+                  SELECT o.id, o.identificacao,
+                      NULLIF(concat_ws(', ', o.fiscal, participantes.nomes), '') AS fiscal,
+                      o.local_regiao, o.data,
                        o.hora, o.frequencia_mhz, o.largura_khz, o.situacao,
                        vinculacao.ticket_id AS ticket_id_vinculado,
                        (vinculacao.ticket_id IS NOT NULL) AS ja_possui_ticket
                 FROM ocorrencias o
+                  LEFT JOIN LATERAL (
+                      SELECT string_agg(f.nome, ', ' ORDER BY f.nome) AS nomes
+                      FROM ocorrencia_fiscais ocorrencia_fiscal
+                      JOIN fiscais f ON f.id = ocorrencia_fiscal.fiscal_id
+                      WHERE ocorrencia_fiscal.ocorrencia_id = o.id
+                  ) participantes ON true
                 LEFT JOIN LATERAL (
                     SELECT t.id AS ticket_id
                     FROM ticket_ocorrencias toco
@@ -1495,7 +1503,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
         sql = text("""
             SELECT
                 o.local_regiao AS "Local",
-                COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
+                COALESCE(e.nome, o.origem_captura, o.local_regiao) AS "EstacaoRaw",
                 o.estacao_id::text AS "EstacaoID",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
@@ -1539,7 +1547,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
         sql = text("""
             SELECT
                 o.local_regiao AS "Local",
-                COALESCE(e.nome, o.local_regiao) AS "EstacaoRaw",
+                COALESCE(e.nome, o.origem_captura, o.local_regiao) AS "EstacaoRaw",
                 o.estacao_id::text AS "EstacaoID",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
@@ -2086,13 +2094,13 @@ def inserir_emissao_I_W(
             resultado = conn.execute(
                 text("""
                     INSERT INTO ocorrencias
-                        (evento_id, estacao_id, local_regiao, fiscal, data, hora,
+                        (evento_id, estacao_id, origem_captura, local_regiao, fiscal, data, hora,
                          frequencia_mhz, largura_khz, faixa,
                          identificacao, autorizado, ute,
                          processo_sei_ute, observacoes,
                          interferente, situacao, fonte)
                     VALUES
-                        (:ev, :estacao_id, :local, :fiscal, :data, :hora,
+                        (:ev, :estacao_id, :origem_captura, :local, :fiscal, :data, :hora,
                          :freq, :bw, :faixa,
                          :ident, :autz, :ute,
                          :proc, :obs,
@@ -2102,6 +2110,7 @@ def inserir_emissao_I_W(
                 {
                     "ev": int(evento_id),
                     "estacao_id": dados_formulario.get("Estação ID") or None,
+                    "origem_captura": dados_formulario.get("Origem da captura") or None,
                     "local": dados_formulario.get("Local/Região", ""),
                     "fiscal": dados_formulario.get("Fiscal", ""),
                     "data": dia,
@@ -2120,6 +2129,63 @@ def inserir_emissao_I_W(
                 },
             )
             ocorrencia_id = resultado.scalar_one()
+            fiscais_participantes = list(
+                dict.fromkeys(
+                    int(fiscal_id)
+                    for fiscal_id in dados_formulario.get("Fiscais participantes", [])
+                    if str(fiscal_id).isdigit()
+                )
+            )
+            if fiscais_participantes:
+                fiscais_validos = (
+                    conn.execute(
+                        text("""
+                        SELECT fiscal_id
+                        FROM eventos_fiscais
+                        WHERE evento_id = :evento_id
+                          AND fiscal_id = ANY(CAST(:fiscal_ids AS BIGINT[]))
+                    """),
+                        {
+                            "evento_id": int(evento_id),
+                            "fiscal_ids": fiscais_participantes,
+                        },
+                    )
+                    .scalars()
+                    .all()
+                )
+                if set(fiscais_validos) != set(fiscais_participantes):
+                    raise ValueError("Fiscal participante não pertence ao evento.")
+                conn.execute(
+                    text("""
+                        INSERT INTO ocorrencia_fiscais (ocorrencia_id, fiscal_id)
+                        SELECT :ocorrencia_id, unnest(CAST(:fiscal_ids AS BIGINT[]))
+                    """),
+                    {
+                        "ocorrencia_id": int(ocorrencia_id),
+                        "fiscal_ids": fiscais_participantes,
+                    },
+                )
+                nomes_participantes = conn.execute(
+                    text("""
+                        SELECT string_agg(nome, ', ' ORDER BY nome)
+                        FROM fiscais WHERE id = ANY(CAST(:fiscal_ids AS BIGINT[]))
+                    """),
+                    {"fiscal_ids": fiscais_participantes},
+                ).scalar_one()
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo, valor_anterior, valor_novo
+                        ) VALUES (:ocorrencia_id, :evento_id, :usuario_fiscal,
+                                  'Fiscais participantes', NULL, :valor_novo)
+                    """),
+                    {
+                        "ocorrencia_id": int(ocorrencia_id),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": dados_formulario.get("Fiscal", ""),
+                        "valor_novo": nomes_participantes,
+                    },
+                )
             for imagem in imagens or []:
                 conn.execute(
                     text("""

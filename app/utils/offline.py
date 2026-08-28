@@ -59,6 +59,8 @@ def extrair_dados_inserir(form) -> Dict[str, str]:
         "Faixa de Frequência": form.get("faixa", ""),
         "Identificação": form.get("ident", ""),
         "Autorizado? (Q)": "",
+        "Estação ID": form.get("estacao_id", "").strip(),
+        "Fiscais participantes": form.getlist("fiscais_participantes"),
         "UTE?": "1" if ute else "",
         "Processo SEI ou Ato UTE": form.get("proc", "").strip(),
         "Observações/Detalhes/Contatos": form.get("obs", "").strip(),

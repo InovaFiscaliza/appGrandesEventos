@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
 
-from app.config import TITULO_PRINCIPAL
+from app.config import BANDA_OPCOES, TITULO_PRINCIPAL
 from app.services.postgres import (
     atualizar_teste_etiquetagem,
     carregar_imagens_teste_etiquetagem,
@@ -32,15 +32,6 @@ TIPOS_IMAGEM = {"image/jpeg", "image/png"}
 TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
 
 
-def _formatar_banda(valor: int) -> str:
-    """Formata a largura de banda em kHz para exibição do formulário."""
-    return f"{valor:,}".replace(",", ".") + " kHz"
-
-
-BANDA_OPCOES = [
-    _formatar_banda(valor)
-    for valor in [5, 10, *range(25, 501, 25), *range(1_000, 100_001, 1_000)]
-]
 FAIXAS_ETIQUETAGEM = [
     "SLP / VHF (148-174 MHz)",
     "SLP / UHF (360-470 MHz)",

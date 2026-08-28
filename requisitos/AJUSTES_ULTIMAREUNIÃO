@@ -43,8 +43,8 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 1. Acesso, usuários e perfis
 
-- [ ] Restringir a seleção de eventos: cada usuário deve visualizar somente os eventos nos quais está cadastrado. Coordenadores e superusuários devem seguir permissões próprias. **Referência: 00:00:16–00:01:18.**
-- [ ] Controlar a visibilidade dos módulos conforme o perfil do usuário e a configuração do evento. Exemplos discutidos: esconder **Gerenciar Eventos**, **Auditoria** e **Teste de etiquetagem** quando não forem aplicáveis. **Referência: 00:01:20–00:02:18.**
+- [X] Restringir a seleção de eventos: cada usuário deve visualizar somente os eventos nos quais está cadastrado. Coordenadores e superusuários devem seguir permissões próprias. **Referência: 00:00:16–00:01:18.**
+- [X] Controlar a visibilidade dos módulos conforme o perfil do usuário e a configuração do evento. Exemplos discutidos: esconder **Gerenciar Eventos**, **Auditoria** e **Teste de etiquetagem** quando não forem aplicáveis. **Referência: 00:01:20–00:02:18.**
 - [ ] Permitir que o criador/coordenador do evento escolha quais módulos estarão disponíveis naquele evento. **Referência: 00:01:20–00:02:15.**
 - [ ] Criar uma base local com usuários fictícios para testar os perfis e, posteriormente, integrar com a base institucional de fiscais. **Referência: 00:24:48–00:25:11.**
 - [X] Preservar a possibilidade de um fiscal possuir mais de um papel no mesmo evento, como abordagem, monitoração e coordenação. **Referência: 00:02:53–00:03:45.**
@@ -52,7 +52,7 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 2. Gerenciamento de eventos
 
-- [ ] Adicionar ao evento uma opção para ativar ou desativar o **Teste de etiquetagem**. **Referência: 00:04:38–00:05:02.**
+- [X] Adicionar ao evento uma opção para ativar ou desativar o **Teste de etiquetagem**. **Referência: 00:04:38–00:05:02.**
 - [ ] Permitir configurar no evento a regra de formação/abrangência das etiquetas, incluindo autorização local e autorização válida para todos os locais aplicáveis. **Referência: 00:04:51–00:05:11.**
 - [X] Substituir o campo livre **Local** do evento por dois campos controlados: **UF** e **Cidade/Município**. A cidade deverá ser escolhida em uma lista, evitando grafias diferentes para o mesmo município. **Referência: 00:09:34–00:12:50.**
 - [X] Manter o termo **Local** para a posição física de uma estação, como estádio, tribuna de imprensa, centro de monitoração ou área externa. **Referência: 00:09:52–00:12:40.**
@@ -65,24 +65,24 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 3. Estações de monitoração
 
-- [ ] Separar claramente **Nome da estação** e **Local da estação**. O nome deve conter identificações como `RFeye 1`, `RFeye 2` ou `ETM`; o local deve descrever onde ela está instalada. **Referência: 00:23:07–00:23:52 e 00:25:15–00:26:54.**
-- [ ] Mostrar uma coluna **Local** na listagem das estações vinculadas ao evento. **Referência: 00:06:03–00:06:52.**
-- [ ] Manter o local da estação como texto livre, permitindo descrições específicas como “Tribuna de imprensa” ou “Área externa do Maracanã”. **Referência: 00:26:19–00:27:59.**
-- [ ] Manter latitude e longitude como campos independentes do texto de local. Não preencher automaticamente o local com endereço obtido das coordenadas. **Referência: 00:26:00–00:28:32.**
+- [X] Separar claramente **Nome da estação** e **Local da estação**. O nome deve conter identificações como `RFeye 1`, `RFeye 2` ou `ETM`; o local deve descrever onde ela está instalada. **Referência: 00:23:07–00:23:52 e 00:25:15–00:26:54.**
+- [x] Mostrar uma coluna **Local** na listagem das estações vinculadas ao evento. **Referência: 00:06:03–00:06:52.**
+- [X] Manter o local da estação como texto livre, permitindo descrições específicas como “Tribuna de imprensa” ou “Área externa do Maracanã”. **Referência: 00:26:19–00:27:59.**
+- [X] Manter latitude e longitude como campos independentes do texto de local. Não preencher automaticamente o local com endereço obtido das coordenadas. **Referência: 00:26:00–00:28:32.**
 - [ ] Utilizar as coordenadas futuramente para mostrar as estações em um mapa do evento e para integrações externas. **Referência: 00:27:15–00:28:32.**
 - [ ] Aplicar ao cadastro/edição de estações o mesmo padrão recolhido usado nas demais telas: abrir detalhes somente quando necessário. **Referência: 00:28:46–00:29:08.**
 
 ## 4. Inserção de emissões
 
-- [ ] Remover o preenchimento livre do fiscal. Preencher automaticamente com o usuário autenticado. **Referência: 00:30:05–00:30:35.**
-- [ ] Permitir adicionar outro fiscal participante, pois as atividades normalmente podem ser realizadas em dupla. **Referência: 00:30:30–00:30:58.**
-- [ ] Vincular obrigatoriamente cada emissão ao evento atualmente selecionado e preencher automaticamente cidade e demais dados do evento. **Referência: 00:31:40–00:33:40.**
-- [ ] Manter o **Local da emissão** como texto livre, pois a captura pode ocorrer em camarote, box, área de mídia, rua ou outro ponto específico. **Referência: 00:31:57–00:32:39.**
-- [ ] Tornar obrigatório o campo que identifica o equipamento/estação que realizou a captura. **Referência: 00:38:48–00:39:05.**
-- [ ] Preencher a lista de origem da captura com todas as estações cadastradas no evento e com as opções genéricas **Analisador de espectro — campo** e **ETM — campo**. **Referência: 00:37:37–00:39:05.**
-- [ ] Não bloquear a origem da captura com base no perfil do fiscal, pois um fiscal pode eventualmente operar uma estação diferente. **Referência: 00:36:26–00:38:48.**
+- [X] Remover o preenchimento livre do fiscal. Preencher automaticamente com o usuário autenticado. **Referência: 00:30:05–00:30:35.**
+- [X] Permitir adicionar outro fiscal participante, pois as atividades normalmente podem ser realizadas em dupla. **Referência: 00:30:30–00:30:58.**
+- [X] Vincular obrigatoriamente cada emissão ao evento atualmente selecionado e preencher automaticamente cidade e demais dados do evento. **Referência: 00:31:40–00:33:40.**
+- [x] Manter o **Local da emissão** como texto livre, pois a captura pode ocorrer em camarote, box, área de mídia, rua ou outro ponto específico. **Referência: 00:31:57–00:32:39.**
+- [x] Tornar obrigatório o campo que identifica o equipamento/estação que realizou a captura. **Referência: 00:38:48–00:39:05.**
+- [x] Preencher a lista de origem da captura com todas as estações cadastradas no evento e com as opções genéricas **Analisador de espectro — campo** e **ETM — campo**. **Referência: 00:37:37–00:39:05.**
+- [X] Não bloquear a origem da captura com base no perfil do fiscal, pois um fiscal pode eventualmente operar uma estação diferente. **Referência: 00:36:26–00:38:48.**
 - [ ] Manter a inserção manual em tempo real rápida e com poucos passos. **Referência: 00:35:47–00:36:26.**
-- [ ] Restringir o campo de frequência a valores numéricos e acrescentar máscara/orientação visual de formato, incluindo unidade em MHz e exemplo do separador decimal esperado. **Referência: 00:39:20–00:41:05.**
+- [x] Restringir o campo de frequência a valores numéricos e acrescentar máscara/orientação visual de formato, incluindo unidade em MHz e exemplo do separador decimal esperado. **Referência: 00:39:20–00:41:05.**
 - [ ] Padronizar a largura de banda por uma lista de valores usuais, começando em torno de 12,5 e incluindo valores como 25, 50, 75 e 100 MHz, evitando entradas livres inconsistentes e permitindo consultas posteriores por sobreposição. A lista completa ainda precisa ser validada. **Referência: 00:41:05–00:43:42.**
 - [ ] Adicionar **SARC** e **Outros** às opções de serviço/faixa relacionada. **Referência: 00:43:34–00:44:55.**
 

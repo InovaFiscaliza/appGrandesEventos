@@ -38,6 +38,44 @@
 })();
 
 // ─── Check frequência (online apenas) ────────────────────────
+(() => {
+  const adicionar = document.getElementById("adicionar-fiscal-participante");
+  const seletorArea = document.getElementById("seletor-fiscal-participante");
+  const seletor = document.getElementById("fiscal-participante");
+  const lista = document.getElementById("lista-fiscais-participantes");
+  if (!adicionar || !seletorArea || !seletor || !lista) return;
+
+  adicionar.addEventListener("click", () => {
+    seletorArea.hidden = false;
+    seletor.focus();
+  });
+  seletor.addEventListener("change", () => {
+    const opcao = seletor.selectedOptions[0];
+    if (!opcao?.value || lista.querySelector(`[data-fiscal-id="${opcao.value}"]`)) return;
+    const item = document.createElement("span");
+    item.dataset.fiscalId = opcao.value;
+    item.append(document.createTextNode(`${opcao.textContent} `));
+    const remover = document.createElement("button");
+    remover.type = "button";
+    remover.className = "fiscal-participante-remover";
+    remover.textContent = "×";
+    remover.title = "Remover fiscal";
+    remover.setAttribute("aria-label", `Remover ${opcao.textContent}`);
+    remover.addEventListener("click", () => item.remove());
+    const campo = document.createElement("input");
+    campo.type = "hidden";
+    campo.name = "fiscais_participantes";
+    campo.value = opcao.value;
+    item.append(remover, campo);
+    lista.appendChild(item);
+    seletor.value = "";
+    seletorArea.hidden = true;
+  });
+  lista.querySelectorAll("button").forEach((botao) => {
+    botao.addEventListener("click", () => botao.closest("span")?.remove());
+  });
+})();
+
 async function consultarConflitoFrequencia() {
   const val = parseFloat(document.getElementById("freq")?.value || "0");
   const largura = parseFloat(document.getElementById("larg")?.value || "0");
@@ -84,6 +122,7 @@ AppOffline.interceptarSubmit(
     "Faixa de Frequência": fd.get("faixa") || "",
     "Identificação": fd.get("ident") || "",
     "Estação ID": fd.get("estacao_id") || "",
+    "Fiscais participantes": fd.getAll("fiscais_participantes"),
     "Autorizado? (Q)": "",
     "UTE?": fd.get("ute") ? "1" : "",
     "Processo SEI ou Ato UTE": fd.get("proc") || "",

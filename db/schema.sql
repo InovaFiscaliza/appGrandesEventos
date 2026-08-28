@@ -166,6 +166,7 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     id                BIGSERIAL PRIMARY KEY,
     evento_id         BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     estacao_id        BIGINT REFERENCES estacoes(id) ON DELETE SET NULL,
+    origem_captura    TEXT,
     id_planilha       TEXT,        -- ID original da planilha (ex: "Abo-100", "1-RF02")
     local_regiao      TEXT,
     fiscal            TEXT,
@@ -186,6 +187,17 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     criado_em         TIMESTAMPTZ NOT NULL DEFAULT now(),
     atualizado_em     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS origem_captura TEXT;
+
+CREATE TABLE IF NOT EXISTS ocorrencia_fiscais (
+    ocorrencia_id BIGINT NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
+    fiscal_id     BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
+    PRIMARY KEY (ocorrencia_id, fiscal_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ocorrencia_fiscais_fiscal
+    ON ocorrencia_fiscais (fiscal_id);
 
 -- Índices para consultas frequentes
 CREATE INDEX IF NOT EXISTS idx_ocorr_evento_situacao ON ocorrencias (evento_id, situacao);

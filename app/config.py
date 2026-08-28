@@ -26,6 +26,11 @@ IDENT_OPCOES = [
     "Não identificado",
 ]
 
+BANDA_OPCOES = [
+    f"{valor:,}".replace(",", ".") + " kHz"
+    for valor in [5, 10, *range(25, 501, 25), *range(1_000, 100_001, 1_000)]
+]
+
 FAIXA_OPCOES = [
     "FM",
     "SMA",

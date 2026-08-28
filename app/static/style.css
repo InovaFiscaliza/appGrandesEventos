@@ -259,8 +259,9 @@ body.fiscais-popup-aberto { overflow: hidden; }
 }
 .historico-popup-cabecalho h2 { margin: 0; font-size: 1.1rem; }
 .historico-popup-fechar {
-    border: 0;
-    background: transparent;
+    border: 1px solid #aeb5bc;
+    border-radius: 50%;
+    background: #f1f3f5;
     color: #fff;
     font-size: 1.8rem;
     line-height: 1;
@@ -462,6 +463,44 @@ input[type="number"]::-webkit-outer-spin-button {
 .ticket-acao { width: 1%; min-width: 15rem; white-space: normal; vertical-align: top; }
 .ticket-tratamento-form { display: grid; gap: .45rem; margin: 0; }
 .ticket-tratamento-form .btn { width: max-content; margin: 0; }
+.fiscais-participantes-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem .45rem;
+    margin-top: .35rem;
+}
+.fiscais-participantes-lista > span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.15rem;
+    color: #687887;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.15;
+}
+.rf-entry-form .fiscal-participante-remover {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: .7rem;
+    min-width: .7rem;
+    max-width: .7rem;
+    height: .7rem;
+    min-height: .7rem;
+    max-height: .7rem;
+    margin-left: .2rem;
+    padding: 0 !important;
+    border: 1px solid #aeb5bc !important;
+    border-radius: 50% !important;
+    background: #f1f3f5;
+    color: #7a828a;
+    font-size: .7rem;
+    line-height: .7rem;
+    vertical-align: middle;
+    cursor: pointer;
+}
+.rf-entry-form .fiscal-participante-remover:hover,
+.rf-entry-form .fiscal-participante-remover:focus-visible { color: #495057; outline: none; }
 .ticket-status-select {
     height: 1.75rem;
     min-width: 6.8rem;
