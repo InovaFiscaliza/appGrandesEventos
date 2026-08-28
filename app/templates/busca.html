@@ -10,6 +10,7 @@
     <div class="form-group">
         <label for="busca-termo">Buscar texto ou ID da emissão:</label>
         <input id="busca-termo" class="form-control" type="search" name="termo" value="{{ termo or '' }}" autocomplete="off">
+        <div id="busca-sugestoes" class="busca-sugestoes" role="listbox" aria-label="Sugestões de emissões" aria-expanded="false"></div>
     </div>
     <div class="inserir-acoes">
         <button type="submit" class="btn btn-submit">Consultar</button>
@@ -87,6 +88,6 @@
     {% endif %}
 {% endif %}
 
-<script src="/static/busca.js?v=1"></script>
+<script src="/static/busca.js?v=2"></script>
 <script src="/static/upload-imagens.js?v=3"></script>
 {% endblock %}

@@ -459,6 +459,9 @@ input[type="number"]::-webkit-outer-spin-button {
 .ticket-acoes > .ticket-acao-inline {
     margin-right: .25rem;
 }
+.ticket-acao { width: 1%; min-width: 15rem; white-space: normal; vertical-align: top; }
+.ticket-tratamento-form { display: grid; gap: .45rem; margin: 0; }
+.ticket-tratamento-form .btn { width: max-content; margin: 0; }
 .ticket-status-select {
     height: 1.75rem;
     min-width: 6.8rem;
@@ -510,6 +513,8 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 8px;
     box-shadow: 0 12px 35px rgb(0 0 0 / 25%);
 }
+.popup-editar-emissao-ticket-conteudo { width: min(1080px, calc(100vw - 2rem)); }
+.popup-editar-emissao-ticket-frame { width: 100%; height: min(720px, calc(100vh - 7rem)); border: 0; }
 .popup-ticket-cabecalho {
     display: flex;
     align-items: center;

@@ -34,6 +34,8 @@
     <a href="/consultar">Pendências</a><span aria-current="page">Histórico</span>
     {% elif caminho_atual.startswith('/consultar') %}
     <span aria-current="page">Pendências</span>
+    {% elif caminho_atual.startswith('/tratamento-tickets') %}
+    <span aria-current="page">Tratamento de tickets</span>
     {% elif (request.state.permissoes|default({})).teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem/consultar') %}
     <a href="/teste_etiquetagem">Etiquetagem</a><span aria-current="page">Registros</span>
     {% elif (request.state.permissoes|default({})).teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem') %}

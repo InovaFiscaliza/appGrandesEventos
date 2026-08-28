@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+
+<section class="module-section" aria-labelledby="tratamento-tickets-titulo">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">OPERAÇÃO</span>
+            <h1 id="tratamento-tickets-titulo" class="wf-screen-title margin-bottom-l">Tratamento de tickets</h1>
+        </div>
+    </div>
+
+    {% if tickets %}
+    <div class="table-scroll" role="region" aria-label="Tickets atribuídos" tabindex="0">
+        <table class="ute-table tickets-tabela">
+            <thead>
+                <tr>
+                    <th>Ticket</th>
+                    <th>Emissões vinculadas</th>
+                    <th>Local</th>
+                    <th>Frequência</th>
+                    <th>Largura</th>
+                    <th>Prioridade</th>
+                    <th>Status</th>
+                    <th>Observações</th>
+                    <th>Fiscais atribuídos</th>
+                    <th>Criado em</th>
+                    <th>Atualizado em</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                <tr>
+                    <td>{{ ticket.id }}</td>
+                    <td>
+                        <div>{{ ticket.identificacao or 'Não informada' }}</div>
+                        <div class="font-size-s text-neutral-6">
+                            Números:
+                            {% for ocorrencia_id in (ticket.ocorrencia_ids or '').split(',') %}
+                            <button type="button" class="emissao-id-btn js-editar-emissao" data-ocorrencia-id="{{ ocorrencia_id.strip() }}" title="Abrir emissão {{ ocorrencia_id.strip() }} para edição">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
+                            {% else %}-
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>{{ ticket.local_regiao or 'Não informado' }}</td>
+                    <td>{{ ticket.frequencia_mhz or '-' }}{% if ticket.frequencia_mhz %} MHz{% endif %}</td>
+                    <td>{{ ticket.largura_khz or '-' }}{% if ticket.largura_khz %} kHz{% endif %}</td>
+                    <td>{{ ticket.prioridade }}</td>
+                    <td>{{ ticket.status }}</td>
+                    <td>{{ ticket.observacoes or '-' }}</td>
+                    <td>{{ ticket.fiscais or 'Nenhum fiscal atribuído' }}</td>
+                    <td>{{ ticket.criado_em or '-' }}</td>
+                    <td>{{ ticket.atualizado_em or '-' }}</td>
+                    <td class="ticket-acao">
+                        <form method="post" action="/tratamento-tickets/{{ ticket.id }}" class="ticket-tratamento-form">
+                            <select name="status" class="ticket-status-select" aria-label="Status do ticket {{ ticket.id }}">
+                                <option value="pendente" {% if ticket.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                                <option value="concluido_pelos_fiscais">Concluído pelos fiscais</option>
+                            </select>
+                            <textarea name="observacoes" class="form-control" rows="2" aria-label="Relato do tratamento do ticket {{ ticket.id }}" placeholder="Relato do tratamento">{{ ticket.observacoes or '' }}</textarea>
+                            <button type="submit" class="btn btn-primary">Atualizar</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="flash flash-success">Nenhum ticket aberto atribuído a você.</div>
+    {% endif %}
+</section>
+
+<div id="popup-editar-emissao-ticket" class="popup-ticket" hidden>
+    <div class="popup-ticket-conteudo popup-editar-emissao-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-editar-emissao-ticket-titulo">
+        <div class="popup-ticket-cabecalho">
+            <h2 id="popup-editar-emissao-ticket-titulo">Editar emissão</h2>
+            <button type="button" class="popup-ticket-fechar" id="fechar-popup-editar-emissao-ticket" aria-label="Fechar edição">×</button>
+        </div>
+        <iframe id="popup-editar-emissao-ticket-frame" class="popup-editar-emissao-ticket-frame" title="Edição da emissão"></iframe>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const popup = document.getElementById("popup-editar-emissao-ticket");
+        const frame = document.getElementById("popup-editar-emissao-ticket-frame");
+        const fechar = () => {
+            popup.hidden = true;
+            frame.src = "about:blank";
+        };
+
+        document.getElementById("fechar-popup-editar-emissao-ticket").addEventListener("click", fechar);
+        popup.addEventListener("click", (event) => {
+            if (event.target === popup) fechar();
+        });
+        document.querySelectorAll(".js-editar-emissao").forEach((botao) => {
+            botao.addEventListener("click", async () => {
+                const resposta = await fetch("/api/pendencias", { cache: "no-store" });
+                const pendencias = resposta.ok ? await resposta.json() : [];
+                const emissao = pendencias.find((item) => String(item.id) === botao.dataset.ocorrenciaId);
+                if (!emissao) {
+                    window.alert("A emissão não está disponível para edição.");
+                    return;
+                }
+                frame.src = `/consultar?key=${encodeURIComponent(emissao.row_key)}`;
+                popup.hidden = false;
+            });
+        });
+    });
+</script>
+{% endblock %}

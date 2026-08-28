@@ -33,6 +33,27 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _usuario_e_coordenador(request: Request) -> bool:
+    """Confirma se o fiscal logado coordena o evento selecionado."""
+    evento_id = request.session.get("spreadsheet_id")
+    fiscal_id = request.session.get("fiscal_id")
+    return str(
+        request.session.get("tipo_usuario", "")
+    ).strip().casefold() == "coordenação" or bool(
+        evento_id
+        and str(evento_id).isdigit()
+        and fiscal_id
+        and str(fiscal_id).isdigit()
+        and int(fiscal_id) in listar_coordenadores_evento(int(evento_id))
+    )
+
+
+def _acesso_negado(request: Request) -> RedirectResponse:
+    """Redireciona para o menu quando o usuário não é coordenador."""
+    request.session["flash_error"] = "Acesso restrito aos coordenadores do evento."
+    return RedirectResponse("/menu", status_code=303)
+
+
 def _ctx(request: Request, **kwargs):
     return {
         "request": request,
@@ -46,6 +67,9 @@ def _ctx(request: Request, **kwargs):
 
 @router.get("/criar-evento", response_class=HTMLResponse)
 async def get_criar_evento(request: Request):
+    if not _usuario_e_coordenador(request):
+        return _acesso_negado(request)
+
     editar_id = request.query_params.get("editar")
     evento = None
     estacoes = []
@@ -80,6 +104,12 @@ async def get_criar_evento(request: Request):
 @router.post("/fiscais")
 async def post_criar_fiscal(request: Request):
     """Cadastra um fiscal globalmente para uso em todos os eventos."""
+    if not _usuario_e_coordenador(request):
+        return JSONResponse(
+            {"ok": False, "mensagem": "Acesso restrito aos coordenadores do evento."},
+            status_code=403,
+        )
+
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
     local_anatel = str(form.get("local_anatel", "")).strip()
@@ -103,14 +133,23 @@ async def post_criar_fiscal(request: Request):
 
 
 @router.post("/fiscais/{fiscal_id}/excluir")
-async def post_excluir_fiscal(fiscal_id: int):
+async def post_excluir_fiscal(request: Request, fiscal_id: int):
     """Exclui um fiscal da lista global."""
+    if not _usuario_e_coordenador(request):
+        return JSONResponse(
+            {"ok": False, "mensagem": "Acesso restrito aos coordenadores do evento."},
+            status_code=403,
+        )
+
     excluir_fiscal(fiscal_id)
     return JSONResponse({"ok": True})
 
 
 @router.post("/criar-evento")
 async def post_criar_evento(request: Request):
+    if not _usuario_e_coordenador(request):
+        return _acesso_negado(request)
+
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
     cidade = str(form.get("cidade", "")).strip()
@@ -181,6 +220,9 @@ async def post_criar_evento(request: Request):
 
 @router.post("/criar-evento/{evento_id}/editar")
 async def post_editar_evento(request: Request, evento_id: int):
+    if not _usuario_e_coordenador(request):
+        return _acesso_negado(request)
+
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
     cidade = str(form.get("cidade", "")).strip()

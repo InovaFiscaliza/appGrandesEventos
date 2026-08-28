@@ -15,7 +15,9 @@ from app.services.postgres import (
     carregar_pendencias_painel_mapeadas,
     carregar_pendencias_todas_estacoes,
     consultar_historico_ocorrencia,
+    listar_coordenadores_evento,
     listar_estacoes_evento,
+    listar_tickets_evento,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
@@ -75,7 +77,34 @@ def _ctx(request: Request, **kwargs):
     }
 
 
-def _load_pendencias(sp_id) -> pd.DataFrame:
+def _usuario_e_coordenador(request: Request, evento_id: int) -> bool:
+    """Confirma se o fiscal logado coordena o evento selecionado."""
+    fiscal_id = request.session.get("fiscal_id")
+    return bool(
+        fiscal_id
+        and str(fiscal_id).isdigit()
+        and int(fiscal_id) in listar_coordenadores_evento(evento_id)
+    )
+
+
+def _fiscal_pode_tratar_ocorrencia(
+    request: Request, ocorrencia: dict | pd.Series
+) -> bool:
+    """Limita o fiscal comum às emissões cadastradas em seu próprio nome."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return False
+    if _usuario_e_coordenador(request, int(evento_id)):
+        return True
+
+    fiscal_logado = str(request.session.get("fiscal_nome", "")).strip().casefold()
+    fiscal_ocorrencia = (
+        str(ocorrencia.get("Fiscal", ocorrencia.get("fiscal", ""))).strip().casefold()
+    )
+    return bool(fiscal_logado and fiscal_logado == fiscal_ocorrencia)
+
+
+def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
     dfs = [
         d
         for d in [
@@ -84,7 +113,33 @@ def _load_pendencias(sp_id) -> pd.DataFrame:
         ]
         if d is not None and not d.empty
     ]
-    return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+    pendencias = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+    if pendencias.empty or _usuario_e_coordenador(request, int(sp_id)):
+        return pendencias
+
+    fiscal_logado = str(request.session.get("fiscal_nome", "")).strip().casefold()
+    fiscal_id = request.session.get("fiscal_id")
+    if not fiscal_logado or "Fiscal" not in pendencias.columns:
+        return pd.DataFrame(columns=pendencias.columns)
+
+    ocorrencias_em_tickets_atribuidos = set()
+    if fiscal_id and str(fiscal_id).isdigit():
+        for ticket in listar_tickets_evento(int(sp_id)):
+            if int(fiscal_id) not in ticket.get("fiscal_ids", []):
+                continue
+            ocorrencias_em_tickets_atribuidos.update(
+                item.strip()
+                for item in str(ticket.get("ocorrencia_ids") or "").split(",")
+                if item.strip()
+            )
+
+    return pendencias[
+        (
+            pendencias["Fiscal"].fillna("").astype(str).str.strip().str.casefold()
+            == fiscal_logado
+        )
+        | pendencias["ID"].astype(str).isin(ocorrencias_em_tickets_atribuidos)
+    ].copy()
 
 
 def _make_row_key(row: pd.Series) -> str:
@@ -108,7 +163,7 @@ async def get_consultar(request: Request, key: str = ""):
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
-    df = _load_pendencias(sp_id)
+    df = _load_pendencias(request, sp_id)
     estacoes = listar_estacoes_evento(evento_id=sp_id)
 
     pendencias = []
@@ -145,6 +200,18 @@ async def get_historico_ocorrencia(request: Request, id: int | None = None):
     if id is None:
         request.session["flash_error"] = (
             "Selecione uma ocorrência para consultar o histórico."
+        )
+        return RedirectResponse("/consultar", status_code=303)
+
+    pendencias = _load_pendencias(request, evento_id)
+    ocorrencia = (
+        pendencias[pendencias["ID"].astype(str) == str(id)]
+        if not pendencias.empty
+        else pd.DataFrame()
+    )
+    if ocorrencia.empty:
+        request.session["flash_error"] = (
+            "Você não tem permissão para consultar esta emissão."
         )
         return RedirectResponse("/consultar", status_code=303)
 
@@ -203,6 +270,18 @@ async def post_consultar_salvar(request: Request):
     estacao_id = form.get("estacao_id", "").strip()
     acao = form.get("acao", "salvar")
 
+    pendencias = _load_pendencias(request, sp_id)
+    ocorrencia = (
+        pendencias[pendencias["ID"].astype(str) == str(id_val)]
+        if not pendencias.empty
+        else pd.DataFrame()
+    )
+    if ocorrencia.empty:
+        request.session["flash_error"] = (
+            "Você não tem permissão para alterar esta emissão."
+        )
+        return RedirectResponse("/consultar", status_code=303)
+
     erros = list(erros_imagens)
     if not ident_edit:
         erros.append("Identificação")
@@ -237,7 +316,7 @@ async def post_consultar_salvar(request: Request):
                 evento_id=sp_id,
                 id_ocorrencia=id_val,
                 novos_valores=pac,
-                usuario_fiscal=USR_FISCAL_ANATEL,
+                usuario_fiscal=request.session.get("fiscal_nome", USR_FISCAL_ANATEL),
                 imagens=imagens,
                 imagens_excluir=imagens_excluir,
             )
@@ -268,7 +347,7 @@ async def post_consultar_salvar(request: Request):
     else:
         request.session["flash_success"] = res
     if acao == "salvar_proxima":
-        proximas = _load_pendencias(sp_id)
+        proximas = _load_pendencias(request, sp_id)
         proxima_key = ""
         if not proximas.empty:
             for _, row in proximas.iterrows():
@@ -289,7 +368,7 @@ async def api_pendencias(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
-    df = _load_pendencias(sp_id)
+    df = _load_pendencias(request, sp_id)
     if df.empty:
         return JSONResponse([])
     records = []
@@ -335,6 +414,14 @@ async def api_ocorrencia_imagens(request: Request, id: int):
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    pendencias = _load_pendencias(request, evento_id)
+    ocorrencia = (
+        pendencias[pendencias["ID"].astype(str) == str(id)]
+        if not pendencias.empty
+        else pd.DataFrame()
+    )
+    if ocorrencia.empty:
+        return JSONResponse({"erro": "Acesso não autorizado"}, status_code=403)
     return JSONResponse(carregar_imagens_ocorrencia(evento_id, id))
 
 
@@ -351,6 +438,14 @@ async def api_consultar_salvar(request: Request):
 
     fonte = dados.get("fonte", "")
     id_val = dados.get("id_val", "")
+    pendencias = _load_pendencias(request, sp_id)
+    ocorrencia = (
+        pendencias[pendencias["ID"].astype(str) == str(id_val)]
+        if not pendencias.empty
+        else pd.DataFrame()
+    )
+    if ocorrencia.empty:
+        return JSONResponse({"erro": "Acesso não autorizado"}, status_code=403)
     pac = {
         "Identificação": dados.get("Identificação", ""),
         "Autorizado?": dados.get("Autorizado?", ""),
@@ -368,7 +463,7 @@ async def api_consultar_salvar(request: Request):
             evento_id=sp_id,
             id_ocorrencia=id_val,
             novos_valores=pac,
-            usuario_fiscal=USR_FISCAL_ANATEL,
+            usuario_fiscal=request.session.get("fiscal_nome", USR_FISCAL_ANATEL),
         )
     else:
         return JSONResponse({"erro": "Origem da ocorrência inválida."}, status_code=400)

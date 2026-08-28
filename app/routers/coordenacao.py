@@ -30,7 +30,9 @@ templates = Jinja2Templates(directory="app/templates")
 def _usuario_e_coordenador(request: Request, evento_id: int) -> bool:
     """Confirma que o fiscal logado está vinculado como coordenador do evento."""
     fiscal_id = request.session.get("fiscal_id")
-    return bool(
+    return str(
+        request.session.get("tipo_usuario", "")
+    ).strip().casefold() == "coordenação" or bool(
         fiscal_id
         and str(fiscal_id).isdigit()
         and int(fiscal_id) in listar_coordenadores_evento(evento_id)
@@ -234,6 +236,7 @@ async def post_ticket_status(request: Request, ticket_id: int):
         fiscal_ids=fiscais,
         observacoes=observacoes,
         prioridade=prioridade,
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
     )
     if ticket_anterior:
         fiscais_anteriores = (

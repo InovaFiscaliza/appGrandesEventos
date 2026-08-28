@@ -435,6 +435,10 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
             conn.execute(
                 text("""
                   SELECT t.id, t.evento_id, t.status, t.prioridade, t.observacoes,
+                      to_char(t.criado_em AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI') AS criado_em,
+                      to_char(t.atualizado_em AT TIME ZONE 'America/Sao_Paulo',
+                          'DD/MM/YYYY HH24:MI') AS atualizado_em,
                       string_agg(DISTINCT o.id::text, ', ' ORDER BY o.id::text) AS ocorrencia_ids,
                       string_agg(DISTINCT COALESCE(o.identificacao, 'Emissão #' || o.id::text), ', ' ORDER BY COALESCE(o.identificacao, 'Emissão #' || o.id::text)) AS identificacao,
                       string_agg(DISTINCT COALESCE(o.local_regiao, 'Não informado'), ', ' ORDER BY COALESCE(o.local_regiao, 'Não informado')) AS local_regiao,
@@ -451,11 +455,12 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
                 LEFT JOIN ticket_fiscais tf ON tf.ticket_id = t.id
                 LEFT JOIN fiscais f ON f.id = tf.fiscal_id
                 WHERE t.evento_id = :evento_id
-                GROUP BY t.id, t.evento_id, t.status, t.prioridade, t.observacoes
+                GROUP BY t.id, t.evento_id, t.status, t.prioridade, t.observacoes,
+                         t.criado_em, t.atualizado_em
                 ORDER BY
                     CASE t.status
                         WHEN 'pendente' THEN 0
-                        WHEN 'em_andamento' THEN 1
+                        WHEN 'concluido_pelos_fiscais' THEN 1
                         ELSE 2
                     END,
                     CASE t.prioridade
@@ -684,8 +689,9 @@ def atualizar_ticket_evento(
     fiscal_ids: list[int] | None = None,
     observacoes: str | None = None,
     prioridade: str | None = None,
+    usuario_fiscal: str = USR_FISCAL_ANATEL,
 ) -> None:
-    """Atualiza status, prioridade, observações e a lista de fiscais do ticket."""
+    """Atualiza o ticket e conclui suas emissões no encerramento pela Coordenação."""
     with get_engine().begin() as conn:
         conn.execute(
             text("""
@@ -706,22 +712,49 @@ def atualizar_ticket_evento(
         )
 
         if status == "concluido":
-            # Ao encerrar o ticket, libera somente emissões com situação
-            # pendente para que possam voltar à fila de tickets.
-            conn.execute(
-                text("""
-                    DELETE FROM ticket_ocorrencias toco
-                    USING ocorrencias o
-                    WHERE toco.ticket_id = :ticket_id
-                      AND o.id = toco.ocorrencia_id
-                      AND o.evento_id = :evento_id
-                      AND lower(trim(COALESCE(o.situacao, ''))) = 'pendente'
+            emissões_concluidas = (
+                conn.execute(
+                    text("""
+                    WITH emissões_do_ticket AS (
+                        SELECT o.id, o.situacao AS valor_anterior
+                        FROM ocorrencias o
+                        JOIN ticket_ocorrencias toco ON toco.ocorrencia_id = o.id
+                        WHERE toco.ticket_id = :ticket_id
+                          AND o.evento_id = :evento_id
+                    )
+                    UPDATE ocorrencias o
+                    SET situacao = 'Concluído'
+                    FROM emissões_do_ticket emissao
+                    WHERE o.id = emissao.id
+                      AND o.situacao IS DISTINCT FROM 'Concluído'
+                    RETURNING o.id, emissao.valor_anterior
                 """),
-                {
-                    "ticket_id": int(ticket_id),
-                    "evento_id": int(evento_id),
-                },
+                    {
+                        "ticket_id": int(ticket_id),
+                        "evento_id": int(evento_id),
+                    },
+                )
+                .mappings()
+                .all()
             )
+            for emissao in emissões_concluidas:
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Situação', :valor_anterior, 'Concluído'
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(emissao["id"]),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "valor_anterior": emissao["valor_anterior"],
+                    },
+                )
 
         if fiscal_ids is not None:
             conn.execute(

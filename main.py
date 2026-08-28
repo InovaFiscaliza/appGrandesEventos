@@ -30,6 +30,7 @@ from app.routers import (
     selecao,
     tabela_ute,
     teste_etiquetagem,
+    tratamento_tickets,
 )
 from app.services.postgres import (
     buscar_planilhas,
@@ -86,7 +87,9 @@ async def carregar_eventos_no_request(request: Request, call_next):
         obter_evento(int(evento_id)) if evento_id and str(evento_id).isdigit() else None
     )
     fiscal_id = request.session.get("fiscal_id")
-    coordenador_evento = (
+    coordenador_evento = str(
+        request.session.get("tipo_usuario", "")
+    ).strip().casefold() == "coordenação" or (
         bool(fiscal_id)
         and evento_id is not None
         and str(fiscal_id).isdigit()
@@ -147,6 +150,7 @@ app.include_router(bsr_erb.router)
 app.include_router(busca.router)
 app.include_router(tabela_ute.router)
 app.include_router(teste_etiquetagem.router)
+app.include_router(tratamento_tickets.router)
 _mensagem_inicializacao("Rotas carregadas; finalizando inicialização")
 
 if __name__ == "__main__":

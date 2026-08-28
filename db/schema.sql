@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     ocorrencia_id BIGINT REFERENCES ocorrencias(id) ON DELETE CASCADE,
     fiscal_id BIGINT REFERENCES fiscais(id) ON DELETE SET NULL,
-    status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'em_andamento', 'concluido')),
+    status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluido_pelos_fiscais', 'concluido')),
     prioridade TEXT NOT NULL DEFAULT 'normal' CHECK (prioridade IN ('baixa', 'normal', 'alta')),
     observacoes TEXT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -92,6 +92,11 @@ CREATE TABLE IF NOT EXISTS tickets (
 
 CREATE INDEX IF NOT EXISTS idx_tickets_evento_status
     ON tickets (evento_id, status, fiscal_id);
+
+ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check;
+UPDATE tickets SET status = 'pendente' WHERE status = 'em_andamento';
+ALTER TABLE tickets ADD CONSTRAINT tickets_status_check
+    CHECK (status IN ('pendente', 'concluido_pelos_fiscais', 'concluido'));
 
 CREATE TABLE IF NOT EXISTS ticket_ocorrencias (
     ticket_id BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
