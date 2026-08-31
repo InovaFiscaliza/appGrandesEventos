@@ -17,7 +17,18 @@ from typing import Dict, List, Optional
 import pandas as pd
 from sqlalchemy import text
 
-from app.config import IDENT_OPCOES, USR_FISCAL_ANATEL
+from app.config import (
+    IDENT_OPCOES,
+    SITUACAO_CONCLUIDA_COORDENADOR,
+    SITUACAO_CONCLUIDA_FISCAL,
+    SITUACAO_PENDENTE,
+    SITUACOES_DISPONIVEIS_AO_FISCAL,
+    STATUS_TICKET_CONCLUIDO_COORDENADOR,
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
+    STATUS_TICKET_PENDENTE,
+    STATUS_TICKET_VALIDOS,
+    USR_FISCAL_ANATEL,
+)
 from app.services.db import get_engine
 
 logger = logging.getLogger(__name__)
@@ -486,7 +497,7 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
 
 
 def listar_emissoes_evento(evento_id: int) -> list[dict]:
-    """Lista somente as emissões com situação pendente para criação de tickets."""
+    """Lista emissões que ainda aguardam uma decisão da coordenação."""
     with get_engine().connect() as conn:
         rows = (
             conn.execute(
@@ -495,6 +506,7 @@ def listar_emissoes_evento(evento_id: int) -> list[dict]:
                       NULLIF(concat_ws(', ', o.fiscal, participantes.nomes), '') AS fiscal,
                       o.local_regiao, o.data,
                        o.hora, o.frequencia_mhz, o.largura_khz, o.situacao,
+                       o.concluida_por,
                        vinculacao.ticket_id AS ticket_id_vinculado,
                        (vinculacao.ticket_id IS NOT NULL) AS ja_possui_ticket
                 FROM ocorrencias o
@@ -514,8 +526,18 @@ def listar_emissoes_evento(evento_id: int) -> list[dict]:
                     LIMIT 1
                 ) vinculacao ON true
                 WHERE o.evento_id = :evento_id
-                  AND lower(trim(o.situacao)) = 'pendente'
-                ORDER BY data DESC NULLS LAST, hora DESC NULLS LAST, id DESC
+                  AND (
+                      lower(trim(o.situacao)) = 'pendente'
+                      OR (
+                          lower(unaccent(trim(o.situacao))) IN (
+                              'concluido', 'concluida pelo fiscal'
+                          )
+                          AND COALESCE(o.concluida_por, 'Fiscal') = 'Fiscal'
+                      )
+                  )
+                ORDER BY
+                    CASE WHEN lower(trim(o.situacao)) = 'pendente' THEN 0 ELSE 1 END,
+                    data DESC NULLS LAST, hora DESC NULLS LAST, id DESC
             """),
                 {"evento_id": int(evento_id)},
             )
@@ -535,7 +557,8 @@ def obter_emissao_evento(evento_id: int, ocorrencia_id: int) -> dict | None:
                        o.data, o.hora, o.frequencia_mhz, o.largura_khz,
                        o.faixa, o.autorizado, o.ute, o.processo_sei_ute,
                        o.observacoes, o.alguem_ciente, o.interferente,
-                       o.situacao, COALESCE(e.nome, '') AS estacao_nome
+                       o.situacao, o.concluida_por,
+                       COALESCE(e.nome, '') AS estacao_nome
                 FROM ocorrencias o
                 LEFT JOIN estacoes e ON e.id = o.estacao_id
                 WHERE o.evento_id = :evento_id AND o.id = :ocorrencia_id
@@ -557,26 +580,48 @@ def salvar_ticket_evento(
     prioridade: str = "normal",
     observacoes: str | None = None,
     fiscal_ids: list[int] | None = None,
+    usuario_fiscal: str = USR_FISCAL_ANATEL,
 ) -> int:
-    """Cria um ticket vinculado a uma ou mais emissões pendentes."""
+    """Cria um ticket e devolve as emissões selecionadas ao estado pendente."""
     with get_engine().begin() as conn:
         ids = list(dict.fromkeys(int(item) for item in ocorrencia_ids))
         if not ids:
             raise ValueError("Selecione ao menos uma emissão para abrir o ticket.")
 
-        emissao_count = conn.execute(
-            text("""
-                SELECT count(*)
-                FROM ocorrencias
-                WHERE evento_id = :evento_id
-                  AND id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
-                  AND lower(trim(situacao)) = 'pendente'
-            """),
-            {"evento_id": int(evento_id), "ocorrencia_ids": ids},
-        ).scalar_one()
-        if int(emissao_count) != len(ids):
+        emissoes = (
+            conn.execute(
+                text("""
+                    SELECT id, situacao, concluida_por
+                    FROM ocorrencias
+                    WHERE evento_id = :evento_id
+                      AND id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
+                    FOR UPDATE
+                """),
+                {"evento_id": int(evento_id), "ocorrencia_ids": ids},
+            )
+            .mappings()
+            .all()
+        )
+        emissoes_validas = [
+            emissao
+            for emissao in emissoes
+            if (
+                str(emissao["situacao"] or "").strip().casefold()
+                == SITUACAO_PENDENTE.casefold()
+                or (
+                    str(emissao["situacao"] or "").strip().casefold()
+                    in {
+                        "concluído",
+                        "concluido",
+                        SITUACAO_CONCLUIDA_FISCAL.casefold(),
+                    }
+                    and (emissao["concluida_por"] or "Fiscal") == "Fiscal"
+                )
+            )
+        ]
+        if len(emissoes_validas) != len(ids):
             raise ValueError(
-                "Somente emissões pendentes do evento podem receber tickets de fiscalização."
+                "Somente emissões pendentes ou concluídas pelo fiscal, ainda em inspeção, podem receber tickets."
             )
 
         emissao_ja_vinculada = conn.execute(
@@ -620,6 +665,78 @@ def salvar_ticket_evento(
             """),
             {"ticket_id": int(ticket_id), "ocorrencia_ids": ids},
         )
+
+        for emissao in emissoes_validas:
+            situacao_anterior = emissao["situacao"]
+            conclusao_anterior = emissao["concluida_por"]
+            conn.execute(
+                text("""
+                    INSERT INTO auditoria_ocorrencias (
+                        ocorrencia_id, evento_id, usuario_fiscal, campo,
+                        valor_anterior, valor_novo
+                    ) VALUES (
+                        :ocorrencia_id, :evento_id, :usuario_fiscal,
+                        'Ticket vinculado', NULL, :valor_novo
+                    )
+                """),
+                {
+                    "ocorrencia_id": int(emissao["id"]),
+                    "evento_id": int(evento_id),
+                    "usuario_fiscal": usuario_fiscal,
+                    "valor_novo": f"Ticket #{ticket_id}",
+                },
+            )
+            if situacao_anterior == "Pendente" and conclusao_anterior is None:
+                continue
+            conn.execute(
+                text("""
+                    UPDATE ocorrencias
+                    SET situacao = 'Pendente',
+                        concluida_por = NULL,
+                        atualizado_em = now()
+                    WHERE evento_id = :evento_id AND id = :ocorrencia_id
+                """),
+                {
+                    "evento_id": int(evento_id),
+                    "ocorrencia_id": int(emissao["id"]),
+                },
+            )
+            if situacao_anterior != "Pendente":
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Situação', :valor_anterior, 'Pendente'
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(emissao["id"]),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "valor_anterior": situacao_anterior,
+                    },
+                )
+            if conclusao_anterior is not None:
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Concluída por', :valor_anterior, NULL
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(emissao["id"]),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "valor_anterior": conclusao_anterior,
+                    },
+                )
 
         conn.execute(
             text("DELETE FROM ticket_fiscais WHERE ticket_id = :ticket_id"),
@@ -699,14 +816,17 @@ def atualizar_ticket_evento(
     prioridade: str | None = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
 ) -> None:
-    """Atualiza o ticket e conclui suas emissões no encerramento pela Coordenação."""
+    """Atualiza o ticket e sincroniza a situação das emissões vinculadas."""
+    if status not in STATUS_TICKET_VALIDOS:
+        raise ValueError("Status de ticket inválido.")
+
     with get_engine().begin() as conn:
-        conn.execute(
+        resultado = conn.execute(
             text("""
                 UPDATE tickets
                 SET status = :status,
                     prioridade = COALESCE(:prioridade, prioridade),
-                    observacoes = :observacoes,
+                    observacoes = COALESCE(:observacoes, observacoes),
                     atualizado_em = now()
                 WHERE id = :ticket_id AND evento_id = :evento_id
             """),
@@ -718,34 +838,65 @@ def atualizar_ticket_evento(
                 "observacoes": observacoes,
             },
         )
+        if resultado.rowcount == 0:
+            raise ValueError("Ticket não encontrado no evento selecionado.")
 
-        if status == "concluido":
-            emissões_concluidas = (
-                conn.execute(
-                    text("""
-                    WITH emissões_do_ticket AS (
-                        SELECT o.id, o.situacao AS valor_anterior
-                        FROM ocorrencias o
-                        JOIN ticket_ocorrencias toco ON toco.ocorrencia_id = o.id
-                        WHERE toco.ticket_id = :ticket_id
-                          AND o.evento_id = :evento_id
-                    )
-                    UPDATE ocorrencias o
-                    SET situacao = 'Concluído'
-                    FROM emissões_do_ticket emissao
-                    WHERE o.id = emissao.id
-                      AND o.situacao IS DISTINCT FROM 'Concluído'
-                    RETURNING o.id, emissao.valor_anterior
+        situacao_por_status = {
+            STATUS_TICKET_PENDENTE: (SITUACAO_PENDENTE, None),
+            STATUS_TICKET_CONCLUIDO_FISCAIS: (
+                SITUACAO_CONCLUIDA_FISCAL,
+                "Fiscal",
+            ),
+            STATUS_TICKET_CONCLUIDO_COORDENADOR: (
+                SITUACAO_CONCLUIDA_COORDENADOR,
+                "Coordenador",
+            ),
+        }
+        situacao_nova, conclusao_nova = situacao_por_status[status]
+        emissoes = (
+            conn.execute(
+                text("""
+                    SELECT o.id, o.situacao, o.concluida_por
+                    FROM ocorrencias o
+                    JOIN ticket_ocorrencias vinculacao
+                      ON vinculacao.ocorrencia_id = o.id
+                    WHERE vinculacao.ticket_id = :ticket_id
+                      AND o.evento_id = :evento_id
+                    FOR UPDATE OF o
                 """),
-                    {
-                        "ticket_id": int(ticket_id),
-                        "evento_id": int(evento_id),
-                    },
-                )
-                .mappings()
-                .all()
+                {
+                    "ticket_id": int(ticket_id),
+                    "evento_id": int(evento_id),
+                },
             )
-            for emissao in emissões_concluidas:
+            .mappings()
+            .all()
+        )
+        for emissao in emissoes:
+            situacao_anterior = emissao["situacao"]
+            conclusao_anterior = emissao["concluida_por"]
+            if (
+                situacao_anterior == situacao_nova
+                and conclusao_anterior == conclusao_nova
+            ):
+                continue
+
+            conn.execute(
+                text("""
+                    UPDATE ocorrencias
+                    SET situacao = :situacao,
+                        concluida_por = :concluida_por,
+                        atualizado_em = now()
+                    WHERE id = :ocorrencia_id AND evento_id = :evento_id
+                """),
+                {
+                    "situacao": situacao_nova,
+                    "concluida_por": conclusao_nova,
+                    "ocorrencia_id": int(emissao["id"]),
+                    "evento_id": int(evento_id),
+                },
+            )
+            if situacao_anterior != situacao_nova:
                 conn.execute(
                     text("""
                         INSERT INTO auditoria_ocorrencias (
@@ -753,14 +904,34 @@ def atualizar_ticket_evento(
                             valor_anterior, valor_novo
                         ) VALUES (
                             :ocorrencia_id, :evento_id, :usuario_fiscal,
-                            'Situação', :valor_anterior, 'Concluído'
+                            'Situação', :valor_anterior, :valor_novo
                         )
                     """),
                     {
                         "ocorrencia_id": int(emissao["id"]),
                         "evento_id": int(evento_id),
                         "usuario_fiscal": usuario_fiscal,
-                        "valor_anterior": emissao["valor_anterior"],
+                        "valor_anterior": situacao_anterior,
+                        "valor_novo": situacao_nova,
+                    },
+                )
+            if conclusao_anterior != conclusao_nova:
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Concluída por', :valor_anterior, :valor_novo
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(emissao["id"]),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "valor_anterior": conclusao_anterior,
+                        "valor_novo": conclusao_nova,
                     },
                 )
 
@@ -788,7 +959,7 @@ def cancelar_ticket_evento(ticket_id: int, evento_id: int) -> None:
         conn.execute(
             text("""
                 UPDATE tickets
-                SET status = 'concluido',
+                SET status = 'concluido_pelo_coordenador',
                     atualizado_em = now()
                 WHERE id = :ticket_id AND evento_id = :evento_id
             """),
@@ -861,7 +1032,7 @@ def listar_eventos_detalhes() -> list[dict]:
     with get_engine().connect() as conn:
         rows = conn.execute(text("""
                   SELECT e.id, e.nome, e.latitude, e.longitude, e.fuso_horario, e.cidade, e.uf,
-                      acao_fiscalizacao, processo_sei,
+                      e.acao_fiscalizacao, e.processo_sei,
                       (
                           SELECT string_agg(f.nome, ', ' ORDER BY f.nome)
                           FROM eventos_coordenadores ec
@@ -2084,6 +2255,14 @@ def inserir_emissao_I_W(
         return False
     try:
         freq = float(dados_formulario.get("Frequência em MHz", 0))
+        situacao = str(
+            dados_formulario.get("Situação", SITUACAO_PENDENTE)
+        ).strip()
+        if situacao not in SITUACOES_DISPONIVEIS_AO_FISCAL:
+            raise ValueError("Status da emissão inválido.")
+        concluida_por = (
+            "Fiscal" if situacao == SITUACAO_CONCLUIDA_FISCAL else None
+        )
 
         dia = dados_formulario.get("Dia")
         if hasattr(dia, "strftime"):
@@ -2100,13 +2279,13 @@ def inserir_emissao_I_W(
                          frequencia_mhz, largura_khz, faixa,
                          identificacao, autorizado, ute,
                          processo_sei_ute, observacoes,
-                         interferente, situacao, fonte)
+                         interferente, situacao, concluida_por, fonte)
                     VALUES
                         (:ev, :estacao_id, :origem_captura, :local, :fiscal, :data, :hora,
                          :freq, :bw, :faixa,
                          :ident, :autz, :ute,
                          :proc, :obs,
-                        :inter, :situ, :fonte)
+                        :inter, :situ, :concluida_por, :fonte)
                     RETURNING id
                 """),
                 {
@@ -2126,11 +2305,30 @@ def inserir_emissao_I_W(
                     "proc": dados_formulario.get("Processo SEI ou Ato UTE", ""),
                     "obs": f"{dados_formulario.get('Observações/Detalhes/Contatos', '')} - {dados_formulario.get('Responsável pela emissão', '')}",
                     "inter": dados_formulario.get("Interferente?", ""),
-                    "situ": dados_formulario.get("Situação", "Pendente"),
+                    "situ": situacao,
+                    "concluida_por": concluida_por,
                     "fonte": "ESTACAO",
                 },
             )
             ocorrencia_id = resultado.scalar_one()
+            if concluida_por:
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Concluída por', NULL, :concluida_por
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(ocorrencia_id),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": dados_formulario.get("Fiscal", ""),
+                        "concluida_por": concluida_por,
+                    },
+                )
             fiscais_participantes = list(
                 dict.fromkeys(
                     int(fiscal_id)
@@ -2599,13 +2797,17 @@ def listar_bsr_erb(evento_id: int) -> list[dict]:
             },
         )
         if registro["imagem_id"]:
+            conteudo = registro["conteudo"]
+            tipo_mime = registro["tipo_mime"]
             item["imagens"].append(
                 {
                     "id": registro["imagem_id"],
                     "nome_arquivo": registro["nome_arquivo"],
                     "url": (
-                        f"data:{registro['tipo_mime']};base64,"
-                        f"{base64.b64encode(bytes(registro['conteudo'])).decode('ascii')}"
+                        f"data:{tipo_mime};base64,"
+                        f"{base64.b64encode(bytes(conteudo)).decode('ascii')}"
+                        if conteudo and tipo_mime
+                        else None
                     ),
                 }
             )
@@ -2649,7 +2851,8 @@ def atualizar_campos_na_aba_mae(
             atual = (
                 conn.execute(
                     text(f"""
-                          SELECT o.{', o.'.join(campos)}, o.estacao_id, o.origem_captura,
+                          SELECT o.{', o.'.join(campos)}, o.concluida_por,
+                              o.estacao_id, o.origem_captura,
                               COALESCE(e.nome, o.origem_captura, '') AS estacao_nome
                     FROM ocorrencias o
                     LEFT JOIN estacoes e ON e.id = o.estacao_id
@@ -2726,6 +2929,10 @@ def atualizar_campos_na_aba_mae(
                             "1",
                             "ok",
                         ]
+                    elif key == "Situação":
+                        novo_valor = str(novos_valores[key]).strip()
+                        if novo_valor not in SITUACOES_DISPONIVEIS_AO_FISCAL:
+                            return "ERRO: status da emissão inválido."
                     else:
                         novo_valor = str(novos_valores[key])
 
@@ -2739,6 +2946,23 @@ def atualizar_campos_na_aba_mae(
                         updates.append(f"{col} = :v_{col}")
                         params[f"v_{col}"] = novo_valor
                         alteracoes.append((key, valor_atual, novo_valor))
+
+                    if key == "Situação":
+                        novo_concluidor = (
+                            "Fiscal"
+                            if novo_valor == SITUACAO_CONCLUIDA_FISCAL
+                            else None
+                        )
+                        if atual["concluida_por"] != novo_concluidor:
+                            updates.append("concluida_por = :v_concluida_por")
+                            params["v_concluida_por"] = novo_concluidor
+                            alteracoes.append(
+                                (
+                                    "Concluída por",
+                                    atual["concluida_por"],
+                                    novo_concluidor,
+                                )
+                            )
 
             if not updates and not imagens and not imagens_excluir:
                 return "Nada a atualizar."
@@ -2875,7 +3099,9 @@ def atualizar_campos_na_aba_mae(
                         "valor_anterior": (
                             None if valor_anterior is None else str(valor_anterior)
                         ),
-                        "valor_novo": str(valor_novo),
+                        "valor_novo": (
+                            None if valor_novo is None else str(valor_novo)
+                        ),
                     },
                 )
         return f"Atualizado no banco (ID {id_ocorrencia})."
@@ -3255,3 +3481,106 @@ def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
     except Exception as e:
         logger.error("Erro ao sugerir emissões: %s", e, exc_info=True)
         return []
+
+
+def concluir_emissao_coordenador(
+    evento_id: int,
+    ocorrencia_id: int,
+    usuario_fiscal: str,
+) -> str:
+    """Conclui definitivamente uma emissão durante a inspeção da coordenação."""
+    if evento_id is None or ocorrencia_id is None:
+        return "ERRO: parâmetros insuficientes."
+    try:
+        with get_engine().begin() as conn:
+            ocorrencia = (
+                conn.execute(
+                    text("""
+                    SELECT o.situacao, o.concluida_por,
+                           EXISTS (
+                               SELECT 1
+                               FROM ticket_ocorrencias vinculacao
+                               JOIN tickets ticket ON ticket.id = vinculacao.ticket_id
+                               WHERE vinculacao.ocorrencia_id = o.id
+                                 AND ticket.evento_id = :evento_id
+                           ) AS possui_ticket
+                    FROM ocorrencias
+                    AS o
+                    WHERE o.id = :ocorrencia_id AND o.evento_id = :evento_id
+                    FOR UPDATE OF o
+                """),
+                    {
+                        "ocorrencia_id": int(ocorrencia_id),
+                        "evento_id": int(evento_id),
+                    },
+                )
+                .mappings()
+                .first()
+            )
+
+            if ocorrencia is None:
+                return "ERRO: ocorrência não encontrada."
+            if ocorrencia["possui_ticket"]:
+                return "ERRO: a emissão possui ticket e deve ser concluída pelo encerramento dele."
+            if (
+                ocorrencia["situacao"] == SITUACAO_CONCLUIDA_COORDENADOR
+                and ocorrencia["concluida_por"] == "Coordenador"
+            ):
+                return "Nada a fazer. Emissão já concluída pelo coordenador."
+
+            if ocorrencia["situacao"] != SITUACAO_CONCLUIDA_COORDENADOR:
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Situação', :valor_anterior, 'Concluída Pelo Coordenador'
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(ocorrencia_id),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "valor_anterior": ocorrencia["situacao"],
+                    },
+                )
+
+            if ocorrencia["concluida_por"] != "Coordenador":
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            'Concluída por', :valor_anterior, 'Coordenador'
+                        )
+                    """),
+                    {
+                        "ocorrencia_id": int(ocorrencia_id),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "valor_anterior": ocorrencia["concluida_por"],
+                    },
+                )
+
+            conn.execute(
+                text("""
+                    UPDATE ocorrencias
+                    SET situacao = 'Concluída Pelo Coordenador',
+                        concluida_por = 'Coordenador',
+                        atualizado_em = now()
+                    WHERE id = :ocorrencia_id AND evento_id = :evento_id
+                """),
+                {
+                    "ocorrencia_id": int(ocorrencia_id),
+                    "evento_id": int(evento_id),
+                },
+            )
+            return f"Emissão #{ocorrencia_id} concluída pelo coordenador."
+
+    except Exception as e:
+        logger.error("Erro ao concluir emissão pelo coordenador: %s", e, exc_info=True)
+        return f"ERRO ao concluir emissão: {e}"

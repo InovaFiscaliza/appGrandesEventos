@@ -49,7 +49,7 @@ def main() -> None:
             "Processo SEI ou Ato UTE": "",
             "Observações/Detalhes/Contatos": "Teste automatizado de inserção",
             "Interferente?": "Não",
-            "Situação": "Concluído",
+            "Situação": "Concluída Pelo Fiscal",
             "Estação ID": None,
             "Origem da captura": "Analisador de espectro - campo",
             "Fiscais participantes": [],

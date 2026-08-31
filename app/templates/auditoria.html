@@ -45,8 +45,18 @@
     </form>
 
     {% if auditoria %}
+    <div class="form-group busca-tamanho-pagina">
+        <label for="auditoria-page-size">Itens por página:</label>
+        <select id="auditoria-page-size" class="form-control">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+        </select>
+    </div>
     <div class="table-scroll historico-tabela-wrap" role="region" aria-label="Auditoria consolidada" tabindex="0">
-        <table class="historico-tabela">
+        <table id="auditoria-tabela" class="historico-tabela">
             <thead>
                 <tr>
                     <th scope="col">Origem</th>
@@ -85,6 +95,7 @@
             </tbody>
         </table>
     </div>
+    <div id="auditoria-pagination" class="pendencias-pagination ute-pagination" aria-label="Paginação dos registros de auditoria"></div>
     {% else %}
     <p class="historico-vazio">Nenhum registro de auditoria encontrado para este filtro.</p>
     {% endif %}
@@ -93,6 +104,7 @@
     </div>
 </section>
 <script src="/static/upload-imagens.js?v=3"></script>
+<script src="/static/auditoria.js?v=1"></script>
 <script>
     document.getElementById("auditoria-origem")?.addEventListener("change", (evento) => {
         evento.target.form?.requestSubmit();

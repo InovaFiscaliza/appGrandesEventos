@@ -10,7 +10,11 @@ from app.services.postgres import (
     listar_tickets_evento,
 )
 from app.utils.formatters import _img_b64
-from app.config import TITULO_PRINCIPAL
+from app.config import (
+    STATUS_TICKET_CONCLUIDO_COORDENADOR,
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
+    TITULO_PRINCIPAL,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -56,7 +60,11 @@ async def get_menu(request: Request):
         if fiscal_id
         and str(fiscal_id).isdigit()
         and int(fiscal_id) in ticket.get("fiscal_ids", [])
-        and ticket.get("status") not in {"concluido_pelos_fiscais", "concluido"}
+        and ticket.get("status")
+        not in {
+            STATUS_TICKET_CONCLUIDO_FISCAIS,
+            STATUS_TICKET_CONCLUIDO_COORDENADOR,
+        }
     ]
 
     return templates.TemplateResponse(

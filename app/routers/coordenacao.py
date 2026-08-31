@@ -5,11 +5,18 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import TITULO_PRINCIPAL
+from app.config import (
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
+    STATUS_TICKET_PENDENTE,
+    STATUS_TICKET_ROTULOS,
+    STATUS_TICKET_VALIDOS,
+    TITULO_PRINCIPAL,
+)
 from app.services.postgres import (
     cancelar_ticket_evento,
     atualizar_ticket_evento,
     carregar_imagens_ocorrencia,
+    concluir_emissao_coordenador,
     listar_emissoes_evento,
     listar_coordenadores_evento,
     listar_escalas_evento,
@@ -75,10 +82,16 @@ async def get_coordenacao(request: Request):
         fiscal for fiscal in listar_fiscais() if int(fiscal["id"]) in event_fiscais_ids
     ]
 
-    tickets_abertos = [
+    todos_tickets = listar_tickets_evento(int(evento_id))
+    tickets_pendentes = [
         ticket
-        for ticket in listar_tickets_evento(int(evento_id))
-        if str(ticket.get("status", "")).strip().lower() != "concluido"
+        for ticket in todos_tickets
+        if ticket.get("status") == STATUS_TICKET_PENDENTE
+    ]
+    tickets_concluidos_fiscais = [
+        ticket
+        for ticket in todos_tickets
+        if ticket.get("status") == STATUS_TICKET_CONCLUIDO_FISCAIS
     ]
 
     return templates.TemplateResponse(
@@ -86,7 +99,9 @@ async def get_coordenacao(request: Request):
         "coordenacao.html",
         _ctx(
             request,
-            tickets=tickets_abertos,
+            tickets=tickets_pendentes,
+            tickets_concluidos_fiscais=tickets_concluidos_fiscais,
+            status_ticket_rotulos=STATUS_TICKET_ROTULOS,
             emissões=listar_emissoes_evento(int(evento_id)),
             escalas=listar_escalas_evento(int(evento_id)),
             fiscais=fiscais_evento,
@@ -132,6 +147,9 @@ async def post_ticket_evento(request: Request):
             prioridade=prioridade,
             observacoes=observacoes,
             fiscal_ids=fiscais,
+            usuario_fiscal=request.session.get(
+                "fiscal_nome", "Usuário não identificado"
+            ),
         )
     except ValueError as exc:
         request.session["flash_error"] = str(exc)
@@ -208,6 +226,9 @@ async def post_ticket_status(request: Request, ticket_id: int):
 
     form = await request.form()
     status = str(form.get("status", "pendente")).strip() or "pendente"
+    if status not in STATUS_TICKET_VALIDOS:
+        request.session["flash_error"] = "Status de ticket inválido."
+        return RedirectResponse("/coordenacao", status_code=303)
     prioridade = None
     if "prioridade" in form:
         prioridade = str(form.get("prioridade", "")).strip() or None
@@ -229,15 +250,21 @@ async def post_ticket_status(request: Request, ticket_id: int):
         None,
     )
 
-    atualizar_ticket_evento(
-        ticket_id=ticket_id,
-        evento_id=int(evento_id),
-        status=status,
-        fiscal_ids=fiscais,
-        observacoes=observacoes,
-        prioridade=prioridade,
-        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
-    )
+    try:
+        atualizar_ticket_evento(
+            ticket_id=ticket_id,
+            evento_id=int(evento_id),
+            status=status,
+            fiscal_ids=fiscais,
+            observacoes=observacoes,
+            prioridade=prioridade,
+            usuario_fiscal=request.session.get(
+                "fiscal_nome", "Usuário não identificado"
+            ),
+        )
+    except ValueError as exc:
+        request.session["flash_error"] = str(exc)
+        return RedirectResponse("/coordenacao", status_code=303)
     if ticket_anterior:
         fiscais_anteriores = (
             ", ".join(f"#{item}" for item in (ticket_anterior.get("fiscal_ids") or []))
@@ -324,3 +351,28 @@ async def get_emissao_detalhe(request: Request, ocorrencia_id: int):
         ocorrencia_id=int(ocorrencia_id),
     )
     return JSONResponse(jsonable_encoder(emissao))
+
+
+@router.post("/coordenacao/emissao/{ocorrencia_id}/concluir")
+async def post_concluir_emissao_coordenador(request: Request, ocorrencia_id: int):
+    """Registra a conclusão definitiva de uma emissão pela coordenação."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    if not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
+
+    res = concluir_emissao_coordenador(
+        evento_id=int(evento_id),
+        ocorrencia_id=ocorrencia_id,
+        usuario_fiscal=request.session.get(
+            "fiscal_nome", "Usuário não identificado"
+        ),
+    )
+
+    if res.startswith("ERRO"):
+        request.session["flash_error"] = res
+    else:
+        request.session["flash_success"] = res
+
+    return RedirectResponse("/coordenacao", status_code=303)

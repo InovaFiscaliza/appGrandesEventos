@@ -22,11 +22,11 @@
         <div id="tab-tickets" class="tab-panel active" role="tabpanel" aria-label="Tickets de trabalho">
 
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-bottom:1.25rem;">
-        <h2 class="font-semi-bold margin-bottom-m">Emissões pendentes</h2>
+        <h2 class="font-semi-bold margin-bottom-m">Emissões submetidas para inspeção</h2>
         <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
-            Linhas em cinza indicam emissões já vinculadas a ticket.
+            Revise as emissões pendentes ou concluídas pelo fiscal. A coordenação pode concluir definitivamente cada emissão ou selecionar uma ou mais para atribuir um ticket. Linhas em cinza já estão vinculadas a ticket.
         </p>
-        <div class="table-scroll" role="region" aria-label="Emissões pendentes para criação de tickets" tabindex="0" style="margin-bottom:1rem;">
+        <div class="table-scroll" role="region" aria-label="Emissões submetidas para inspeção" tabindex="0" style="margin-bottom:1rem;">
             <table class="ute-table">
                 <thead>
                     <tr>
@@ -37,6 +37,9 @@
                         <th>Largura</th>
                         <th>Fiscal</th>
                         <th>Local</th>
+                        <th>Status</th>
+                        <th>Concluída por</th>
+                        <th>Ação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -58,10 +61,21 @@
                         <td>{{ emissao.largura_khz or '-' }}{% if emissao.largura_khz %} kHz{% endif %}</td>
                         <td>{{ emissao.fiscal or 'Sem fiscal' }}</td>
                         <td>{{ emissao.local_regiao or 'Não informado' }}</td>
+                        <td>{{ emissao.situacao or '-' }}</td>
+                        <td>{{ emissao.concluida_por or '-' }}</td>
+                        <td class="ticket-acoes">
+                            {% if emissao.ja_possui_ticket %}
+                            <span class="text-neutral-6 font-size-s">Tratar pelo ticket #{{ emissao.ticket_id_vinculado }}</span>
+                            {% else %}
+                            <form method="post" action="/coordenacao/emissao/{{ emissao.id }}/concluir" class="ticket-acao-inline" data-confirmacao-msg="Confirma a conclusão definitiva desta emissão pelo coordenador?">
+                                <button type="submit" class="btn-ticket-mini btn-ticket-encerrar">Concluir pelo coordenador</button>
+                            </form>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7">Nenhuma emissão pendente disponível para criação de tickets.</td>
+                        <td colspan="10">Nenhuma emissão aguardando inspeção da coordenação.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -118,7 +132,7 @@
     </div>
 
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb;">
-        <h2 class="font-semi-bold margin-bottom-m">Tickets abertos</h2>
+        <h2 class="font-semi-bold margin-bottom-m">Tickets pendentes</h2>
         {% if tickets %}
         <div class="table-scroll" role="region" aria-label="Tickets abertos" tabindex="0">
             <table class="ute-table tickets-tabela">
@@ -142,10 +156,16 @@
                         <td>{{ item.id }}</td>
                         <td>
                             <div>{{ item.identificacao or 'Não informado' }}</div>
-                            <div class="font-size-s text-neutral-6">IDs: {{ item.ocorrencia_ids or '-' }}</div>
+                            <div class="font-size-s text-neutral-6">
+                                IDs:
+                                {% for ocorrencia_id in (item.ocorrencia_ids or '').split(',') if ocorrencia_id.strip() %}
+                                <button type="button" class="emissao-id-btn" data-emissao-id="{{ ocorrencia_id.strip() }}">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
+                                {% else %}-
+                                {% endfor %}
+                            </div>
                         </td>
                         <td>{{ item.local_regiao or 'Não informado' }}</td>
-                        <td>{{ item.status }}</td>
+                        <td>{{ status_ticket_rotulos.get(item.status, item.status) }}</td>
                         <td>{{ item.prioridade }}</td>
                         <td>{{ item.frequencia_mhz or '-' }}{% if item.frequencia_mhz %} MHz{% endif %}</td>
                         <td>{{ item.largura_khz or '-' }}{% if item.largura_khz %} kHz{% endif %}</td>
@@ -156,9 +176,64 @@
                             <form method="post" action="/coordenacao/ticket/{{ item.id }}/cancelar" class="ticket-acao-inline" data-sem-confirmacao>
                                 <button type="submit" class="btn-ticket-mini">Cancelar ticket</button>
                             </form>
-                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/status" class="ticket-acao-inline" data-sem-confirmacao>
-                                <input type="hidden" name="status" value="concluido">
-                                <button type="submit" class="btn-ticket-mini btn-ticket-encerrar">Encerrar</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p>Nenhum ticket pendente para este evento.</p>
+        {% endif %}
+    </div>
+
+    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-top:1.25rem;">
+        <h2 class="font-semi-bold margin-bottom-m">Tickets concluídos pelos Fiscais</h2>
+        <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
+            Inspecione as emissões e as providências informadas. Aceite para concluir definitivamente pelo coordenador ou devolva o ticket e suas emissões para pendente.
+        </p>
+        {% if tickets_concluidos_fiscais %}
+        <div class="table-scroll" role="region" aria-label="Tickets concluídos pelos fiscais" tabindex="0">
+            <table class="ute-table tickets-tabela">
+                <thead>
+                    <tr>
+                        <th>Ticket</th>
+                        <th>Emissões</th>
+                        <th>Local</th>
+                        <th>Prioridade</th>
+                        <th>Providências tomadas</th>
+                        <th>Fiscais</th>
+                        <th>Atualizado em</th>
+                        <th>Ações da coordenação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tickets_concluidos_fiscais %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td>
+                            <div>{{ item.identificacao or 'Não informado' }}</div>
+                            <div class="font-size-s text-neutral-6">
+                                IDs:
+                                {% for ocorrencia_id in (item.ocorrencia_ids or '').split(',') if ocorrencia_id.strip() %}
+                                <button type="button" class="emissao-id-btn" data-emissao-id="{{ ocorrencia_id.strip() }}">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
+                                {% else %}-
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>{{ item.local_regiao or 'Não informado' }}</td>
+                        <td>{{ item.prioridade }}</td>
+                        <td>{{ item.observacoes or 'Nenhuma providência informada' }}</td>
+                        <td>{{ item.fiscais or 'Nenhum fiscal atribuído' }}</td>
+                        <td>{{ item.atualizado_em or '-' }}</td>
+                        <td class="ticket-acoes">
+                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/status" class="ticket-acao-inline" data-confirmacao-msg="Confirma o aceite das providências e a conclusão pelo coordenador?">
+                                <input type="hidden" name="status" value="concluido_pelo_coordenador">
+                                <button type="submit" class="btn-ticket-mini btn-ticket-encerrar">Aceitar providências</button>
+                            </form>
+                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/status" class="ticket-acao-inline" data-confirmacao-msg="Confirma a devolução do ticket e das emissões para pendente?">
+                                <input type="hidden" name="status" value="pendente">
+                                <button type="submit" class="btn-ticket-mini">Não aceitar — devolver</button>
                             </form>
                         </td>
                     </tr>
@@ -167,7 +242,7 @@
             </table>
         </div>
         {% else %}
-        <p>Nenhum ticket aberto para este evento.</p>
+        <p>Nenhum ticket concluído pelos fiscais aguardando inspeção.</p>
         {% endif %}
     </div>
 
@@ -236,8 +311,6 @@
                         <label for="editar_ticket_status">Status</label>
                         <select id="editar_ticket_status" name="status" class="ticket-status-select" required>
                             <option value="pendente">Pendente</option>
-                            <option value="concluido_pelos_fiscais">Concluído pelos fiscais</option>
-                            <option value="concluido">Concluído</option>
                         </select>
                     </div>
 
@@ -477,6 +550,7 @@
                     renderDetalheLinha('Alguém mais ciente', emissao.alguem_ciente),
                     renderDetalheLinha('Interferente', emissao.interferente),
                     renderDetalheLinha('Situação', emissao.situacao),
+                    renderDetalheLinha('Concluída por', emissao.concluida_por),
                     renderDetalheLinha('Estação', emissao.estacao_nome),
                 ].join('');
 

@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     ocorrencia_id BIGINT REFERENCES ocorrencias(id) ON DELETE CASCADE,
     fiscal_id BIGINT REFERENCES fiscais(id) ON DELETE SET NULL,
-    status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluido_pelos_fiscais', 'concluido')),
+    status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluido_pelos_fiscais', 'concluido_pelo_coordenador')),
     prioridade TEXT NOT NULL DEFAULT 'normal' CHECK (prioridade IN ('baixa', 'normal', 'alta')),
     observacoes TEXT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -95,8 +95,9 @@ CREATE INDEX IF NOT EXISTS idx_tickets_evento_status
 
 ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check;
 UPDATE tickets SET status = 'pendente' WHERE status = 'em_andamento';
+UPDATE tickets SET status = 'concluido_pelo_coordenador' WHERE status = 'concluido';
 ALTER TABLE tickets ADD CONSTRAINT tickets_status_check
-    CHECK (status IN ('pendente', 'concluido_pelos_fiscais', 'concluido'));
+    CHECK (status IN ('pendente', 'concluido_pelos_fiscais', 'concluido_pelo_coordenador'));
 
 CREATE TABLE IF NOT EXISTS ticket_ocorrencias (
     ticket_id BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
@@ -183,12 +184,64 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     alguem_ciente     TEXT,
     interferente      TEXT,
     situacao          TEXT NOT NULL DEFAULT 'Pendente',
+    concluida_por     TEXT,
     fonte             TEXT,
     criado_em         TIMESTAMPTZ NOT NULL DEFAULT now(),
     atualizado_em     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS origem_captura TEXT;
+ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS concluida_por TEXT;
+
+-- Registros concluídos anteriores a esta distinção foram concluídos no
+-- fluxo do fiscal, exceto quando já pertencem a um ticket encerrado.
+UPDATE ocorrencias ocorrencia
+SET concluida_por = CASE
+    WHEN lower(unaccent(trim(ocorrencia.situacao))) = 'concluida pelo coordenador'
+    OR EXISTS (
+        SELECT 1
+        FROM ticket_ocorrencias vinculacao
+        JOIN tickets ticket ON ticket.id = vinculacao.ticket_id
+        WHERE vinculacao.ocorrencia_id = ocorrencia.id
+          AND ticket.status IN ('concluido', 'concluido_pelo_coordenador')
+    ) THEN 'Coordenador'
+    ELSE 'Fiscal'
+END
+WHERE lower(unaccent(trim(ocorrencia.situacao))) IN (
+    'concluido',
+    'concluida pelo fiscal',
+    'concluida pelo coordenador'
+)
+  AND ocorrencia.concluida_por IS NULL;
+
+UPDATE ocorrencias
+SET situacao = CASE concluida_por
+    WHEN 'Coordenador' THEN 'Concluída Pelo Coordenador'
+    ELSE 'Concluída Pelo Fiscal'
+END
+WHERE lower(unaccent(trim(situacao))) IN (
+    'concluido',
+    'concluida pelo fiscal',
+    'concluida pelo coordenador'
+);
+
+UPDATE ocorrencias
+SET situacao = 'Pendente',
+    concluida_por = NULL
+WHERE lower(trim(situacao)) = 'pendente'
+  AND (situacao IS DISTINCT FROM 'Pendente' OR concluida_por IS NOT NULL);
+
+ALTER TABLE ocorrencias DROP CONSTRAINT IF EXISTS ocorrencias_concluida_por_check;
+ALTER TABLE ocorrencias ADD CONSTRAINT ocorrencias_concluida_por_check
+    CHECK (concluida_por IS NULL OR concluida_por IN ('Fiscal', 'Coordenador'));
+
+ALTER TABLE ocorrencias DROP CONSTRAINT IF EXISTS ocorrencias_situacao_check;
+ALTER TABLE ocorrencias ADD CONSTRAINT ocorrencias_situacao_check
+    CHECK (situacao IN (
+        'Pendente',
+        'Concluída Pelo Fiscal',
+        'Concluída Pelo Coordenador'
+    ));
 
 CREATE TABLE IF NOT EXISTS ocorrencia_fiscais (
     ocorrencia_id BIGINT NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,

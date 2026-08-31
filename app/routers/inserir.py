@@ -21,7 +21,13 @@ from app.utils.offline import (
     extrair_dados_inserir,
     preparar_offline_ctx,
 )
-from app.config import BANDA_OPCOES, FAIXA_OPCOES, ORIGENS_CAMPO, TITULO_PRINCIPAL
+from app.config import (
+    BANDA_OPCOES,
+    FAIXA_OPCOES,
+    ORIGENS_CAMPO,
+    SITUACOES_DISPONIVEIS_AO_FISCAL,
+    TITULO_PRINCIPAL,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -199,7 +205,7 @@ async def post_inserir(request: Request):
         erros.append("Largura de banda")
     if estacao_id not in estacoes_ids and origem_campo is None:
         erros.append("Estação da captura")
-    if not situacao:
+    if situacao not in SITUACOES_DISPONIVEIS_AO_FISCAL:
         erros.append("Status")
     if not set(fiscais_participantes_ids).issubset(fiscais_participantes_permitidos):
         erros.append("Fiscal participante")
@@ -304,7 +310,7 @@ async def post_inserir(request: Request):
             ),
         )
     if ok:
-        msg = "Emissão inserida com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Registrar Emissão."
+        msg = "Emissão submetida ao coordenador com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Submeter Emissão ao Coordenador."
         if conflito:
             msg = (
                 f"⚠️ AVISO: existe equipamento usando essa frequência ({conflito}). "
@@ -377,6 +383,10 @@ async def api_inserir(request: Request):
             {"erro": "Fiscal da sessão não identificado."}, status_code=401
         )
     dados["Fiscal"] = fiscal
+    situacao = str(dados.get("Situação", "Pendente") or "Pendente").strip()
+    if situacao not in SITUACOES_DISPONIVEIS_AO_FISCAL:
+        return JSONResponse({"erro": "Status da emissão inválido."}, status_code=400)
+    dados["Situação"] = situacao
     estacao_id = str(dados.get("Estação ID", dados.get("estacao_id", ""))).strip()
     dados["Estação ID"] = int(estacao_id) if estacao_id.isdigit() else None
     dados["Origem da captura"] = ORIGENS_CAMPO.get(estacao_id)
