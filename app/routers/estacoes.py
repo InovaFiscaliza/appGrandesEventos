@@ -7,6 +7,7 @@ from app.config import MODELOS_EQUIPAMENTO, TITULO_PRINCIPAL
 from app.services.postgres import (
     criar_estacao,
     atualizar_estacao,
+    listar_coordenadores_evento,
     listar_estacoes_evento,
     listar_eventos_detalhes,
 )
@@ -27,11 +28,33 @@ def _ctx(request: Request, **kwargs):
     }
 
 
+def _usuario_e_coordenador(request: Request, evento_id: int) -> bool:
+    """Confirma que o usuário logado coordena o evento selecionado."""
+    fiscal_id = request.session.get("fiscal_id")
+    return str(
+        request.session.get("tipo_usuario", "")
+    ).strip().casefold() == "coordenação" or bool(
+        fiscal_id
+        and str(fiscal_id).isdigit()
+        and int(fiscal_id) in listar_coordenadores_evento(evento_id)
+    )
+
+
+def _acesso_negado(request: Request) -> RedirectResponse:
+    """Redireciona para o menu quando o usuário não coordena o evento."""
+    request.session["flash_error"] = "Acesso restrito aos coordenadores do evento."
+    return RedirectResponse("/menu", status_code=303)
+
+
 @router.get("/estacoes", response_class=HTMLResponse)
 async def get_estacoes(request: Request):
     evento_id = request.query_params.get("evento_id") or request.session.get(
         "spreadsheet_id"
     )
+    if not evento_id or not str(evento_id).isdigit():
+        return RedirectResponse("/", status_code=302)
+    if not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
     mostrar_form = request.query_params.get("novo") == "1"
     editar_id = request.query_params.get("editar")
     estacoes = listar_estacoes_evento(int(evento_id)) if evento_id else []
@@ -76,6 +99,9 @@ async def post_estacao(request: Request):
     local = str(form.get("local", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
+
+    if not evento_id.isdigit() or not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
 
     if (
         not evento_id.isdigit()
@@ -130,6 +156,9 @@ async def post_editar_estacao(request: Request, estacao_id: int):
     local = str(form.get("local", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
+
+    if not evento_id.isdigit() or not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
 
     if not evento_id.isdigit() or not nome or not modelo or not local:
         request.session["flash_error"] = (

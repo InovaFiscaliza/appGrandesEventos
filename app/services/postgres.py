@@ -1505,6 +1505,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
                 o.local_regiao AS "Local",
                 COALESCE(e.nome, o.origem_captura, o.local_regiao) AS "EstacaoRaw",
                 o.estacao_id::text AS "EstacaoID",
+                o.origem_captura AS "OrigemCaptura",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
@@ -1549,6 +1550,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
                 o.local_regiao AS "Local",
                 COALESCE(e.nome, o.origem_captura, o.local_regiao) AS "EstacaoRaw",
                 o.estacao_id::text AS "EstacaoID",
+                o.origem_captura AS "OrigemCaptura",
                 o.id::text AS "ID",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
@@ -2647,8 +2649,8 @@ def atualizar_campos_na_aba_mae(
             atual = (
                 conn.execute(
                     text(f"""
-                    SELECT o.{', o.'.join(campos)}, o.estacao_id,
-                           COALESCE(e.nome, '') AS estacao_nome
+                          SELECT o.{', o.'.join(campos)}, o.estacao_id, o.origem_captura,
+                              COALESCE(e.nome, o.origem_captura, '') AS estacao_nome
                     FROM ocorrencias o
                     LEFT JOIN estacoes e ON e.id = o.estacao_id
                     WHERE o.evento_id = :ev AND o.id = :id
@@ -2686,8 +2688,10 @@ def atualizar_campos_na_aba_mae(
                     return "ERRO: estação não pertence ao evento selecionado."
 
                 estacao_atual_id = atual["estacao_id"]
-                if estacao_atual_id != nova_estacao_id:
-                    updates.append("estacao_id = :v_estacao_id")
+                if estacao_atual_id != nova_estacao_id or atual["origem_captura"]:
+                    updates.extend(
+                        ["estacao_id = :v_estacao_id", "origem_captura = NULL"]
+                    )
                     params["v_estacao_id"] = nova_estacao_id
                     alteracoes.append(
                         (
@@ -2695,6 +2699,22 @@ def atualizar_campos_na_aba_mae(
                             atual["estacao_nome"] or estacao_atual_id,
                             nova_estacao["nome"],
                         )
+                    )
+
+            if "Origem da captura" in novos_valores:
+                nova_origem = str(novos_valores["Origem da captura"]).strip()
+                if not nova_origem:
+                    return "ERRO: origem da captura inválida."
+                if (
+                    atual["estacao_id"] is not None
+                    or atual["origem_captura"] != nova_origem
+                ):
+                    updates.extend(
+                        ["estacao_id = NULL", "origem_captura = :v_origem_captura"]
+                    )
+                    params["v_origem_captura"] = nova_origem
+                    alteracoes.append(
+                        ("Estação utilizada", atual["estacao_nome"], nova_origem)
                     )
 
             for key, col in field_map.items():

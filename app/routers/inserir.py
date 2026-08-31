@@ -21,17 +21,13 @@ from app.utils.offline import (
     extrair_dados_inserir,
     preparar_offline_ctx,
 )
-from app.config import BANDA_OPCOES, FAIXA_OPCOES, TITULO_PRINCIPAL
+from app.config import BANDA_OPCOES, FAIXA_OPCOES, ORIGENS_CAMPO, TITULO_PRINCIPAL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 EXTENSOES_IMAGEM = {".jpeg", ".jpg", ".png"}
 TIPOS_IMAGEM = {"image/jpeg", "image/png"}
 TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
-ORIGENS_CAMPO = {
-    "campo_analisador": "Analisador de espectro - campo",
-    "campo_etm": "ETM - campo",
-}
 
 
 async def _ler_imagens(form) -> tuple[list[dict], list[str]]:

@@ -53,6 +53,11 @@ MODELOS_EQUIPAMENTO = [
     "ERMx",
 ]
 
+ORIGENS_CAMPO = {
+    "campo_analisador": "Analisador de espectro - campo",
+    "campo_etm": "ETM - campo",
+}
+
 UNIDADES_EXECUTANTES = [
     ("GR01", "Gerência Regional no Estado de São Paulo"),
     ("GR02", "Gerência Regional nos Estados do Rio de Janeiro e Espírito Santo"),

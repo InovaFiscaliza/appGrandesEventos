@@ -2,6 +2,10 @@ const STORE = "cache_pendencias";
 let pendencias = [];
 let paginaAtual = 1;
 const ITENS_POR_PAGINA = 10;
+const ORIGENS_CAMPO = {
+  "Analisador de espectro - campo": "campo_analisador",
+  "ETM - campo": "campo_etm",
+};
 
 function setSelect(id, val) {
   const el = document.getElementById(id);
@@ -19,7 +23,10 @@ function preencherForm(row) {
   document.getElementById("f-fonte").value = row.fonte || "";
   document.getElementById("f-id_val").value = row.id || "";
   document.getElementById("f-estacao_raw").value = row.estacao_raw || "";
-  setSelect("f-estacao", row.estacao_id || "");
+  setSelect(
+    "f-estacao",
+    row.estacao_id || ORIGENS_CAMPO[row.origem_captura] || ""
+  );
   document.getElementById("f-id").value = row.id || "";
   document.getElementById("f-fiscal").value = row.fiscal || "";
   document.getElementById("f-data").value = row.data || "";

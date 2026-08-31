@@ -61,7 +61,10 @@
             <label>Estação utilizada <span class="required">*</span></label>
             <div class="select-shell">
             <select class="form-control" name="estacao_id" id="f-estacao" required>
-                <option value="">Selecione a estação</option>
+                <option value=""></option>
+                {% for valor, descricao in origens_campo.items() %}
+                <option value="{{ valor }}">{{ descricao }}</option>
+                {% endfor %}
                 {% for estacao in estacoes %}
                 <option value="{{ estacao.id }}">{{ estacao.nome }}{% if estacao.modelo_equipamento %} - {{ estacao.modelo_equipamento }}{% endif %}{% if estacao.local %} - {{ estacao.local }}{% endif %}</option>
                 {% endfor %}

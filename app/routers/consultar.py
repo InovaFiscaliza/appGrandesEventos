@@ -21,7 +21,7 @@ from app.services.postgres import (
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
-from app.config import IDENT_OPCOES, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
+from app.config import IDENT_OPCOES, ORIGENS_CAMPO, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -80,7 +80,9 @@ def _ctx(request: Request, **kwargs):
 def _usuario_e_coordenador(request: Request, evento_id: int) -> bool:
     """Confirma se o fiscal logado coordena o evento selecionado."""
     fiscal_id = request.session.get("fiscal_id")
-    return bool(
+    return str(
+        request.session.get("tipo_usuario", "")
+    ).strip().casefold() == "coordenação" or bool(
         fiscal_id
         and str(fiscal_id).isdigit()
         and int(fiscal_id) in listar_coordenadores_evento(evento_id)
@@ -185,6 +187,7 @@ async def get_consultar(request: Request, key: str = ""):
             selected_key=key,
             selected_row=selected_row,
             estacoes=estacoes,
+            origens_campo=ORIGENS_CAMPO,
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -287,7 +290,8 @@ async def post_consultar_salvar(request: Request):
         erros.append("Identificação")
     if ute_check and not proc_edit:
         erros.append("Processo SEI (UTE)")
-    if not estacao_id or not estacao_id.isdigit():
+    origem_campo = ORIGENS_CAMPO.get(estacao_id)
+    if not estacao_id or (not estacao_id.isdigit() and origem_campo is None):
         erros.append("Estação utilizada")
 
     if erros:
@@ -303,8 +307,11 @@ async def post_consultar_salvar(request: Request):
         "Alguém mais ciente?": cient_edit,
         "Interferente?": interf_edit,
         "Situação": situ_edit,
-        "Estação ID": estacao_id,
     }
+    if origem_campo is not None:
+        pac["Origem da captura"] = origem_campo
+    else:
+        pac["Estação ID"] = estacao_id
 
     res = ""
     falhou_conexao = False
@@ -336,6 +343,7 @@ async def post_consultar_salvar(request: Request):
                 selected_key=row_key,
                 selected_row=None,
                 estacoes=listar_estacoes_evento(evento_id=sp_id),
+                origens_campo=ORIGENS_CAMPO,
                 flash_success=None,
                 flash_error=None,
                 **preparar_offline_ctx(dados_json, "fila_edicoes"),
@@ -402,6 +410,7 @@ async def api_pendencias(request: Request):
                 "situacao": str(row.get("Situação", "")),
                 "estacao_raw": str(row.get("EstacaoRaw", "")),
                 "estacao_id": str(row.get("EstacaoID", "")),
+                "origem_captura": str(row.get("OrigemCaptura", "")),
                 "imagens": imagens,
             }
         )
@@ -455,8 +464,13 @@ async def api_consultar_salvar(request: Request):
         "Alguém mais ciente?": dados.get("Alguém mais ciente?", ""),
         "Interferente?": dados.get("Interferente?", ""),
         "Situação": dados.get("Situação", ""),
-        "Estação ID": str(dados.get("estacao_id", "")),
     }
+    estacao_id = str(dados.get("estacao_id", "")).strip()
+    origem_campo = ORIGENS_CAMPO.get(estacao_id)
+    if origem_campo is not None:
+        pac["Origem da captura"] = origem_campo
+    else:
+        pac["Estação ID"] = estacao_id
 
     if fonte in {"PAINEL", "ESTACAO"}:
         res = atualizar_campos_na_aba_mae(
