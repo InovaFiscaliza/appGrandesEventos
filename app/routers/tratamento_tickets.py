@@ -6,7 +6,13 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.config import TITULO_PRINCIPAL
+from app.config import (
+    STATUS_TICKET_CONCLUIDO_COORDENADOR,
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
+    STATUS_TICKET_PENDENTE,
+    STATUS_TICKET_ROTULOS,
+    TITULO_PRINCIPAL,
+)
 from app.services.postgres import (
     atualizar_ticket_evento,
     listar_tickets_evento,
@@ -16,7 +22,7 @@ from app.utils.formatters import _img_b64
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-STATUS_VALIDOS = {"pendente", "concluido_pelos_fiscais"}
+STATUS_VALIDOS = {STATUS_TICKET_PENDENTE, STATUS_TICKET_CONCLUIDO_FISCAIS}
 
 
 def _ctx(request: Request, **kwargs):
@@ -31,6 +37,7 @@ def _ctx(request: Request, **kwargs):
         "img_b64_esq": _img_b64("anatel.png"),
         "img_b64_dir": _img_b64("anatelS.png"),
         "evento_nome": request.session.get("evento_nome", ""),
+        "status_ticket_rotulos": STATUS_TICKET_ROTULOS,
         **kwargs,
     }
 
@@ -44,7 +51,11 @@ def _tickets_atribuidos(request: Request, evento_id: int) -> list[dict]:
         ticket
         for ticket in listar_tickets_evento(evento_id)
         if int(fiscal_id) in ticket.get("fiscal_ids", [])
-        and ticket.get("status") not in {"concluido_pelos_fiscais", "concluido"}
+        and ticket.get("status")
+        not in {
+            STATUS_TICKET_CONCLUIDO_FISCAIS,
+            STATUS_TICKET_CONCLUIDO_COORDENADOR,
+        }
     ]
 
 
@@ -94,12 +105,20 @@ async def post_tratamento_ticket(request: Request, ticket_id: int):
     if status not in STATUS_VALIDOS:
         request.session["flash_error"] = "Status de ticket inválido."
         return RedirectResponse("/tratamento-tickets", status_code=303)
+    if status == STATUS_TICKET_CONCLUIDO_FISCAIS and not observacoes:
+        request.session["flash_error"] = (
+            "Informe as providências tomadas antes de concluir o ticket."
+        )
+        return RedirectResponse("/tratamento-tickets", status_code=303)
 
     atualizar_ticket_evento(
         ticket_id=ticket_id,
         evento_id=int(evento_id),
         status=status,
         observacoes=observacoes,
+        usuario_fiscal=request.session.get(
+            "fiscal_nome", "Usuário não identificado"
+        ),
     )
     registrar_auditoria_coordenacao(
         evento_id=int(evento_id),

@@ -7,7 +7,7 @@
 
 <div class="form-card inserir-form rf-entry-card font-semi-bold">
     <h5 class="teq-title">Inserir emissão</h5>
-    <form method="post" action="/inserir" id="form-inserir" class="rf-entry-form font-semi-bold" enctype="multipart/form-data">
+    <form method="post" action="/inserir" id="form-inserir" class="rf-entry-form font-semi-bold" enctype="multipart/form-data" data-confirmacao-msg="Confirma a submissão desta emissão ao coordenador?">
         <div id="offline-aviso-inserir" class="flash flash-error" style="display:none">
           ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
         </div>
@@ -125,13 +125,14 @@
         <div class="form-group">
             <label>Status desta emissão <span class="required">*</span></label>
             <div class="select-shell">
-            <select class="form-control" name="situacao">
+            <select class="form-control" name="situacao" required>
                 <option value=""></option>
-                {% for op in ["Pendente", "Concluído"] %}
+                {% for op in ["Pendente", "Concluída Pelo Fiscal"] %}
                 <option value="{{ op }}" {% if op == situacao %}selected{% endif %}>{{ op }}</option>
                 {% endfor %}
             </select>
             </div>
+            <small class="form-help">Emissões pendentes e concluídas pelo fiscal serão submetidas à inspeção da coordenação.</small>
         </div>
         <div class="form-group imagem-upload">
             <label for="imagens-inserir">Imagens da emissão</label>
@@ -139,7 +140,7 @@
             <ul id="lista-imagens-inserir" class="lista-imagens" aria-live="polite"></ul>
         </div>
         <div class="inserir-acoes">
-            <button type="submit" class="btn btn-submit font-semi-bold">Registrar Emissão</button>
+            <button type="submit" class="btn btn-submit font-semi-bold">Submeter Emissão ao Coordenador</button>
         </div>
     </form>
 </div>

@@ -25,7 +25,7 @@
                     <th>Largura</th>
                     <th>Prioridade</th>
                     <th>Status</th>
-                    <th>Observações</th>
+                    <th>Providências tomadas</th>
                     <th>Fiscais atribuídos</th>
                     <th>Criado em</th>
                     <th>Atualizado em</th>
@@ -50,7 +50,7 @@
                     <td>{{ ticket.frequencia_mhz or '-' }}{% if ticket.frequencia_mhz %} MHz{% endif %}</td>
                     <td>{{ ticket.largura_khz or '-' }}{% if ticket.largura_khz %} kHz{% endif %}</td>
                     <td>{{ ticket.prioridade }}</td>
-                    <td>{{ ticket.status }}</td>
+                    <td>{{ status_ticket_rotulos.get(ticket.status, ticket.status) }}</td>
                     <td>{{ ticket.observacoes or '-' }}</td>
                     <td>{{ ticket.fiscais or 'Nenhum fiscal atribuído' }}</td>
                     <td>{{ ticket.criado_em or '-' }}</td>
@@ -59,9 +59,9 @@
                         <form method="post" action="/tratamento-tickets/{{ ticket.id }}" class="ticket-tratamento-form">
                             <select name="status" class="ticket-status-select" aria-label="Status do ticket {{ ticket.id }}">
                                 <option value="pendente" {% if ticket.status == 'pendente' %}selected{% endif %}>Pendente</option>
-                                <option value="concluido_pelos_fiscais">Concluído pelos fiscais</option>
+                                <option value="concluido_pelos_fiscais">Concluído pelos Fiscais</option>
                             </select>
-                            <textarea name="observacoes" class="form-control" rows="2" aria-label="Relato do tratamento do ticket {{ ticket.id }}" placeholder="Relato do tratamento">{{ ticket.observacoes or '' }}</textarea>
+                            <textarea name="observacoes" class="form-control" rows="2" aria-label="Providências tomadas no ticket {{ ticket.id }}" placeholder="Descreva as providências tomadas">{{ ticket.observacoes or '' }}</textarea>
                             <button type="submit" class="btn btn-primary">Atualizar</button>
                         </form>
                     </td>
