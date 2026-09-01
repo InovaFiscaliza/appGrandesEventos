@@ -48,6 +48,14 @@ def _escape_like(s: str) -> str:
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _normalizar_valor_auditoria(valor) -> str | None:
+    """Converte valores ausentes e representações de NaN em vazio na auditoria."""
+    if valor is None or pd.isna(valor):
+        return None
+    texto = str(valor).strip()
+    return None if texto.casefold() in {"", "nan", "none", "null"} else texto
+
+
 def _nome_imagem_emissao(
     ocorrencia_id: int,
     data_emissao,
@@ -83,7 +91,7 @@ def _nome_imagem_bsr_erb(
     nome_original: str,
     indice: int,
 ) -> str:
-    """Gera nome padronizado para fotos de ocorrências especiais."""
+    """Gera nome padronizado para fotos de incidentes."""
     extensao = ""
     if "." in nome_original:
         extensao = "." + nome_original.rsplit(".", 1)[-1].lower()
@@ -446,6 +454,7 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
             conn.execute(
                 text("""
                   SELECT t.id, t.evento_id, t.status, t.prioridade, t.observacoes,
+                      t.motivo_devolucao,
                       to_char(t.criado_em AT TIME ZONE 'America/Sao_Paulo',
                           'DD/MM/YYYY HH24:MI') AS criado_em,
                       to_char(t.atualizado_em AT TIME ZONE 'America/Sao_Paulo',
@@ -467,6 +476,7 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
                 LEFT JOIN fiscais f ON f.id = tf.fiscal_id
                 WHERE t.evento_id = :evento_id
                 GROUP BY t.id, t.evento_id, t.status, t.prioridade, t.observacoes,
+                         t.motivo_devolucao,
                          t.criado_em, t.atualizado_em
                 ORDER BY
                     CASE t.status
@@ -814,6 +824,7 @@ def atualizar_ticket_evento(
     fiscal_ids: list[int] | None = None,
     observacoes: str | None = None,
     prioridade: str | None = None,
+    motivo_devolucao: str | None = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
 ) -> None:
     """Atualiza o ticket e sincroniza a situação das emissões vinculadas."""
@@ -827,6 +838,7 @@ def atualizar_ticket_evento(
                 SET status = :status,
                     prioridade = COALESCE(:prioridade, prioridade),
                     observacoes = COALESCE(:observacoes, observacoes),
+                    motivo_devolucao = COALESCE(:motivo_devolucao, motivo_devolucao),
                     atualizado_em = now()
                 WHERE id = :ticket_id AND evento_id = :evento_id
             """),
@@ -836,6 +848,7 @@ def atualizar_ticket_evento(
                 "status": status,
                 "prioridade": prioridade,
                 "observacoes": observacoes,
+                "motivo_devolucao": motivo_devolucao,
             },
         )
         if resultado.rowcount == 0:
@@ -1743,7 +1756,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
                 o.situacao AS "Situação",
                 'ESTACAO' AS "Fonte"
             FROM ocorrencias o
-            JOIN estacoes e ON e.id = o.estacao_id
+            LEFT JOIN estacoes e ON e.id = o.estacao_id
             JOIN eventos ev ON ev.id = o.evento_id
             WHERE o.evento_id = :ev
                             AND o.fonte = 'ESTACAO'
@@ -2255,14 +2268,10 @@ def inserir_emissao_I_W(
         return False
     try:
         freq = float(dados_formulario.get("Frequência em MHz", 0))
-        situacao = str(
-            dados_formulario.get("Situação", SITUACAO_PENDENTE)
-        ).strip()
+        situacao = str(dados_formulario.get("Situação", SITUACAO_PENDENTE)).strip()
         if situacao not in SITUACOES_DISPONIVEIS_AO_FISCAL:
             raise ValueError("Status da emissão inválido.")
-        concluida_por = (
-            "Fiscal" if situacao == SITUACAO_CONCLUIDA_FISCAL else None
-        )
+        concluida_por = "Fiscal" if situacao == SITUACAO_CONCLUIDA_FISCAL else None
 
         dia = dados_formulario.get("Dia")
         if hasattr(dia, "strftime"):
@@ -2432,7 +2441,7 @@ def inserir_bsr_erb(
     observacoes="",
     imagens=None,
 ) -> str:
-    """Insere registro de ocorrência especial."""
+    """Insere registro de incidente."""
     if evento_id is None:
         return "ERRO: evento_id não informado."
     try:
@@ -2557,7 +2566,7 @@ def atualizar_bsr_erb(
                 .first()
             )
             if anterior is None:
-                return "ERRO: Ocorrência especial não encontrada."
+                return "ERRO: Incidente não encontrado."
             atualizado = conn.execute(
                 text("""
                     UPDATE bsr_erb
@@ -2576,7 +2585,7 @@ def atualizar_bsr_erb(
                 },
             ).rowcount
             if not atualizado:
-                return "ERRO: Ocorrência especial não encontrada."
+                return "ERRO: Incidente não encontrado."
 
             valores_novos = {
                 "Tipo": tipo,
@@ -2689,7 +2698,7 @@ def excluir_bsr_erb(
                 },
             ).rowcount
             if not atualizado:
-                return "ERRO: Ocorrência especial não encontrada ou já excluída."
+                return "ERRO: Incidente não encontrado ou já excluído."
             conn.execute(
                 text("""
                     INSERT INTO auditoria_bsr_erb (
@@ -2705,7 +2714,7 @@ def excluir_bsr_erb(
                     "valor": "Registro marcado como excluído",
                 },
             )
-        return "Ocorrência especial excluída com sucesso."
+        return "Incidente excluído com sucesso."
     except Exception as e:
         return f"ERRO: {e}"
 
@@ -2930,17 +2939,17 @@ def atualizar_campos_na_aba_mae(
                             "ok",
                         ]
                     elif key == "Situação":
-                        novo_valor = str(novos_valores[key]).strip()
+                        novo_valor = _normalizar_valor_auditoria(novos_valores[key])
                         if novo_valor not in SITUACOES_DISPONIVEIS_AO_FISCAL:
                             return "ERRO: status da emissão inválido."
                     else:
-                        novo_valor = str(novos_valores[key])
+                        novo_valor = _normalizar_valor_auditoria(novos_valores[key])
 
                     valor_atual = atual[col]
                     comparavel_atual = (
                         bool(valor_atual)
                         if key == "UTE?"
-                        else "" if valor_atual is None else str(valor_atual)
+                        else _normalizar_valor_auditoria(valor_atual)
                     )
                     if comparavel_atual != novo_valor:
                         updates.append(f"{col} = :v_{col}")
@@ -3081,6 +3090,10 @@ def atualizar_campos_na_aba_mae(
                     )
 
             for campo, valor_anterior, valor_novo in alteracoes:
+                valor_anterior = _normalizar_valor_auditoria(valor_anterior)
+                valor_novo = _normalizar_valor_auditoria(valor_novo)
+                if valor_anterior == valor_novo:
+                    continue
                 conn.execute(
                     text("""
                         INSERT INTO auditoria_ocorrencias (
@@ -3096,12 +3109,8 @@ def atualizar_campos_na_aba_mae(
                         "evento_id": int(evento_id),
                         "usuario_fiscal": usuario_fiscal,
                         "campo": campo,
-                        "valor_anterior": (
-                            None if valor_anterior is None else str(valor_anterior)
-                        ),
-                        "valor_novo": (
-                            None if valor_novo is None else str(valor_novo)
-                        ),
+                        "valor_anterior": valor_anterior,
+                        "valor_novo": valor_novo,
                     },
                 )
         return f"Atualizado no banco (ID {id_ocorrencia})."
@@ -3244,7 +3253,7 @@ def consultar_auditoria_evento(
                             UNION ALL
 
                             SELECT
-                                'Ocorrências especiais' AS origem,
+                                'Incidentes' AS origem,
                                 auditoria.bsr_erb_id AS registro_id,
                                 COALESCE(
                                     NULLIF(CONCAT_WS(' - ', bsr.tipo, bsr.regiao), ''),

@@ -26,6 +26,7 @@
                     <th>Prioridade</th>
                     <th>Status</th>
                     <th>Providências tomadas</th>
+                    <th>Motivo da devolução</th>
                     <th>Fiscais atribuídos</th>
                     <th>Criado em</th>
                     <th>Atualizado em</th>
@@ -35,16 +36,21 @@
             <tbody>
                 {% for ticket in tickets %}
                 <tr>
-                    <td>{{ ticket.id }}</td>
                     <td>
-                        <div>{{ ticket.identificacao or 'Não informada' }}</div>
-                        <div class="font-size-s text-neutral-6">
+                        {{ ticket.id }}
+                        {% if ticket.motivo_devolucao %}
+                        <span class="ticket-devolvido-alerta fa fa-exclamation-circle" role="img" aria-label="Ticket devolvido pela coordenação" title="Ticket devolvido pela coordenação"></span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span>{{ ticket.identificacao or 'Não informada' }}</span>
+                        <span class="ticket-emissoes-vinculadas">
                             Números:
                             {% for ocorrencia_id in (ticket.ocorrencia_ids or '').split(',') %}
                             <button type="button" class="emissao-id-btn js-editar-emissao" data-ocorrencia-id="{{ ocorrencia_id.strip() }}" title="Abrir emissão {{ ocorrencia_id.strip() }} para edição">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
                             {% else %}-
                             {% endfor %}
-                        </div>
+                        </span>
                     </td>
                     <td>{{ ticket.local_regiao or 'Não informado' }}</td>
                     <td>{{ ticket.frequencia_mhz or '-' }}{% if ticket.frequencia_mhz %} MHz{% endif %}</td>
@@ -52,6 +58,7 @@
                     <td>{{ ticket.prioridade }}</td>
                     <td>{{ status_ticket_rotulos.get(ticket.status, ticket.status) }}</td>
                     <td>{{ ticket.observacoes or '-' }}</td>
+                    <td>{{ ticket.motivo_devolucao or '-' }}</td>
                     <td>{{ ticket.fiscais or 'Nenhum fiscal atribuído' }}</td>
                     <td>{{ ticket.criado_em or '-' }}</td>
                     <td>{{ ticket.atualizado_em or '-' }}</td>
@@ -110,6 +117,7 @@
                 popup.hidden = false;
             });
         });
+
     });
 </script>
 {% endblock %}

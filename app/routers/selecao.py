@@ -86,6 +86,12 @@ async def post_selecao(request: Request):
     request.session["spreadsheet_id"] = ev_id
     request.session["fiscal_id"] = fiscal_id_int
     request.session["fiscal_nome"] = fiscal["nome"]
+    request.session["fiscal_local_anatel"] = str(
+        fiscal.get("local_anatel") or ""
+    ).strip()
+    request.session["fiscal_funcao_evento"] = str(
+        fiscal.get("funcao_evento") or ""
+    ).strip()
     request.session["tipo_usuario"] = (
         str(fiscal.get("funcao_evento") or "").strip().lower()
     )

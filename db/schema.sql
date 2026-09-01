@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'concluido_pelos_fiscais', 'concluido_pelo_coordenador')),
     prioridade TEXT NOT NULL DEFAULT 'normal' CHECK (prioridade IN ('baixa', 'normal', 'alta')),
     observacoes TEXT,
+    motivo_devolucao TEXT,
     criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
     atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -94,6 +95,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_evento_status
     ON tickets (evento_id, status, fiscal_id);
 
 ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS motivo_devolucao TEXT;
 UPDATE tickets SET status = 'pendente' WHERE status = 'em_andamento';
 UPDATE tickets SET status = 'concluido_pelo_coordenador' WHERE status = 'concluido';
 ALTER TABLE tickets ADD CONSTRAINT tickets_status_check

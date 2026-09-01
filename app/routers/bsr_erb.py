@@ -91,7 +91,7 @@ async def get_bsr_erb(request: Request):
             None,
         )
         if registro_edicao is None:
-            request.session["flash_error"] = "Ocorrência especial não encontrada."
+            request.session["flash_error"] = "Incidente não encontrado."
             return RedirectResponse("/bsr-erb", status_code=303)
     return templates.TemplateResponse(
         request,
@@ -133,7 +133,7 @@ async def post_bsr_erb(request: Request):
 
     error = "; ".join(erros_imagens) if erros_imagens else None
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
-        error = "Selecione um tipo de ocorrência especial válido."
+        error = "Selecione um tipo de incidente válido."
     if not regiao:
         error = "O campo 'Local' é obrigatório."
     elif not _valid_coord(lat, -90.0, 90.0):
@@ -213,7 +213,7 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
 
     error = "; ".join(erros_imagens) if erros_imagens else None
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
-        error = "Selecione um tipo de ocorrência especial válido."
+        error = "Selecione um tipo de incidente válido."
     if not regiao:
         error = "O campo 'Local' é obrigatório."
     elif not _valid_coord(lat, -90.0, 90.0):
@@ -314,7 +314,7 @@ async def api_bsr_erb(request: Request):
 
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
         return JSONResponse(
-            {"erro": "Tipo de ocorrência especial inválido"}, status_code=400
+            {"erro": "Tipo de incidente inválido"}, status_code=400
         )
 
     if not regiao:

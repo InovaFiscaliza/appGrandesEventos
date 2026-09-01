@@ -60,6 +60,7 @@
     remover.className = "fiscal-participante-remover";
     remover.textContent = "×";
     remover.title = "Remover fiscal";
+    remover.setAttribute("data-sem-confirmacao", "");
     remover.setAttribute("aria-label", `Remover ${opcao.textContent}`);
     remover.addEventListener("click", () => item.remove());
     const campo = document.createElement("input");

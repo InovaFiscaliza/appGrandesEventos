@@ -16,7 +16,7 @@ ORIGENS_AUDITORIA = (
     "Coordenação",
     "Emissão",
     "Teste de etiquetagem",
-    "Ocorrências especiais",
+    "Incidentes",
 )
 
 

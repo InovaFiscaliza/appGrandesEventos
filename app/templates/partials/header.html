@@ -41,7 +41,7 @@
     {% elif (request.state.permissoes|default({})).teste_etiquetagem and caminho_atual.startswith('/teste_etiquetagem') %}
     <span aria-current="page">Etiquetagem</span>
     {% elif caminho_atual.startswith('/bsr-erb') %}
-    <span aria-current="page">Ocorrências especiais</span>
+    <span aria-current="page">Incidentes</span>
     {% elif caminho_atual.startswith('/busca') %}
     <span aria-current="page">Pesquisar</span>
     {% elif caminho_atual.startswith('/ute') %}

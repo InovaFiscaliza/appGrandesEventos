@@ -9,7 +9,7 @@
 
 {% if mostrar_form %}
 <div class="form-card rf-entry-card font-semi-bold">
-    <h5 style="margin-bottom:0.75rem">Registrar ocorrência especial</h5>
+    <h5 style="margin-bottom:0.75rem">Registrar incidente</h5>
     <div id="offline-aviso-bsr" class="flash flash-error" style="display:none">
       ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
     </div>
@@ -52,7 +52,7 @@
             <textarea class="form-control" id="observacoes-bsr-erb" name="observacoes" rows="4">{{ observacoes or '' }}</textarea>
         </div>
         <div class="form-group imagem-upload">
-            <label for="imagens-bsr-erb">Fotos da ocorrência</label>
+            <label for="imagens-bsr-erb">Fotos do incidente</label>
             {% if registro_edicao and registro_edicao.imagens %}
             <ul class="lista-imagens" aria-label="Fotos já anexadas">
                 {% for imagem in registro_edicao.imagens %}
@@ -78,7 +78,7 @@
 <div id="popup-mapa-ocorrencia" class="popup-mapa-estacao" hidden>
     <div class="popup-mapa-estacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-mapa-ocorrencia">
         <div class="popup-mapa-estacao-cabecalho">
-            <h2 id="titulo-mapa-ocorrencia">Selecionar posição da ocorrência</h2>
+            <h2 id="titulo-mapa-ocorrencia">Selecionar posição do incidente</h2>
             <button type="button" id="fechar-mapa-ocorrencia" class="popup-mapa-estacao-fechar" aria-label="Fechar mapa">×</button>
         </div>
         <div id="mapa-ocorrencia" class="mapa-estacao" data-latitude="{{ evento.latitude }}" data-longitude="{{ evento.longitude }}"></div>
@@ -138,8 +138,8 @@
 
 <section class="form-card font-semi-bold">
     <div class="section-heading">
-        <h5 class="teq-title">Ocorrências cadastradas</h5>
-        <a href="/bsr-erb?novo=1" class="btn">Nova ocorrência</a>
+        <h5 class="teq-title">Incidentes cadastrados</h5>
+        <a href="/bsr-erb?novo=1" class="btn">Novo incidente</a>
     </div>
     {% if registros %}
     <div class="table-scroll">

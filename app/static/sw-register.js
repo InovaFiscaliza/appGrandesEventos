@@ -11,7 +11,7 @@
   });
 
   navigator.serviceWorker
-    .register("/sw.js?v=64")
+    .register("/sw.js?v=72")
     .then((reg) => {
       console.log("SW registrado:", reg.scope);
       // Verifica atualização a cada carregamento

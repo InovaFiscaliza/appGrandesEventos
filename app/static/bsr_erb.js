@@ -1,4 +1,4 @@
-// Aviso offline + interceptação de submit das ocorrências especiais
+// Aviso offline + interceptação de submit dos incidentes
 (function () {
   const aviso = document.getElementById("offline-aviso-bsr");
   if (aviso) aviso.style.display = "none";

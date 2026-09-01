@@ -161,3 +161,79 @@ Modificações solicitadas — AppGrandesEventos
 No Ato tem essas informações
 
 Na pesquisa de UTE e no Teste e Etiquetagem o fiscal vai precisar ter essas informações de UTE para validar. E precisa ser algo dinâmico.
+
+
+Modificações solicitadas — AppGrandesEventos
+
+**Reunião:** Status atual do AppEventos  
+**Data:** 01/09/2026  
+**Duração analisada:** 35min39s  
+**Contexto:** revisão do estado atual do sistema de monitoração de espectro para grandes eventos, com foco no tratamento de tickets, incidentes, coordenação, localização no mapa, auditoria e ajustes de interface.
+
+**Critério do levantamento:** `[ ]` indica alteração ou evolução ainda a implementar; `[X]` indica comportamento demonstrado e confirmado na reunião, sem necessidade de alteração. Ideias explicitamente futuras estão na seção 7; decisões de manter o comportamento atual estão na seção 8; pontos que ainda precisam de definição estão na seção 9. A abertura informa que algumas sugestões haviam sido discutidas antes da gravação; somente os itens repetidos ou confirmados no conteúdo gravado foram incluídos.
+
+## 1. Reprovação, reiteração e histórico do ticket
+
+- [ ] Ao reprovar/devolver um ticket, exigir e armazenar a justificativa do coordenador com o motivo da reprovação. A justificativa deve acompanhar o ticket quando ele voltar ao fiscal. **Referência: 00:00:28–00:01:05.**
+- [ ] Registrar e exibir qual coordenador realizou a reprovação/devolução. A fala inicial menciona a pessoa que aprovou, mas a confirmação posterior especifica o coordenador que reprovou. **Referência: 00:00:42–00:01:09.**
+- [ ] Diferenciar o ticket devolvido de uma pendência comum: usar um estado de reiteração — sugerido como **Pendência reiterada** ou **Pendente — reiteração** — e aplicar um indicativo visual na lista do fiscal para mostrar que o ticket já foi reprovado e retornou. **Referência: 00:00:51–00:01:29.**
+
+## 2. Incidentes: nomenclatura, envio e tratamento pela coordenação
+
+- [ ] Renomear o módulo **Ocorrências especiais** para **Incidentes**, atualizando cartão do menu, breadcrumb, títulos, formulário, listagens e área da coordenação. O nome “Incidentes” foi aceito pelos participantes. **Referência: 00:15:58–00:17:06.**
+- [ ] Encaminhar todo incidente registrado para a coordenação. No estado demonstrado, o registro era salvo no banco, mas não aparecia para ninguém tratar. **Referência: 00:04:15–00:05:21.**
+- [ ] Dar destaque e prioridade aos incidentes na tela do coordenador, acima das emissões rotineiras, pois podem representar bloqueador de sinal, interferência prejudicial, falha de sensor/RFI, incêndio, queda de energia ou outro fato urgente. **Referência: 00:05:22–00:06:30 e 00:11:27–00:12:10.**
+- [ ] Criar uma área própria de **Incidentes** na coordenação — aba, bloco ou lista separada — com identificadores próprios, deixando evidente que um incidente é diferente de uma emissão. **Referência: 00:10:47–00:11:48 e 00:13:03–00:14:43.**
+- [ ] Permitir ao coordenador transformar um incidente em ticket e encaminhá-lo a um ou mais fiscais para tratamento. **Referência: 00:05:30–00:06:45 e 00:12:18–00:12:58.**
+- [ ] Exibir, entre parênteses no nome das abas **Tickets** e **Incidentes**, a quantidade de itens pendentes, inclusive zero, para chamar a atenção do coordenador quando houver trabalho. **Referência: 00:14:44–00:15:53.**
+- [ ] Gravar automaticamente, a partir do login, o fiscal que registrou o incidente e mostrar essa informação em uma coluna da listagem da coordenação. O objetivo é permitir contato para esclarecimentos e eventual devolução da demanda. **Referência: 00:24:05–00:24:47.**
+
+## 3. Tipos de incidente
+
+- [ ] Trocar **Jammer** por uma descrição compreensível ao fiscal: **Bloqueador de sinal (BSR)**. **Referência: 00:18:01–00:18:35.**
+- [ ] Trocar **Reclamação externa** por **Reclamação de interferência**. **Referência: 00:02:52–00:03:03 e 00:17:18–00:17:28.**
+- [ ] Trocar **Falha de Wi‑Fi** por **Falha de rede**, com exemplos entre parênteses, como Wi‑Fi, SMP e outros. **Referência: 00:02:34–00:02:40 e 00:17:27–00:17:35.**
+- [ ] Substituir o rótulo específico **Incêndio que afeta equipamentos** por **Incidente crítico**, abrangendo, por exemplo, incêndio e queda de energia. **Referência: 00:02:08–00:03:28.**
+- [ ] Incluir **Problemas com equipamentos da agência** para casos como sensor ou RFI inoperante que exijam verificação física. **Referência: 00:03:32–00:04:05 e 00:17:37–00:17:47.**
+
+## 4. Formulário do incidente e seleção de local
+
+- [ ] Tornar **Observações** obrigatório no registro de incidente, assim como **Local**, evitando demandas sem explicação suficiente para tratamento. **Referência: 00:18:42–00:18:51 e 00:23:18–00:24:01.**
+- [ ] Tornar o comando de seleção no mapa compreensível em dispositivos sem hover. O botão atual, representado por “+”, deve receber texto curto visível — como **Escolher no mapa** ou **Selecionar local no mapa** — ou um ícone inequívoco de mapa/globo, preservando o layout responsivo de celular e tablet. **Referência: 00:19:05–00:19:30 e 00:21:38–00:22:44.**
+
+## 5. Auditoria
+
+- [ ] Concluir e depurar o log de auditoria das alterações. O log foi descrito como ainda não totalmente implementado; depois de concluído, o registro básico das alterações foi considerado suficiente para a rastreabilidade desta etapa. **Referência: 00:31:19–00:32:18.**
+
+## 6. Layout e validação das alterações
+
+- [ ] Nos cartões de **Módulos do sistema**, centralizar/alinhar verticalmente o ícone em relação ao conjunto de título e descrição. **Referência: 00:32:45–00:32:52.**
+- [ ] Fazer uma revisão de regressão dos fluxos já funcionais depois das mudanças. Foi relatado que correções recentes estavam alterando ou desfazendo funcionalidades que antes funcionavam. **Referência: 00:32:58–00:34:50.**
+
+## 7. Evolução explicitamente futura
+
+- [ ] Futuramente, avaliar histórico de versões com restauração de um estado anterior a partir do log de auditoria. A ideia foi considerada útil, mas complexa e fora do escopo imediato; deve ser retomada somente depois de o sistema principal estar estável. **Referência: 00:31:39–00:32:45.**
+
+## 8. Comportamentos confirmados — não alterar agora
+
+- [X] Manter o mapa inicialmente centralizado nas coordenadas do evento, e não no GPS do aparelho. O usuário escolhe o ponto e o sistema faz a geocodificação reversa; o comportamento foi demonstrado e aprovado. **Referência: 00:19:31–00:21:41.**
+- [X] Manter a possibilidade de o coordenador atribuir ou reatribuir um ticket a um ou mais fiscais participantes do evento. O recurso já existe na edição do ticket; os nomes vêm dos participantes cadastrados no evento, não da escala, que ainda não estava implementada. **Referência: 00:25:32–00:29:24.**
+- [X] Manter a visualização do mesmo ticket por todos os fiscais aos quais ele foi atribuído. **Referência: 00:29:24–00:29:39.**
+- [X] Não implementar agora bloqueio de edição simultânea nem restauração automática quando dois fiscais alterarem o mesmo ticket. O último salvamento pode sobrescrever o anterior; a orientação operacional é que apenas uma pessoa da equipe faça o preenchimento. **Referência: 00:29:47–00:32:23.**
+- [X] Manter **Outra situação relevante** como opção coringa para casos não contemplados pelos demais tipos. **Referência: 00:17:11–00:17:18 e 00:17:47–00:17:57.**
+
+## 9. Definições ainda necessárias
+
+- [ ] Definir o texto final do estado de reiteração: **Pendência reiterada**, **Pendente — reiteração** ou outro rótulo equivalente. **Referência: 00:00:51–00:01:14.**
+- [ ] Confirmar a lista final e a ordem dos tipos. **Incidente crítico** foi aprovado para incêndio/queda de energia, e **Problemas com equipamentos da agência** também foi aprovado; porém, na recapitulação final da lista, o primeiro não foi repetido. **Referência: 00:02:08–00:04:05 e 00:17:18–00:17:57.**
+- [ ] Confirmar se todo incidente deve gerar ticket automaticamente ou se deve primeiro aparecer como alerta/lista para o coordenador, que decide se o converte em ticket. A formulação predominante foi “opção de virar um ticket”. **Referência: 00:04:49–00:06:45.**
+- [ ] Fechar a solução visual do seletor de mapa: texto compacto, ícone de mapa/globo ou combinação dos dois. O requisito funcional é que o controle seja reconhecível sem passar o mouse. **Referência: 00:19:05–00:19:30 e 00:21:38–00:22:44.**
+- [ ] Confirmar o acrônimo que acompanhará os exemplos de **Falha de rede**; o áudio aparenta indicar **SMP**. **Referência: 00:02:34–00:02:40 e 00:17:27–00:17:35.**
+
+## 10. Observações do levantamento
+
+- A reunião começa informando que algumas sugestões haviam sido tratadas antes da gravação. Como elas não foram detalhadas no arquivo, não foram inferidas; entraram no relatório apenas as que foram repetidas ou confirmadas.
+- O agendamento de reuniões recorrentes foi uma decisão de acompanhamento do projeto, não uma modificação do aplicativo, e por isso não integra a lista de alterações.
+
+- [ ] Leonardo Lago Araujo
+Andre Vinicius Pereira de Rezende, esqueci de falar um pedido para o sistema: permitir a etiquetagem em lotes. É comum se fazer a etiquetagem de diversos equipamentos iguais de uma só vez. Isso facilita o trabalho. Bastaria colocar um ranger de etiquetas e a quantidade de equipamentos iguais. 

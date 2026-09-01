@@ -116,9 +116,7 @@ async def post_tratamento_ticket(request: Request, ticket_id: int):
         evento_id=int(evento_id),
         status=status,
         observacoes=observacoes,
-        usuario_fiscal=request.session.get(
-            "fiscal_nome", "Usuário não identificado"
-        ),
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
     )
     registrar_auditoria_coordenacao(
         evento_id=int(evento_id),

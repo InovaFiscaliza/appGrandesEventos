@@ -146,6 +146,7 @@
                         <th>Frequência</th>
                         <th>Largura</th>
                         <th>Observações</th>
+                        <th>Motivo da devolução</th>
                         <th>Fiscais</th>
                         <th>Ações</th>
                     </tr>
@@ -170,6 +171,7 @@
                         <td>{{ item.frequencia_mhz or '-' }}{% if item.frequencia_mhz %} MHz{% endif %}</td>
                         <td>{{ item.largura_khz or '-' }}{% if item.largura_khz %} kHz{% endif %}</td>
                         <td>{{ item.observacoes or '-' }}</td>
+                        <td>{{ item.motivo_devolucao or '-' }}</td>
                         <td>{{ item.fiscais or 'Nenhum fiscal atribuído' }}</td>
                         <td class="ticket-acoes">
                             <button type="button" class="btn-ticket-mini js-abrir-popup-editar" data-ticket-id="{{ item.id }}" data-status="{{ item.status }}" data-prioridade="{{ item.prioridade }}" data-observacoes="{{ item.observacoes or '' }}" data-fiscal-ids="{{ (item.fiscal_ids or [])|join(',') }}">Editar</button>
@@ -231,10 +233,7 @@
                                 <input type="hidden" name="status" value="concluido_pelo_coordenador">
                                 <button type="submit" class="btn-ticket-mini btn-ticket-encerrar">Aceitar providências</button>
                             </form>
-                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/status" class="ticket-acao-inline" data-confirmacao-msg="Confirma a devolução do ticket e das emissões para pendente?">
-                                <input type="hidden" name="status" value="pendente">
-                                <button type="submit" class="btn-ticket-mini">Não aceitar — devolver</button>
-                            </form>
+                            <button type="button" class="btn-ticket-mini js-abrir-popup-devolucao" data-ticket-id="{{ item.id }}">Não aceitar — devolver</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -363,6 +362,26 @@
             </div>
         </div>
     </div>
+
+    <div id="popup-devolver-ticket" class="popup-ticket" hidden>
+        <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-devolver-ticket-titulo">
+            <div class="popup-ticket-cabecalho">
+                <h2 id="popup-devolver-ticket-titulo">Devolver ticket</h2>
+                <button type="button" class="popup-ticket-fechar" id="fechar-popup-devolver-ticket" aria-label="Fechar devolução">×</button>
+            </div>
+            <form id="form-devolver-ticket" method="post" action="/coordenacao/ticket/0/status" data-sem-confirmacao>
+                <input type="hidden" name="status" value="pendente">
+                <div class="ticket-edicao-item">
+                    <label for="motivo_devolucao_ticket">Motivo da devolução</label>
+                    <textarea id="motivo_devolucao_ticket" name="motivo_devolucao" rows="4" class="form-control" required></textarea>
+                </div>
+                <div class="ticket-edicao-acoes">
+                    <button type="submit" class="btn btn-primary">Devolver ticket</button>
+                    <button type="button" class="btn-ticket-mini" id="cancelar-popup-devolver-ticket">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </section>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -412,6 +431,11 @@
         const campoPrioridadeEditar = document.getElementById('editar_ticket_prioridade');
         const campoObservacoesEditar = document.getElementById('editar_ticket_observacoes');
         const fiscaisEditar = document.querySelectorAll('.editar-ticket-fiscal');
+        const popupDevolver = document.getElementById('popup-devolver-ticket');
+        const formDevolver = document.getElementById('form-devolver-ticket');
+        const campoMotivoDevolucao = document.getElementById('motivo_devolucao_ticket');
+        const botaoFecharDevolver = document.getElementById('fechar-popup-devolver-ticket');
+        const botaoCancelarDevolver = document.getElementById('cancelar-popup-devolver-ticket');
         const botoesEmissaoId = document.querySelectorAll('.emissao-id-btn');
         const popupDetalheEmissao = document.getElementById('popup-detalhe-emissao');
         const fecharPopupDetalheEmissaoBotao = document.getElementById('fechar-popup-detalhe-emissao');
@@ -494,6 +518,28 @@
                 }
             });
         }
+
+        const fecharPopupDevolver = () => {
+            if (popupDevolver) {
+                popupDevolver.hidden = true;
+            }
+        };
+
+        document.querySelectorAll('.js-abrir-popup-devolucao').forEach((botao) => {
+            botao.addEventListener('click', () => {
+                if (!popupDevolver || !formDevolver || !campoMotivoDevolucao) return;
+                formDevolver.action = '/coordenacao/ticket/' + botao.dataset.ticketId + '/status';
+                campoMotivoDevolucao.value = '';
+                popupDevolver.hidden = false;
+                campoMotivoDevolucao.focus();
+            });
+        });
+
+        botaoFecharDevolver?.addEventListener('click', fecharPopupDevolver);
+        botaoCancelarDevolver?.addEventListener('click', fecharPopupDevolver);
+        popupDevolver?.addEventListener('click', (event) => {
+            if (event.target === popupDevolver) fecharPopupDevolver();
+        });
 
         const renderDetalheLinha = (rotulo, valor) => {
             const texto = valor === null || valor === undefined || String(valor).trim() === ''

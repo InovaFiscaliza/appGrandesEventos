@@ -22,7 +22,7 @@
             </div>
         </div>
         <div class="form-group">
-            <label for="fiscal-principal">Fiscal <span class="required">*</span> <button id="adicionar-fiscal-participante" class="teq-list-btn" type="button" aria-label="Adicionar fiscal participante" title="Adicionar fiscal participante">+</button></label>
+            <label for="fiscal-principal">Fiscal <span class="required">*</span> <button id="adicionar-fiscal-participante" class="teq-list-btn" type="button" data-sem-confirmacao aria-label="Adicionar fiscal participante" title="Adicionar fiscal participante">+</button></label>
             <input id="fiscal-principal" class="form-control" type="text" name="fiscal" value="{{ fiscal or '' }}" readonly aria-readonly="true">
             <div id="fiscais-participantes">
                 <div id="seletor-fiscal-participante" hidden>
@@ -36,7 +36,7 @@
                 </div>
                 <div id="lista-fiscais-participantes" class="fiscais-participantes-lista">
                     {% for fiscal_participante in fiscais_participantes if fiscal_participante.id in fiscais_participantes_ids %}
-                    <span data-fiscal-id="{{ fiscal_participante.id }}">{{ fiscal_participante.nome }} - {{ fiscal_participante.local_anatel }} - {{ fiscal_participante.funcao_evento }} <button type="button" class="fiscal-participante-remover" aria-label="Remover {{ fiscal_participante.nome }}" title="Remover fiscal">×</button><input type="hidden" name="fiscais_participantes" value="{{ fiscal_participante.id }}"></span>
+                    <span data-fiscal-id="{{ fiscal_participante.id }}">{{ fiscal_participante.nome }} - {{ fiscal_participante.local_anatel }} - {{ fiscal_participante.funcao_evento }} <button type="button" class="fiscal-participante-remover" data-sem-confirmacao aria-label="Remover {{ fiscal_participante.nome }}" title="Remover fiscal">×</button><input type="hidden" name="fiscais_participantes" value="{{ fiscal_participante.id }}"></span>
                     {% endfor %}
                 </div>
             </div>

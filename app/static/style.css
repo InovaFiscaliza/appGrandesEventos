@@ -259,14 +259,15 @@ body.fiscais-popup-aberto { overflow: hidden; }
 }
 .historico-popup-cabecalho h2 { margin: 0; font-size: 1.1rem; }
 .historico-popup-fechar {
-    border: 1px solid #aeb5bc;
-    border-radius: 50%;
-    background: #f1f3f5;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: #fff;
     font-size: 1.8rem;
     line-height: 1;
     cursor: pointer;
 }
+.historico-popup-fechar:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .historico-popup-frame { flex: 1; width: 100%; border: 0; }
 body.historico-popup-aberto { overflow: hidden; }
 
@@ -405,7 +406,7 @@ input[type="number"]::-webkit-outer-spin-button {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
-.ute-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 0.85rem; }
+.ute-table { width: 100%; min-width: 620px; overflow: hidden;border-radius: 3px; border-collapse: collapse; font-size: 0.85rem; }
 .ute-table th, .ute-table td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
 .ute-table th { background-color: #f2f2f2; color: #333; }
 .coordenacao-tela :is(button, input, select, textarea, label, p, span, td, th, li, caption, strong) {
@@ -436,6 +437,22 @@ input[type="number"]::-webkit-outer-spin-button {
     white-space: normal;
     vertical-align: top;
 }
+.tickets-tabela .ticket-emissoes-vinculadas,
+.tickets-tabela .ticket-emissoes-vinculadas .emissao-id-btn {
+    font: inherit;
+    font-size: inherit;
+}
+.tickets-tabela .ticket-emissoes-vinculadas { white-space: nowrap; }
+.ticket-devolvido-alerta {
+    margin-left: .25rem;
+    color: #c62828;
+}
+.ticket-devolvido-alerta::before {
+    content: "\f06a";
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+}
 .tickets-tabela th:first-child,
 .tickets-tabela td:first-child {
     white-space: nowrap;
@@ -460,9 +477,34 @@ input[type="number"]::-webkit-outer-spin-button {
 .ticket-acoes > .ticket-acao-inline {
     margin-right: .25rem;
 }
-.ticket-acao { width: 1%; min-width: 15rem; white-space: normal; vertical-align: top; }
-.ticket-tratamento-form { display: grid; gap: .45rem; margin: 0; }
-.ticket-tratamento-form .btn { width: max-content; margin: 0; }
+.ticket-acao { width: 1%; min-width: 29rem; white-space: nowrap; vertical-align: middle; }
+.ticket-tratamento-form {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0;
+    white-space: nowrap;
+}
+.ticket-tratamento-form .ticket-status-select,
+.ticket-tratamento-form .form-control,
+.ticket-tratamento-form .btn {
+    height: 1.75rem;
+    min-height: 1.75rem;
+    margin: 0;
+    font: inherit;
+    font-size: .85rem;
+    line-height: 1.2;
+}
+.ticket-tratamento-form textarea.form-control {
+    width: 14rem;
+    min-width: 14rem;
+    padding: .25rem .4rem;
+    resize: vertical;
+}
+.ticket-tratamento-form .btn {
+    width: max-content;
+    padding: .25rem .6rem;
+}
 .fiscais-participantes-lista {
     display: flex;
     flex-wrap: wrap;
@@ -567,9 +609,9 @@ input[type="number"]::-webkit-outer-spin-button {
 .popup-ticket-fechar {
     width: 2rem;
     height: 2rem;
-    border: 1px solid #d4dbe0;
-    border-radius: 4px;
-    background: #eaf0f4;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
     color: #243746;
     font-size: 1.25rem;
     line-height: 1;
@@ -577,8 +619,11 @@ input[type="number"]::-webkit-outer-spin-button {
 }
 .popup-ticket-fechar:hover,
 .popup-ticket-fechar:focus-visible {
-    background: #dce5eb;
-    outline: none;
+    background: transparent;
+}
+.popup-ticket-fechar:focus-visible {
+    outline: 2px solid #14337b;
+    outline-offset: 1px;
 }
 .ticket-edicao-campos {
     display: grid;
@@ -744,8 +789,9 @@ input[type="number"]::-webkit-outer-spin-button {
 .popup-mapa-estacao-conteudo { width: min(900px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: hidden; padding: 1rem; background: #fff; border-radius: 6px; box-shadow: 0 12px 35px rgb(0 0 0 / 25%); }
 .popup-mapa-estacao-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
 .popup-mapa-estacao-cabecalho h2 { margin: 0; font-size: 1rem; }
-.popup-mapa-estacao-fechar { flex: 0 0 2.25rem; width: 2.25rem; height: 2.25rem; border: 1px solid #d4dbe0; border-radius: 3px; background: #eaf0f4; color: #243746; font-size: 1.5rem; line-height: 1; cursor: pointer; }
-.popup-mapa-estacao-fechar:hover, .popup-mapa-estacao-fechar:focus-visible { background: #dce5eb; outline: 2px solid #14337b; outline-offset: 1px; }
+.popup-mapa-estacao-fechar { flex: 0 0 2.25rem; width: 2.25rem; height: 2.25rem; border: 0; border-radius: 0; background: transparent; color: #243746; font-size: 1.5rem; line-height: 1; cursor: pointer; }
+.popup-mapa-estacao-fechar:hover { background: transparent; }
+.popup-mapa-estacao-fechar:focus-visible { background: transparent; outline: 2px solid #14337b; outline-offset: 1px; }
 .mapa-estacao { width: 100%; height: min(600px, calc(100vh - 8rem)); min-height: 320px; border: 1px solid var(--border-color, #d7dce2); border-radius: 4px; overflow: hidden; }
 .popup-mapa-estacao .leaflet-container,
 .popup-mapa-estacao .leaflet-container .leaflet-grab,
@@ -973,10 +1019,13 @@ body {
 .module-grid > div { min-width: 0; }
 .module-link { display: block; height: 100%; color: inherit; text-decoration: none; }
 .module-link .module-card { display: block; height: 100%; min-height: 112px; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, .1); }
-.module-link .display-flex { display: flex; }
+.module-link .display-flex { display: flex; height: 100%; }
 .module-link .align-items-center { align-items: center; }
 .module-link .gap-m { gap: 24px; }
-.module-link .module-icon { flex: 0 0 2rem; width: 2rem; height: 2rem; color: #0062c5; font-size: 28px; filter: grayscale(1) sepia(1) saturate(5) hue-rotate(175deg) brightness(.8) contrast(1.15); }
+/* Ajuste vertical dos ícones dos cartões de módulos. */
+.module-link .module-icon { flex: 0 0 2rem; width: 2rem; height: 2rem; color: #0062c5; font-size: 28px; filter: grayscale(1) sepia(1) saturate(5) hue-rotate(175deg) brightness(.8) contrast(1.15); transform: translateY(-.80rem); }
+/* Ajuste vertical conjunto do título e da descrição dos cartões de módulos. */
+.module-link .display-flex > div:last-child { align-self: center; transform: translateY(.85rem); }
 .module-link .font-semi-bold { color: #0062c5; font-weight: var(--font-semi-bold); }
 .module-link .font-size-s { font-size: 12px; }
 .module-link .text-neutral-6 { color: #8a9baa; }
@@ -984,6 +1033,9 @@ body {
 .module-link .module-description { min-height: 40px; line-height: 1.35; }
 .module-link:hover .module-card,
 .module-link:focus-visible .module-card { transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0, 0, 0, .06); outline: none; }
+.app-user-footer { display: block; margin: 0; padding: 0; padding-top: 1.7rem; color: #607486ba; font-size: .76rem; line-height: 1.2; text-align: center; letter-spacing: .01em; }
+.app-user-footer + .app-footer { margin-top: 0 !important; }
+.app-footer { margin-top: 0 !important; }
 
 @font-face {
     font-family: FontAwesome;
@@ -1096,10 +1148,11 @@ body {
     width: 2.35rem;
     min-height: 2.35rem;
     box-sizing: border-box;
-    padding: 0.35rem 0.55rem;
-    border: 1px solid #d4dbe0;
-    border-radius: 3px;
-    background: #eaf0f4;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
     color: #243746 !important;
     text-decoration: none;
     font-size: 0.84rem;
@@ -1919,14 +1972,15 @@ button.btn-submit { margin-left: auto; }
     right: 1rem;
     width: 36px;
     height: 36px;
-    border: 1px solid #fff;
-    border-radius: 50%;
-    background: #fff;
-    color: #333;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #fff;
     cursor: pointer;
     font-size: 1.5rem;
     line-height: 1;
 }
+.imagem-zoom-fechar:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 /* Formulários de entrada: campos sempre empilhados, inclusive em telas largas. */
 .form-cols,
@@ -2206,6 +2260,12 @@ a.btn {
     background: #eaf0f4;
     color: #243746 !important;
 }
+.teq-action-btn {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
 .teq-action-btn:hover,
 .teq-action-btn:focus-visible,
 .pendencia-expandir:hover,
@@ -2214,6 +2274,8 @@ a.btn {
     background: #dce5eb !important;
     color: #243746 !important;
 }
+.teq-action-btn:hover { border-color: transparent; background: transparent !important; }
+.teq-action-btn:focus-visible { border-color: transparent; background: transparent !important; outline: 2px solid #14337b; outline-offset: 1px; }
 
 /* Tabela de etiquetagem no padrao RF.Fusion */
 .teq-table-wrap {

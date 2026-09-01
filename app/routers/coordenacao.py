@@ -235,6 +235,12 @@ async def post_ticket_status(request: Request, ticket_id: int):
     observacoes = None
     if "observacoes" in form:
         observacoes = str(form.get("observacoes", "")).strip() or None
+    motivo_devolucao = None
+    if "motivo_devolucao" in form:
+        motivo_devolucao = str(form.get("motivo_devolucao", "")).strip() or None
+        if status == STATUS_TICKET_PENDENTE and not motivo_devolucao:
+            request.session["flash_error"] = "Informe o motivo da devolução do ticket."
+            return RedirectResponse("/coordenacao", status_code=303)
     fiscais = None
     if "fiscais" in form:
         fiscais = [
@@ -258,6 +264,7 @@ async def post_ticket_status(request: Request, ticket_id: int):
             fiscal_ids=fiscais,
             observacoes=observacoes,
             prioridade=prioridade,
+            motivo_devolucao=motivo_devolucao,
             usuario_fiscal=request.session.get(
                 "fiscal_nome", "Usuário não identificado"
             ),
@@ -280,16 +287,18 @@ async def post_ticket_status(request: Request, ticket_id: int):
             usuario_fiscal=request.session.get(
                 "fiscal_nome", "Usuário não identificado"
             ),
-            acao="Ticket atualizado",
+            acao="Ticket devolvido" if motivo_devolucao else "Ticket atualizado",
             valor_anterior=(
                 f"Ticket #{ticket_id}; status: {ticket_anterior.get('status')}; "
                 f"prioridade: {ticket_anterior.get('prioridade')}; fiscais: {fiscais_anteriores}; "
-                f"observações: {ticket_anterior.get('observacoes') or 'nenhuma'}"
+                f"observações: {ticket_anterior.get('observacoes') or 'nenhuma'}; "
+                f"motivo da devolução: {ticket_anterior.get('motivo_devolucao') or 'nenhum'}"
             ),
             valor_novo=(
                 f"Ticket #{ticket_id}; status: {status}; "
                 f"prioridade: {prioridade or ticket_anterior.get('prioridade')}; fiscais: {fiscais_novos}; "
-                f"observações: {observacoes if observacoes is not None else ticket_anterior.get('observacoes') or 'nenhuma'}"
+                f"observações: {observacoes if observacoes is not None else ticket_anterior.get('observacoes') or 'nenhuma'}; "
+                f"motivo da devolução: {motivo_devolucao if motivo_devolucao is not None else ticket_anterior.get('motivo_devolucao') or 'nenhum'}"
             ),
         )
     request.session["flash_success"] = "Ticket atualizado com sucesso."
@@ -365,9 +374,7 @@ async def post_concluir_emissao_coordenador(request: Request, ocorrencia_id: int
     res = concluir_emissao_coordenador(
         evento_id=int(evento_id),
         ocorrencia_id=ocorrencia_id,
-        usuario_fiscal=request.session.get(
-            "fiscal_nome", "Usuário não identificado"
-        ),
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
     )
 
     if res.startswith("ERRO"):
