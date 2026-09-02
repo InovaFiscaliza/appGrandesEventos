@@ -175,7 +175,7 @@
                         <td>{{ item.fiscais or 'Nenhum fiscal atribuído' }}</td>
                         <td class="ticket-acoes">
                             <button type="button" class="btn-ticket-mini js-abrir-popup-editar" data-ticket-id="{{ item.id }}" data-status="{{ item.status }}" data-prioridade="{{ item.prioridade }}" data-observacoes="{{ item.observacoes or '' }}" data-fiscal-ids="{{ (item.fiscal_ids or [])|join(',') }}">Editar</button>
-                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/cancelar" class="ticket-acao-inline" data-sem-confirmacao>
+                            <form method="post" action="/coordenacao/ticket/{{ item.id }}/cancelar" class="ticket-acao-inline" data-confirmacao-msg="Confirma o cancelamento deste ticket e a liberação das emissões vinculadas?">
                                 <button type="submit" class="btn-ticket-mini">Cancelar ticket</button>
                             </form>
                         </td>

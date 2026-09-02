@@ -17,7 +17,7 @@
     lista.replaceChildren();
     document.querySelectorAll('#fiscais-evento input[name="fiscais_evento"]:checked')
       .forEach((checkbox) => {
-        if (checkbox.dataset.fiscalFuncao !== "Coordenação") return;
+        if (!checkbox.dataset.fiscalPapeis.split(',').includes("Coordenação")) return;
         const fiscalId = checkbox.value;
         const nome = checkbox.dataset.fiscalNome || "";
         const texto = checkbox.closest("label")?.querySelector("span:last-child")?.textContent || nome;
@@ -90,7 +90,7 @@
       const participante = document.createElement("label");
       participante.className = "unidade-checkbox";
       participante.innerHTML = `
-        <input type="checkbox" name="fiscais_evento" value="${fiscal.id}" data-fiscal-nome="${fiscal.nome}" data-fiscal-funcao="${fiscal.funcao_evento}">
+        <input type="checkbox" name="fiscais_evento" value="${fiscal.id}" data-fiscal-nome="${fiscal.nome}" data-fiscal-papeis="${(fiscal.papeis || []).join(',')}">
         <span class="unidade-checkbox-mark" aria-hidden="true"></span>
         <span></span>
       `;

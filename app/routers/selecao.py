@@ -46,6 +46,7 @@ async def post_selecao(request: Request):
     evento_key = form.get("evento_key", "")
     fiscal_id = str(form.get("fiscal_id", "")).strip()
     senha = str(form.get("senha", "")).strip()
+    papel = str(form.get("papel", "")).strip()
 
     if not evento_key or "|||" not in evento_key:
         request.session["flash_error"] = "Selecione um evento válido."
@@ -81,6 +82,9 @@ async def post_selecao(request: Request):
     if fiscal is None:
         request.session["flash_error"] = "Usuário selecionado não foi encontrado."
         return RedirectResponse("/", status_code=303)
+    if papel not in (fiscal.get("papeis") or []):
+        request.session["flash_error"] = "Selecione um papel permitido para o usuário."
+        return RedirectResponse("/", status_code=303)
 
     request.session["evento_nome"] = nome
     request.session["spreadsheet_id"] = ev_id
@@ -89,12 +93,8 @@ async def post_selecao(request: Request):
     request.session["fiscal_local_anatel"] = str(
         fiscal.get("local_anatel") or ""
     ).strip()
-    request.session["fiscal_funcao_evento"] = str(
-        fiscal.get("funcao_evento") or ""
-    ).strip()
-    request.session["tipo_usuario"] = (
-        str(fiscal.get("funcao_evento") or "").strip().lower()
-    )
+    request.session["fiscal_funcao_evento"] = papel
+    request.session["tipo_usuario"] = papel.lower()
     registrar_login_evento(
         evento_id=int(ev_id),
         usuario_fiscal=str(fiscal["nome"]),
@@ -127,7 +127,7 @@ async def api_fiscais_evento(evento_id: int):
                 "id": fiscal["id"],
                 "nome": fiscal["nome"],
                 "local_anatel": fiscal["local_anatel"],
-                "funcao_evento": fiscal["funcao_evento"],
+                "papeis": fiscal.get("papeis") or [],
             }
             for fiscal in fiscais
         ]

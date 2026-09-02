@@ -1,23 +1,35 @@
 (function () {
   const eventoSelect = document.querySelector('#evento_key');
   const fiscalSelect = document.querySelector('#fiscal_id');
-  if (!eventoSelect || !fiscalSelect) return;
+  const papelSelect = document.querySelector('#papel');
+  if (!eventoSelect || !fiscalSelect || !papelSelect) return;
 
   function resetFiscais(message) {
     fiscalSelect.replaceChildren();
     fiscalSelect.appendChild(new Option(message, ''));
     fiscalSelect.disabled = true;
+    papelSelect.replaceChildren(new Option('Selecione um usuário primeiro', ''));
+    papelSelect.disabled = true;
   }
 
   function popularFiscais(fiscais) {
     fiscalSelect.replaceChildren();
     fiscalSelect.appendChild(new Option('Selecione...', ''));
     fiscais.forEach((fiscal) => {
-      const label = `${fiscal.nome} - ${fiscal.local_anatel} (${fiscal.funcao_evento})`;
+      const label = `${fiscal.nome} - ${fiscal.local_anatel}`;
       fiscalSelect.appendChild(new Option(label, String(fiscal.id)));
     });
     fiscalSelect.disabled = false;
   }
+
+  fiscalSelect.addEventListener('change', () => {
+    const fiscal = fiscaisAtuais.find((item) => String(item.id) === fiscalSelect.value);
+    papelSelect.replaceChildren(new Option('Selecione...', ''));
+    (fiscal?.papeis || []).forEach((papel) => papelSelect.appendChild(new Option(papel, papel)));
+    papelSelect.disabled = !fiscal;
+  });
+
+  let fiscaisAtuais = [];
 
   eventoSelect.addEventListener('change', async () => {
     const eventoKey = eventoSelect.value;
@@ -41,6 +53,7 @@
         return;
       }
 
+      fiscaisAtuais = fiscais;
       popularFiscais(fiscais);
     } catch {
       resetFiscais('Não foi possível carregar os usuários');

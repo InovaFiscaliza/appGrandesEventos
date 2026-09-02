@@ -78,14 +78,10 @@ def _ctx(request: Request, **kwargs):
 
 
 def _usuario_e_coordenador(request: Request, evento_id: int) -> bool:
-    """Confirma se o fiscal logado coordena o evento selecionado."""
-    fiscal_id = request.session.get("fiscal_id")
-    return str(
-        request.session.get("tipo_usuario", "")
-    ).strip().casefold() == "coordenação" or bool(
-        fiscal_id
-        and str(fiscal_id).isdigit()
-        and int(fiscal_id) in listar_coordenadores_evento(evento_id)
+    """Confirma se o usuário selecionou o papel Coordenação no login."""
+    del evento_id
+    return (
+        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
     )
 
 

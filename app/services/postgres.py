@@ -32,6 +32,7 @@ from app.config import (
 from app.services.db import get_engine
 
 logger = logging.getLogger(__name__)
+PAPEIS_FISCAL = ("Coordenação", "Abordagem", "Monitoração")
 
 
 class FrequenciaOcupadaError(Exception):
@@ -354,7 +355,7 @@ def criar_evento(
                 JOIN fiscais f ON f.id = ef.fiscal_id
                 WHERE ef.evento_id = :evento_id
                   AND ef.fiscal_id = :fiscal_id
-                  AND f.funcao_evento = 'Coordenação'
+                  AND 'Coordenação' = ANY(f.papeis)
                 ON CONFLICT DO NOTHING
                 """),
                 {"evento_id": evento_id, "fiscal_id": int(fiscal_id)},
@@ -377,28 +378,39 @@ def listar_fiscais() -> list[dict]:
     """Retorna a lista global de fiscais cadastrados."""
     with get_engine().connect() as conn:
         rows = conn.execute(text("""
-            SELECT f.id, f.nome, f.local_anatel, u.nome AS local_anatel_nome,
-                   f.funcao_evento
+                 SELECT f.id, f.nome, f.local_anatel, u.nome AS local_anatel_nome,
+                     f.papeis, array_to_string(f.papeis, ', ') AS funcao_evento
             FROM fiscais f
             JOIN unidades_executantes u ON u.sigla = f.local_anatel
-            ORDER BY f.nome, f.local_anatel, f.funcao_evento
+                 ORDER BY f.nome, f.local_anatel
         """)).mappings().all()
-    return [dict(row) for row in rows]
+    fiscais = []
+    for row in rows:
+        fiscal = dict(row)
+        fiscal["papeis"] = [
+            papel for papel in PAPEIS_FISCAL if papel in (fiscal["papeis"] or [])
+        ]
+        fiscal["funcao_evento"] = ", ".join(fiscal["papeis"])
+        fiscais.append(fiscal)
+    return fiscais
 
 
-def criar_fiscal(nome: str, local_anatel: str, funcao_evento: str) -> int:
+def criar_fiscal(nome: str, local_anatel: str, papeis: list[str]) -> int:
     """Cadastra um fiscal na lista global e retorna seu identificador."""
+    papeis_ordenados = [papel for papel in PAPEIS_FISCAL if papel in papeis]
     with get_engine().begin() as conn:
         return conn.execute(
             text("""
-            INSERT INTO fiscais (nome, local_anatel, funcao_evento)
-            VALUES (:nome, :local_anatel, :funcao_evento)
+            INSERT INTO fiscais (nome, local_anatel, papeis)
+            VALUES (:nome, :local_anatel, :papeis)
+            ON CONFLICT (nome, local_anatel) DO UPDATE
+            SET papeis = EXCLUDED.papeis
             RETURNING id
         """),
             {
                 "nome": nome,
                 "local_anatel": local_anatel,
-                "funcao_evento": funcao_evento,
+                "papeis": papeis_ordenados,
             },
         ).scalar_one()
 
@@ -1065,7 +1077,7 @@ def listar_eventos_detalhes() -> list[dict]:
                       ), '') AS estacoes,
                       COALESCE((
                           SELECT string_agg(
-                              f.nome || ' (' || f.local_anatel || ' - ' || f.funcao_evento || ')',
+                              f.nome || ' (' || f.local_anatel || ' - ' || array_to_string(f.papeis, ', ') || ')',
                               ', ' ORDER BY f.nome
                           )
                           FROM eventos_fiscais ef
@@ -1273,7 +1285,8 @@ def listar_estacoes_evento(evento_id: int) -> list[dict]:
                   SELECT id, nome, modelo_equipamento, local,
                       latitude, longitude
                 FROM estacoes
-                WHERE evento_id = :evento_id
+                                WHERE evento_id = :evento_id
+                                    AND desabilitada_em IS NULL
                 ORDER BY nome
             """),
                 {"evento_id": int(evento_id)},
@@ -1346,6 +1359,37 @@ def atualizar_estacao(
         )
 
 
+def desabilitar_estacao(evento_id: int, estacao_id: int) -> dict | None:
+    """Desabilita uma estação sem remover seus dados ou referências históricas."""
+    with get_engine().begin() as conn:
+        estacao = (
+            conn.execute(
+                text("""
+                    SELECT nome, modelo_equipamento, local, latitude, longitude
+                    FROM estacoes
+                    WHERE id = :estacao_id
+                      AND evento_id = :evento_id
+                      AND desabilitada_em IS NULL
+                    FOR UPDATE
+                """),
+                {"evento_id": int(evento_id), "estacao_id": int(estacao_id)},
+            )
+            .mappings()
+            .first()
+        )
+        if estacao is None:
+            return None
+        conn.execute(
+            text("""
+                UPDATE estacoes
+                SET desabilitada_em = now()
+                WHERE id = :estacao_id AND evento_id = :evento_id
+            """),
+            {"evento_id": int(evento_id), "estacao_id": int(estacao_id)},
+        )
+    return dict(estacao)
+
+
 def atualizar_evento(
     evento_id: int,
     nome: str,
@@ -1408,7 +1452,7 @@ def atualizar_evento(
                     JOIN fiscais f ON f.id = ef.fiscal_id
                     WHERE ef.evento_id = :evento_id
                       AND ef.fiscal_id = :fiscal_id
-                      AND f.funcao_evento = 'Coordenação'
+                      AND 'Coordenação' = ANY(f.papeis)
                 """),
                 {"evento_id": int(evento_id), "fiscal_id": int(fiscal_id)},
             )
@@ -1421,7 +1465,12 @@ def listar_abas_estacoes(_client=None, evento_id=None) -> list:
     try:
         with get_engine().connect() as conn:
             rows = conn.execute(
-                text("SELECT nome FROM estacoes WHERE evento_id = :ev ORDER BY nome"),
+                text("""
+                    SELECT nome
+                    FROM estacoes
+                    WHERE evento_id = :ev AND desabilitada_em IS NULL
+                    ORDER BY nome
+                """),
                 {"ev": int(evento_id)},
             ).all()
         return [r[0] for r in rows]

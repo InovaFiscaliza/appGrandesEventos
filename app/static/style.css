@@ -783,7 +783,7 @@ input[type="number"]::-webkit-outer-spin-button {
     font-weight: inherit;
     line-height: 1.2;
 }
-.estacoes-evento-table .estacao-acao { width: 1%; text-align: center; vertical-align: middle; white-space: nowrap; }
+.estacoes-evento-table .estacao-acao { width: 1%; min-width: 9rem; text-align: center; vertical-align: middle; white-space: nowrap; }
 .popup-mapa-estacao { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 45%); }
 .popup-mapa-estacao[hidden] { display: none; }
 .popup-mapa-estacao-conteudo { width: min(900px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: hidden; padding: 1rem; background: #fff; border-radius: 6px; box-shadow: 0 12px 35px rgb(0 0 0 / 25%); }
@@ -801,7 +801,8 @@ input[type="number"]::-webkit-outer-spin-button {
 .popup-mapa-estacao .leaflet-container.leaflet-dragging .leaflet-interactive {
     cursor: default !important;
 }
-.estacao-acao form { display: flex; justify-content: center; }
+.estacao-acoes { display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+.estacao-acoes form { display: flex; margin: 0; }
 .estacao-acao .btn { margin: 0; }
 .evento-acao { width: 1%; white-space: nowrap; text-align: center; vertical-align: middle; }
 .evento-acao .btn { width: max-content; margin: 0 auto; }
@@ -992,6 +993,23 @@ body {
     background: linear-gradient(135deg, #f9fcff 0%, #f3f8fc 58%, #e6f0f8 100%);
     box-shadow: var(--shadow);
 }
+.form-card.incidentes-lista { background: #fff; }
+.incidentes-lista .ute-table td { font-weight: 400; }
+.incidentes-lista .ute-table th { font-weight: 700; }
+.form-card.estacoes-lista { background: #fff; }
+.estacoes-lista .ute-table td,
+.estacoes-lista .ute-table .estacao-acao .btn {
+    font-size: .85rem !important;
+    font-weight: 400;
+}
+.estacoes-lista .ute-table th { font-size: .85rem; font-weight: 700; }
+.form-card.eventos-lista { background: #fff; }
+.eventos-lista .ute-table td,
+.eventos-lista .ute-table .evento-acao .btn {
+    font-size: .85rem;
+    font-weight: 400;
+}
+.eventos-lista .ute-table th { font-size: .85rem; font-weight: 700; }
 .form-group label { color: #405363; font-size: .92rem; }
 .form-group input, .form-group select, .form-group textarea { border-color: #b8c6d1; border-radius: 3px; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--blue-accent); box-shadow: 0 0 0 2px rgba(22, 163, 183, .14); outline: none; }
@@ -2290,7 +2308,7 @@ a.btn {
     border-collapse: separate;
     border-spacing: 0;
     color: #233442;
-    font-size: .88rem;
+    font-size: .85rem;
 }
 .teq-table th {
     position: sticky;
@@ -2301,7 +2319,7 @@ a.btn {
     border-bottom: 1px solid #d8e0ea;
     background: #f1f3f6;
     color: #24466f;
-    font-size: .8rem;
+    font-size: .85rem;
     font-weight: 700;
     white-space: nowrap;
 }
@@ -2309,6 +2327,7 @@ a.btn {
     padding: .58rem .7rem;
     border: 0;
     border-bottom: 1px solid #e8edf2;
+    font-weight: 400;
     vertical-align: middle;
 }
 .teq-table tbody tr { transition: background-color .12s ease; }

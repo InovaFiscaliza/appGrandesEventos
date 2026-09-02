@@ -114,6 +114,32 @@ requisitos/                # Documentação de requisitos
 - Flash messages para feedback ao usuário
 - Em tabelas com ações, a célula de botões deve ocupar somente o espaço necessário dos botões (sem largura fixa sobrando).
 
+## Padrões Consolidados do Sistema
+
+### Listas, tabelas e cartões
+
+- Usar a lista de **Incidentes cadastrados** como referência visual para listagens: fundo branco, cabeçalhos em negrito e dados em peso normal.
+- Tabelas operacionais devem usar fonte de `0.85rem` em cabeçalhos e células; não aplicar `font-semi-bold` aos dados de uma lista.
+- Reutilizar `.ute-table` para listagens convencionais e `.teq-table` para teste e etiquetagem, mantendo a mesma tipografia de dados.
+- Preservar `.table-scroll` como rolagem horizontal para tabelas largas; não implementar redimensionamento manual de colunas, pois a interface deve funcionar em celular.
+- Cartões de módulos devem alinhar ícone e o bloco de título/descrição verticalmente como unidades independentes. Manter os ajustes visuais desses elementos nas regras comentadas de `.module-link .module-icon` e `.module-link .display-flex > div:last-child`.
+
+### Popups e controles auxiliares
+
+- Botões `×` que fecham popups não devem ter moldura, fundo ou caixa visual; manter área clicável e foco visível por teclado.
+- Botões auxiliares de formulários, como adicionar/remover fiscal participante, devem usar `type="button"` e `data-sem-confirmacao` para não herdarem a confirmação do envio do formulário.
+
+### Cache PWA
+
+- Sempre que alterar arquivos em `app/static/`, atualizar a versão do cache em `app/static/sw.js` e a versão de registro em `app/static/sw-register.js`.
+- Quando a alteração for em `style.css`, também incrementar o parâmetro de versão de `/static/style.css` em `app/templates/base.html`.
+
+### Tickets e auditoria
+
+- Ao devolver ticket concluído pelo fiscal, exigir motivo da devolução, persistir em `tickets.motivo_devolucao`, exibir ao fiscal e registrar o coordenador, o estado anterior e o novo motivo na auditoria.
+- Identificar tickets devolvidos na lista do fiscal com o ícone FontAwesome `fa-exclamation-circle` quando houver `motivo_devolucao`.
+- Antes de gravar auditoria de edição, normalizar `NULL`, vazio, `NaN`, `none` e `null`; não registrar alteração quando os valores anterior e novo forem equivalentes após normalização.
+
 ## Lembretes Funcionais — Fotos
 
 - Fotos de BSR/Jammer e ERB Fake devem ser nomeadas automaticamente nesta ordem:

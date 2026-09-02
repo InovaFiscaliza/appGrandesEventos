@@ -35,14 +35,10 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 def _usuario_e_coordenador(request: Request, evento_id: int) -> bool:
-    """Confirma que o fiscal logado está vinculado como coordenador do evento."""
-    fiscal_id = request.session.get("fiscal_id")
-    return str(
-        request.session.get("tipo_usuario", "")
-    ).strip().casefold() == "coordenação" or bool(
-        fiscal_id
-        and str(fiscal_id).isdigit()
-        and int(fiscal_id) in listar_coordenadores_evento(evento_id)
+    """Confirma que o usuário selecionou o papel Coordenação no login."""
+    del evento_id
+    return (
+        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
     )
 
 

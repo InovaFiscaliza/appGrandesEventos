@@ -86,14 +86,8 @@ async def carregar_eventos_no_request(request: Request, call_next):
     evento_atual = (
         obter_evento(int(evento_id)) if evento_id and str(evento_id).isdigit() else None
     )
-    fiscal_id = request.session.get("fiscal_id")
-    coordenador_evento = str(
-        request.session.get("tipo_usuario", "")
-    ).strip().casefold() == "coordenação" or (
-        bool(fiscal_id)
-        and evento_id is not None
-        and str(fiscal_id).isdigit()
-        and int(fiscal_id) in listar_coordenadores_evento(int(evento_id))
+    coordenador_evento = (
+        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
     )
     request.state.permissoes = permissoes_interface(
         evento=evento_atual,

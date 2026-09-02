@@ -34,17 +34,9 @@ templates = Jinja2Templates(directory="app/templates")
 
 
 def _usuario_e_coordenador(request: Request) -> bool:
-    """Confirma se o fiscal logado coordena o evento selecionado."""
-    evento_id = request.session.get("spreadsheet_id")
-    fiscal_id = request.session.get("fiscal_id")
-    return str(
-        request.session.get("tipo_usuario", "")
-    ).strip().casefold() == "coordenação" or bool(
-        evento_id
-        and str(evento_id).isdigit()
-        and fiscal_id
-        and str(fiscal_id).isdigit()
-        and int(fiscal_id) in listar_coordenadores_evento(int(evento_id))
+    """Confirma que o usuário selecionou o papel Coordenação no login."""
+    return (
+        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
     )
 
 
@@ -113,16 +105,23 @@ async def post_criar_fiscal(request: Request):
     form = await request.form()
     nome = str(form.get("nome", "")).strip()
     local_anatel = str(form.get("local_anatel", "")).strip()
-    funcao_evento = str(form.get("funcao_evento", "")).strip()
+    papeis = [
+        str(papel).strip() for papel in form.getlist("papeis") if str(papel).strip()
+    ]
     funcoes = {"Coordenação", "Abordagem", "Monitoração"}
     unidades = {item["sigla"] for item in listar_unidades_executantes()}
-    if not nome or local_anatel not in unidades or funcao_evento not in funcoes:
+    if (
+        not nome
+        or local_anatel not in unidades
+        or not papeis
+        or not set(papeis).issubset(funcoes)
+    ):
         return JSONResponse(
             {"ok": False, "mensagem": "Preencha os dados do fiscal corretamente."},
             status_code=400,
         )
     try:
-        fiscal_id = criar_fiscal(nome, local_anatel, funcao_evento)
+        fiscal_id = criar_fiscal(nome, local_anatel, papeis)
     except IntegrityError:
         return JSONResponse(
             {"ok": False, "mensagem": "Este fiscal já está cadastrado."},

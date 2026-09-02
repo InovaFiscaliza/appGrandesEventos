@@ -6,10 +6,12 @@ from sqlalchemy.exc import IntegrityError
 from app.config import MODELOS_EQUIPAMENTO, TITULO_PRINCIPAL
 from app.services.postgres import (
     criar_estacao,
+    desabilitar_estacao,
     atualizar_estacao,
     listar_coordenadores_evento,
     listar_estacoes_evento,
     listar_eventos_detalhes,
+    registrar_auditoria_coordenacao,
 )
 from app.utils.formatters import _img_b64
 
@@ -29,14 +31,10 @@ def _ctx(request: Request, **kwargs):
 
 
 def _usuario_e_coordenador(request: Request, evento_id: int) -> bool:
-    """Confirma que o usuário logado coordena o evento selecionado."""
-    fiscal_id = request.session.get("fiscal_id")
-    return str(
-        request.session.get("tipo_usuario", "")
-    ).strip().casefold() == "coordenação" or bool(
-        fiscal_id
-        and str(fiscal_id).isdigit()
-        and int(fiscal_id) in listar_coordenadores_evento(evento_id)
+    """Confirma que o usuário selecionou o papel Coordenação no login."""
+    del evento_id
+    return (
+        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
     )
 
 
@@ -196,3 +194,32 @@ async def post_editar_estacao(request: Request, estacao_id: int):
         request.session["flash_error"] = "Informe latitude e longitude válidas."
     sufixo = f"&editar={estacao_id}" if erro else ""
     return RedirectResponse(f"/estacoes?evento_id={evento_id}{sufixo}", status_code=303)
+
+
+@router.post("/estacoes/{estacao_id}/excluir")
+async def post_excluir_estacao(request: Request, estacao_id: int):
+    """Desabilita uma estação e preserva seu histórico de utilização."""
+    form = await request.form()
+    evento_id = str(form.get("evento_id", "")).strip()
+    if not evento_id.isdigit() or not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
+
+    estacao = desabilitar_estacao(int(evento_id), estacao_id)
+    if estacao is None:
+        request.session["flash_error"] = "Estação não encontrada ou já desabilitada."
+    else:
+        registrar_auditoria_coordenacao(
+            evento_id=int(evento_id),
+            usuario_fiscal=request.session.get(
+                "fiscal_nome", "Usuário não identificado"
+            ),
+            acao="Coordenação - Estação desabilitada",
+            valor_anterior=(
+                f"Estação #{estacao_id}; nome: {estacao['nome']}; "
+                f"modelo: {estacao['modelo_equipamento'] or 'não informado'}; "
+                f"local: {estacao['local'] or 'não informado'}"
+            ),
+            valor_novo="Estação desabilitada; registros históricos preservados",
+        )
+        request.session["flash_success"] = "Estação desabilitada com sucesso."
+    return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)

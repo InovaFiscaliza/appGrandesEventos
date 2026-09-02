@@ -130,7 +130,7 @@
 {% endif %}
 
 {% if evento_id %}
-<section class="form-card font-semi-bold">
+<section class="form-card font-semi-bold estacoes-lista">
     <div class="section-heading">
         <h5 class="teq-title">Estações cadastradas</h5>
         <a href="/estacoes?evento_id={{ evento_id }}&novo=1" class="btn">Cadastrar nova estação</a>
@@ -147,7 +147,15 @@
                 <td>{{ estacao.local or '' }}</td>
                 <td>{{ estacao.latitude or '' }}</td>
                 <td>{{ estacao.longitude or '' }}</td>
-                <td class="estacao-acao"><a class="btn btn-submit font-semi-bold" href="/estacoes?evento_id={{ evento_id }}&editar={{ estacao.id }}">Editar</a></td>
+                <td class="estacao-acao">
+                    <div class="estacao-acoes">
+                        <a class="btn btn-submit font-semi-bold" href="/estacoes?evento_id={{ evento_id }}&editar={{ estacao.id }}">Editar</a>
+                        <form method="post" action="/estacoes/{{ estacao.id }}/excluir" data-confirmacao-msg="Confirma a desativação desta estação? Os registros históricos serão preservados.">
+                            <input type="hidden" name="evento_id" value="{{ evento_id }}">
+                            <button type="submit" class="btn btn-red">Excluir</button>
+                        </form>
+                    </div>
+                </td>
             </tr>
             {% endfor %}
             </tbody>

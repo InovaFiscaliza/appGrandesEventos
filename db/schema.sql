@@ -43,10 +43,32 @@ CREATE TABLE IF NOT EXISTS fiscais (
     id            BIGSERIAL PRIMARY KEY,
     nome          TEXT NOT NULL,
     local_anatel  TEXT NOT NULL REFERENCES unidades_executantes(sigla),
-    funcao_evento TEXT NOT NULL CHECK (funcao_evento IN ('Coordenação', 'Abordagem', 'Monitoração')),
+    papeis        TEXT[] NOT NULL DEFAULT '{}'
+                  CHECK (papeis <@ ARRAY['Coordenação', 'Abordagem', 'Monitoração']),
     criado_em     TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (nome, local_anatel, funcao_evento)
+    UNIQUE (nome, local_anatel)
 );
+
+ALTER TABLE fiscais ADD COLUMN IF NOT EXISTS papeis TEXT[] NOT NULL DEFAULT '{}';
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'fiscais' AND column_name = 'funcao_evento'
+    ) THEN
+        UPDATE fiscais SET papeis = ARRAY[funcao_evento]
+        WHERE cardinality(papeis) = 0 AND funcao_evento IS NOT NULL;
+    END IF;
+END $$;
+UPDATE fiscais
+SET papeis = ARRAY(
+    SELECT papel
+    FROM unnest(papeis) AS papel
+    ORDER BY array_position(ARRAY['Coordenação', 'Abordagem', 'Monitoração'], papel)
+);
+ALTER TABLE fiscais DROP CONSTRAINT IF EXISTS fiscais_nome_local_anatel_funcao_evento_key;
+ALTER TABLE fiscais DROP COLUMN IF EXISTS funcao_evento;
 
 CREATE INDEX IF NOT EXISTS idx_fiscais_nome ON fiscais (nome);
 
@@ -161,8 +183,11 @@ CREATE TABLE IF NOT EXISTS estacoes (
     cidade      TEXT,
     latitude    NUMERIC(9,6),
     longitude   NUMERIC(9,6),
+    desabilitada_em TIMESTAMPTZ,
     UNIQUE (evento_id, nome)
 );
+
+ALTER TABLE estacoes ADD COLUMN IF NOT EXISTS desabilitada_em TIMESTAMPTZ;
 
 -- Ocorrências/emissões (unifica PAINEL + Abordagem + abas de estação)
 CREATE TABLE IF NOT EXISTS ocorrencias (

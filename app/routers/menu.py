@@ -31,13 +31,8 @@ async def get_menu(request: Request):
     link_mapa = get_city_map_url(evento_id=sp_id)
 
     fiscal_id = request.session.get("fiscal_id")
-    coordenador = bool(
+    coordenador = (
         str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
-        or (
-            fiscal_id
-            and str(fiscal_id).isdigit()
-            and int(fiscal_id) in listar_coordenadores_evento(int(sp_id))
-        )
     )
     fiscal_nome = str(request.session.get("fiscal_nome", "")).strip().casefold()
     if not coordenador:
