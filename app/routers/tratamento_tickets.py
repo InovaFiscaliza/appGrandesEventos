@@ -111,13 +111,19 @@ async def post_tratamento_ticket(request: Request, ticket_id: int):
         )
         return RedirectResponse("/tratamento-tickets", status_code=303)
 
-    atualizar_ticket_evento(
-        ticket_id=ticket_id,
-        evento_id=int(evento_id),
-        status=status,
-        providencias=providencias,
-        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
-    )
+    try:
+        atualizar_ticket_evento(
+            ticket_id=ticket_id,
+            evento_id=int(evento_id),
+            status=status,
+            providencias=providencias,
+            usuario_fiscal=request.session.get(
+                "fiscal_nome", "Usuário não identificado"
+            ),
+        )
+    except ValueError as exc:
+        request.session["flash_error"] = str(exc)
+        return RedirectResponse("/tratamento-tickets", status_code=303)
     registrar_auditoria_coordenacao(
         evento_id=int(evento_id),
         usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),

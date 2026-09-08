@@ -125,8 +125,9 @@ AppOffline.interceptarSubmit(
     "Estação ID": fd.get("estacao_id") || "",
     "Fiscais participantes": fd.getAll("fiscais_participantes"),
     "Autorizado? (Q)": "",
-    "UTE?": fd.get("ute") ? "1" : "",
-    "Processo SEI ou Ato UTE": fd.get("proc") || "",
+    "UTE?": fd.get("ute") || "",
+    "Processo SEI UTE": fd.get("proc") || "",
+    "Ato UTE": fd.get("ato_ute") || "",
     "Observações/Detalhes/Contatos": fd.get("obs") || "",
     "Responsável pela emissão": "",
     "Interferente?": fd.get("interferente") || "",
@@ -157,3 +158,20 @@ AppOffline.interceptarSubmit(
     },
   }
 );
+
+(() => {
+  const ute = document.querySelector('[name="ute"]');
+  const campos = document.getElementById("campos-ute");
+  const processo = document.getElementById("proc-ute");
+  const ato = document.getElementById("ato-ute");
+  if (!ute || !campos || !processo || !ato) return;
+
+  const atualizarCamposUte = () => {
+    const ativo = ute.value === "Sim";
+    campos.hidden = !ativo;
+    processo.disabled = !ativo;
+    ato.disabled = !ativo;
+  };
+  ute.addEventListener("change", atualizarCamposUte);
+  atualizarCamposUte();
+})();

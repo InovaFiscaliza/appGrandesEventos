@@ -95,11 +95,24 @@
             </div>
         </div>
         <div class="form-group">
-            <label><input type="checkbox" name="ute_check" id="f-ute" value="1"> UTE?</label>
+            <label>UTE? <span class="required">*</span></label>
+            <div class="select-shell">
+            <select class="form-control" name="ute_check" id="f-ute" required>
+                <option value=""></option>
+                <option value="Sim">Sim</option>
+                <option value="Não">Não</option>
+            </select>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Processo SEI UTE (ou Ato UTE)</label>
-            <input class="form-control" type="text" name="proc_edit" id="f-proc">
+        <div id="campos-ute-edicao" hidden>
+            <div class="form-group">
+                <label>Processo SEI</label>
+                <input class="form-control" type="text" name="proc_edit" id="f-proc">
+            </div>
+            <div class="form-group">
+                <label>Ato UTE</label>
+                <input class="form-control" type="text" name="ato_ute_edit" id="f-ato-ute">
+            </div>
         </div>
         <div class="form-group">
             <label>Ocorrência (observações)</label>

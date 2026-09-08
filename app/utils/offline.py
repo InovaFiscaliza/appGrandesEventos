@@ -48,7 +48,7 @@ def extrair_dados_inserir(form) -> Dict[str, str]:
 
     Pode ser usado tanto pelo router quanto pelo frontend.
     """
-    ute = bool(form.get("ute"))
+    ute = str(form.get("ute", "")).strip()
     return {
         "Dia": form.get("dia", ""),
         "Hora": form.get("hora", ""),
@@ -61,8 +61,9 @@ def extrair_dados_inserir(form) -> Dict[str, str]:
         "Autorizado? (Q)": "",
         "Estação ID": form.get("estacao_id", "").strip(),
         "Fiscais participantes": form.getlist("fiscais_participantes"),
-        "UTE?": "1" if ute else "",
-        "Processo SEI ou Ato UTE": form.get("proc", "").strip(),
+        "UTE?": ute,
+        "Processo SEI UTE": form.get("proc", "").strip(),
+        "Ato UTE": form.get("ato_ute", "").strip(),
         "Observações/Detalhes/Contatos": form.get("obs", "").strip(),
         "Responsável pela emissão": "",
         "Interferente?": form.get("interferente", ""),
@@ -83,8 +84,9 @@ def extrair_dados_edicao(form) -> Dict[str, str]:
         "row_key": form.get("row_key", ""),
         "Identificação": form.get("ident_edit", ""),
         "Autorizado?": form.get("autz_edit", ""),
-        "UTE?": "Sim" if form.get("ute_check") else "Não",
+        "UTE?": form.get("ute_check", ""),
         "Processo SEI UTE": form.get("proc_edit", "").strip(),
+        "Ato UTE": form.get("ato_ute_edit", "").strip(),
         "Ocorrência (observações)": form.get("obs_edit", "").strip(),
         "Alguém mais ciente?": form.get("cient_edit", "").strip(),
         "Interferente?": form.get("interf_edit", ""),

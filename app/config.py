@@ -60,9 +60,11 @@ FAIXA_OPCOES = [
     "SLP",
     "TV",
     "SMP",
+    "SARC",
     "GNSS",
     "Satélite",
     "Radiação Restrita",
+    "Outros",
 ]
 
 MODELOS_EQUIPAMENTO = [

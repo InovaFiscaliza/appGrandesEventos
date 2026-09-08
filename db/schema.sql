@@ -227,6 +227,7 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     autorizado        TEXT,
     ute               BOOLEAN DEFAULT FALSE,
     processo_sei_ute  TEXT,
+    ato_ute           TEXT,
     observacoes       TEXT,
     alguem_ciente     TEXT,
     interferente      TEXT,
@@ -240,6 +241,7 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS origem_captura TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS concluida_por TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS id_exibicao TEXT;
+ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS ato_ute TEXT;
 UPDATE ocorrencias
 SET id_exibicao = id::text || '-' || upper(substr(md5('emissao:' || criado_em::text || ':' || id::text), 1, 4));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ocorrencias_id_exibicao

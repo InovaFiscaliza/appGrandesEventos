@@ -1,4 +1,3 @@
-  textoSeguro(row.id_exibicao || row.id),
 const STORE = "cache_pendencias";
 let pendencias = [];
 let paginaAtual = 1;
@@ -19,6 +18,22 @@ function setSelect(id, val) {
   }
 }
 
+function atualizarCamposUteEdicao() {
+  const ute = document.getElementById("f-ute");
+  const campos = document.getElementById("campos-ute-edicao");
+  const processo = document.getElementById("f-proc");
+  const ato = document.getElementById("f-ato-ute");
+  if (!ute || !campos || !processo || !ato) return;
+  const ativo = ute.value === "Sim";
+  campos.hidden = !ativo;
+  processo.disabled = !ativo;
+  ato.disabled = !ativo;
+}
+
+document
+  .getElementById("f-ute")
+  ?.addEventListener("change", atualizarCamposUteEdicao);
+
 function preencherForm(row) {
   document.getElementById("f-row_key").value = row.row_key || "";
   document.getElementById("f-fonte").value = row.fonte || "";
@@ -36,15 +51,20 @@ function preencherForm(row) {
   document.getElementById("f-largura").value = row.largura || "";
   document.getElementById("f-faixa").value = row.faixa || "";
   document.getElementById("f-proc").value = row.processo_sei || "";
+  document.getElementById("f-ato-ute").value = row.ato_ute || "";
   document.getElementById("f-obs").value = row.ocorrencia || "";
   document.getElementById("f-cient").value = row.ciente || "";
-  document.getElementById("f-ute").checked = ["sim", "true", "1", "ok"].includes(
-    (row.ute || "").toLowerCase()
+  setSelect(
+    "f-ute",
+    ["sim", "true", "1", "ok"].includes((row.ute || "").toLowerCase())
+      ? "Sim"
+      : "Não"
   );
   setSelect("f-ident", row.identificacao || "");
   setSelect("f-autz", row.autorizado || "");
   setSelect("f-interf", row.interferente || "");
   setSelect("f-situ", row.situacao || "");
+  atualizarCamposUteEdicao();
   document.getElementById("f-imagens-excluir").value = "";
   carregarImagensOcorrencia(row.id);
   document.getElementById("bloco-form").style.display = "block";
@@ -313,8 +333,9 @@ function extrairDadosEdicao() {
     row_key: g("f-row_key"),
     "Identificação": g("f-ident"),
     "Autorizado?": g("f-autz"),
-    "UTE?": document.getElementById("f-ute").checked ? "Sim" : "Não",
+    "UTE?": g("f-ute"),
     "Processo SEI UTE": g("f-proc"),
+    "Ato UTE": g("f-ato-ute"),
     "Ocorrência (observações)": g("f-obs"),
     "Alguém mais ciente?": g("f-cient"),
     "Interferente?": g("f-interf"),

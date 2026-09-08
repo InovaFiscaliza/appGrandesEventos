@@ -260,8 +260,9 @@ async def post_consultar_salvar(request: Request):
     row_key = form.get("row_key", "")
     ident_edit = form.get("ident_edit", "")
     autz_edit = form.get("autz_edit", "")
-    ute_check = bool(form.get("ute_check"))
+    ute_check = str(form.get("ute_check", "")).strip()
     proc_edit = form.get("proc_edit", "").strip()
+    ato_ute_edit = form.get("ato_ute_edit", "").strip()
     obs_edit = form.get("obs_edit", "").strip()
     cient_edit = form.get("cient_edit", "").strip()
     interf_edit = form.get("interf_edit", "")
@@ -284,8 +285,10 @@ async def post_consultar_salvar(request: Request):
     erros = list(erros_imagens)
     if not ident_edit:
         erros.append("Identificação")
-    if ute_check and not proc_edit:
-        erros.append("Processo SEI (UTE)")
+    if ute_check not in {"Sim", "Não"}:
+        erros.append("UTE")
+    if ute_check == "Sim" and not (proc_edit or ato_ute_edit):
+        erros.append("Processo SEI ou Ato UTE")
     origem_campo = ORIGENS_CAMPO.get(estacao_id)
     if not estacao_id or (not estacao_id.isdigit() and origem_campo is None):
         erros.append("Estação utilizada")
@@ -297,8 +300,9 @@ async def post_consultar_salvar(request: Request):
     pac = {
         "Identificação": ident_edit,
         "Autorizado?": autz_edit,
-        "UTE?": "Sim" if ute_check else "Não",
+        "UTE?": ute_check,
         "Processo SEI UTE": proc_edit,
+        "Ato UTE": ato_ute_edit,
         "Ocorrência (observações)": obs_edit,
         "Alguém mais ciente?": cient_edit,
         "Interferente?": interf_edit,
@@ -401,6 +405,7 @@ async def api_pendencias(request: Request):
                 "autorizado": str(row.get("Autorizado?", "")),
                 "ute": str(row.get("UTE?", "")),
                 "processo_sei": str(row.get("Processo SEI UTE", "")),
+                "ato_ute": str(row.get("Ato UTE", "")),
                 "ocorrencia": str(row.get("Ocorrência (observações)", "")),
                 "ciente": str(row.get("Alguém mais ciente?", "")),
                 "interferente": str(row.get("Interferente?", "")),
@@ -452,11 +457,22 @@ async def api_consultar_salvar(request: Request):
     )
     if ocorrencia.empty:
         return JSONResponse({"erro": "Acesso não autorizado"}, status_code=403)
+    ute = str(dados.get("UTE?", "")).strip()
+    if ute not in {"Sim", "Não"}:
+        return JSONResponse({"erro": "UTE inválida."}, status_code=400)
+    if ute == "Sim" and not (
+        str(dados.get("Processo SEI UTE", "")).strip()
+        or str(dados.get("Ato UTE", "")).strip()
+    ):
+        return JSONResponse(
+            {"erro": "Informe Processo SEI ou Ato UTE."}, status_code=400
+        )
     pac = {
         "Identificação": dados.get("Identificação", ""),
         "Autorizado?": dados.get("Autorizado?", ""),
-        "UTE?": dados.get("UTE?", "Não"),
+        "UTE?": ute,
         "Processo SEI UTE": dados.get("Processo SEI UTE", ""),
+        "Ato UTE": dados.get("Ato UTE", ""),
         "Ocorrência (observações)": dados.get("Ocorrência (observações)", ""),
         "Alguém mais ciente?": dados.get("Alguém mais ciente?", ""),
         "Interferente?": dados.get("Interferente?", ""),

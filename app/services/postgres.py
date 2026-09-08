@@ -481,7 +481,25 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
                       string_agg(DISTINCT o.id::text, ', ' ORDER BY o.id::text) AS ocorrencia_ids,
                       string_agg(DISTINCT bi.id::text, ', ' ORDER BY bi.id::text) AS incidente_ids,
                       string_agg(DISTINCT COALESCE(o.identificacao, 'Emissão #' || o.id::text), ', ' ORDER BY COALESCE(o.identificacao, 'Emissão #' || o.id::text)) AS identificacao,
-                      string_agg(DISTINCT COALESCE(o.local_regiao, 'Não informado'), ', ' ORDER BY COALESCE(o.local_regiao, 'Não informado')) AS local_regiao,
+                                            (
+                                                    SELECT string_agg(local, ', ' ORDER BY local)
+                                                    FROM (
+                                                            SELECT DISTINCT NULLIF(trim(ocorrencia.local_regiao), '') AS local
+                                                            FROM ticket_ocorrencias vinculacao_ocorrencia
+                                                            JOIN ocorrencias ocorrencia
+                                                                ON ocorrencia.id = vinculacao_ocorrencia.ocorrencia_id
+                                                            WHERE vinculacao_ocorrencia.ticket_id = t.id
+
+                                                            UNION
+
+                                                            SELECT DISTINCT NULLIF(trim(incidente.regiao), '') AS local
+                                                            FROM ticket_incidentes vinculacao_incidente
+                                                            JOIN bsr_erb incidente
+                                                                ON incidente.id = vinculacao_incidente.incidente_id
+                                                            WHERE vinculacao_incidente.ticket_id = t.id
+                                                    ) locais
+                                                    WHERE local IS NOT NULL
+                                            ) AS local_regiao,
                       string_agg(DISTINCT o.frequencia_mhz::text, ', ' ORDER BY o.frequencia_mhz::text) AS frequencia_mhz,
                       string_agg(DISTINCT o.largura_khz::text, ', ' ORDER BY o.largura_khz::text) AS largura_khz,
                       array_remove(array_agg(DISTINCT tf.fiscal_id), NULL) AS fiscal_ids,
@@ -654,6 +672,7 @@ def obter_emissao_evento(evento_id: int, ocorrencia_id: int) -> dict | None:
                 SELECT o.id, o.id_exibicao, o.identificacao, o.local_regiao, o.fiscal,
                        o.data, o.hora, o.frequencia_mhz, o.largura_khz,
                        o.faixa, o.autorizado, o.ute, o.processo_sei_ute,
+                       o.ato_ute,
                        o.observacoes, o.alguem_ciente, o.interferente,
                        o.situacao, o.concluida_por,
                        COALESCE(e.nome, '') AS estacao_nome
@@ -1021,7 +1040,10 @@ def atualizar_ticket_evento(
         emissoes = (
             conn.execute(
                 text("""
-                    SELECT o.id, o.situacao, o.concluida_por
+                    SELECT o.id, o.data, o.hora, o.fiscal, o.frequencia_mhz,
+                           o.largura_khz, o.faixa, o.identificacao, o.interferente,
+                           o.observacoes, o.estacao_id, o.origem_captura,
+                           o.situacao, o.concluida_por
                     FROM ocorrencias o
                     JOIN ticket_ocorrencias vinculacao
                       ON vinculacao.ocorrencia_id = o.id
@@ -1037,6 +1059,16 @@ def atualizar_ticket_evento(
             .mappings()
             .all()
         )
+        if conclusao_nova:
+            pendencias = [
+                f"Emissão #{emissao['id']}: {', '.join(_campos_pendentes_para_conclusao(emissao))}"
+                for emissao in emissoes
+                if _campos_pendentes_para_conclusao(emissao)
+            ]
+            if pendencias:
+                raise ValueError(
+                    "Não é possível concluir o ticket. " + "; ".join(pendencias) + "."
+                )
         for emissao in emissoes:
             situacao_anterior = emissao["situacao"]
             conclusao_anterior = emissao["concluida_por"]
@@ -1925,6 +1957,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
                 o.autorizado AS "Autorizado?",
                 CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
                 o.processo_sei_ute AS "Processo SEI UTE",
+                o.ato_ute AS "Ato UTE",
                 o.observacoes AS "Ocorrência (observações)",
                 o.alguem_ciente AS "Alguém mais ciente?",
                 o.interferente AS "Interferente?",
@@ -1971,6 +2004,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
                 o.autorizado AS "Autorizado?",
                 CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
                 o.processo_sei_ute AS "Processo SEI UTE",
+                o.ato_ute AS "Ato UTE",
                 o.observacoes AS "Ocorrência (observações)",
                 o.alguem_ciente AS "Alguém mais ciente?",
                 o.interferente AS "Interferente?",
@@ -2508,13 +2542,13 @@ def inserir_emissao_I_W(
                         (evento_id, estacao_id, origem_captura, local_regiao, fiscal, data, hora,
                          frequencia_mhz, largura_khz, faixa,
                          identificacao, autorizado, ute,
-                         processo_sei_ute, observacoes,
+                         processo_sei_ute, ato_ute, observacoes,
                          interferente, situacao, concluida_por, fonte)
                     VALUES
                         (:ev, :estacao_id, :origem_captura, :local, :fiscal, :data, :hora,
                          :freq, :bw, :faixa,
                          :ident, :autz, :ute,
-                         :proc, :obs,
+                         :proc, :ato_ute, :obs,
                         :inter, :situ, :concluida_por, :fonte)
                     RETURNING id
                 """),
@@ -2531,8 +2565,12 @@ def inserir_emissao_I_W(
                     "faixa": dados_formulario.get("Faixa de Frequência", ""),
                     "ident": dados_formulario.get("Identificação", ""),
                     "autz": dados_formulario.get("Autorizado? (Q)", ""),
-                    "ute": bool(dados_formulario.get("UTE?", False)),
-                    "proc": dados_formulario.get("Processo SEI ou Ato UTE", ""),
+                    "ute": str(dados_formulario.get("UTE?", "")).strip() == "Sim",
+                    "proc": dados_formulario.get(
+                        "Processo SEI UTE",
+                        dados_formulario.get("Processo SEI ou Ato UTE", ""),
+                    ),
+                    "ato_ute": dados_formulario.get("Ato UTE", ""),
                     "obs": f"{dados_formulario.get('Observações/Detalhes/Contatos', '')} - {dados_formulario.get('Responsável pela emissão', '')}",
                     "inter": dados_formulario.get("Interferente?", ""),
                     "situ": situacao,
@@ -3184,6 +3222,31 @@ def listar_bsr_erb(evento_id: int, ocultar_vinculados: bool = False) -> list[dic
 # =========================================================================
 
 
+def _campos_pendentes_para_conclusao(emissao: dict) -> list[str]:
+    """Lista campos obrigatórios que impedem a conclusão de uma emissão."""
+    campos = {
+        "Data": emissao.get("data"),
+        "Hora": emissao.get("hora"),
+        "Fiscal": emissao.get("fiscal"),
+        "Captura realizada por": emissao.get("estacao_id")
+        or emissao.get("origem_captura"),
+        "Frequência": emissao.get("frequencia_mhz"),
+        "Largura de banda": emissao.get("largura_khz"),
+        "Faixa relacionada": emissao.get("faixa"),
+        "Identificação": emissao.get("identificacao"),
+        "Interferente": emissao.get("interferente"),
+        "Observações": emissao.get("observacoes"),
+    }
+    pendentes = [
+        nome
+        for nome, valor in campos.items()
+        if valor is None or not str(valor).strip()
+    ]
+    if str(emissao.get("interferente") or "").strip().casefold() == "indefinido":
+        pendentes.append("Classificação de interferência")
+    return pendentes
+
+
 def atualizar_campos_na_aba_mae(
     _client=None,
     evento_id=None,
@@ -3206,6 +3269,7 @@ def atualizar_campos_na_aba_mae(
                 "Autorizado?": "autorizado",
                 "UTE?": "ute",
                 "Processo SEI UTE": "processo_sei_ute",
+                "Ato UTE": "ato_ute",
                 "Ocorrência (observações)": "observacoes",
                 "Alguém mais ciente?": "alguem_ciente",
                 "Interferente?": "interferente",
@@ -3217,7 +3281,8 @@ def atualizar_campos_na_aba_mae(
                 conn.execute(
                     text(f"""
                           SELECT o.{', o.'.join(campos)}, o.concluida_por,
-                              o.estacao_id, o.origem_captura,
+                              o.data, o.hora, o.fiscal, o.frequencia_mhz,
+                              o.largura_khz, o.faixa, o.estacao_id, o.origem_captura,
                               COALESCE(e.nome, o.origem_captura, '') AS estacao_nome
                     FROM ocorrencias o
                     LEFT JOIN estacoes e ON e.id = o.estacao_id
@@ -3231,6 +3296,23 @@ def atualizar_campos_na_aba_mae(
             )
             if atual is None:
                 return f"ERRO: ID {id_ocorrencia} não encontrado no evento {evento_id}."
+
+            if novos_valores.get("Situação") == SITUACAO_CONCLUIDA_FISCAL:
+                emissao_para_conclusao = dict(atual)
+                emissao_para_conclusao.update(
+                    {
+                        field_map[chave]: _normalizar_valor_auditoria(valor)
+                        for chave, valor in novos_valores.items()
+                        if chave in field_map and chave != "UTE?"
+                    }
+                )
+                pendentes = _campos_pendentes_para_conclusao(emissao_para_conclusao)
+                if pendentes:
+                    return (
+                        "ERRO: não é possível concluir a emissão. Resolva: "
+                        + ", ".join(pendentes)
+                        + "."
+                    )
 
             alteracoes = []
 
@@ -3750,6 +3832,7 @@ def _buscar_por_texto_livre(
                 o.autorizado AS "Autorizado?",
                 CASE WHEN o.ute THEN 'Sim' ELSE 'Não' END AS "UTE?",
                 o.processo_sei_ute AS "Processo SEI UTE",
+                o.ato_ute AS "Ato UTE",
                 o.observacoes AS "Ocorrência (observações)",
                 o.alguem_ciente AS "Alguém mais ciente?",
                 o.interferente AS "Interferente?",
@@ -3865,7 +3948,9 @@ def concluir_emissao_coordenador(
             ocorrencia = (
                 conn.execute(
                     text("""
-                    SELECT o.situacao, o.concluida_por,
+                          SELECT o.data, o.hora, o.fiscal, o.frequencia_mhz, o.largura_khz,
+                              o.faixa, o.identificacao, o.interferente, o.observacoes,
+                              o.estacao_id, o.origem_captura, o.situacao, o.concluida_por,
                            EXISTS (
                                SELECT 1
                                FROM ticket_ocorrencias vinculacao
@@ -3891,6 +3976,13 @@ def concluir_emissao_coordenador(
                 return "ERRO: ocorrência não encontrada."
             if ocorrencia["possui_ticket"]:
                 return "ERRO: a emissão possui ticket e deve ser concluída pelo encerramento dele."
+            pendentes = _campos_pendentes_para_conclusao(ocorrencia)
+            if pendentes:
+                return (
+                    "ERRO: não é possível concluir a emissão. Resolva: "
+                    + ", ".join(pendentes)
+                    + "."
+                )
             if (
                 ocorrencia["situacao"] == SITUACAO_CONCLUIDA_COORDENADOR
                 and ocorrencia["concluida_por"] == "Coordenador"

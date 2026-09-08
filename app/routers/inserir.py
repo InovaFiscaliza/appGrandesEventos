@@ -142,8 +142,9 @@ async def get_inserir(request: Request):
             fiscais_participantes=fiscais_participantes,
             fiscais_participantes_ids=[],
             interferente="",
-            ute=False,
+            ute="",
             proc="",
+            ato_ute="",
             obs="",
             situacao="",
             flash_success=request.session.pop("flash_success", None),
@@ -170,8 +171,10 @@ async def post_inserir(request: Request):
     ident = form.get("ident", "")
     estacao_id = form.get("estacao_id", "").strip()
     interferente = form.get("interferente", "")
-    ute = bool(form.get("ute"))
+    ute_valor = str(form.get("ute", "")).strip()
+    ute = ute_valor == "Sim"
     proc = form.get("proc", "").strip()
+    ato_ute = form.get("ato_ute", "").strip()
     obs = form.get("obs", "").strip()
     situacao = form.get("situacao", "")
     fiscais_participantes_ids = list(
@@ -203,6 +206,10 @@ async def post_inserir(request: Request):
     larg = _largura_da_banda(larg_str)
     if larg is None:
         erros.append("Largura de banda")
+    if ute_valor not in {"Sim", "Não"}:
+        erros.append("UTE")
+    if ute and not (proc or ato_ute):
+        erros.append("Processo SEI ou Ato UTE")
     if estacao_id not in estacoes_ids and origem_campo is None:
         erros.append("Estação da captura")
     if situacao not in SITUACOES_DISPONIVEIS_AO_FISCAL:
@@ -233,8 +240,9 @@ async def post_inserir(request: Request):
                 fiscais_participantes=fiscais_participantes,
                 fiscais_participantes_ids=fiscais_participantes_ids,
                 interferente=interferente,
-                ute=ute,
+                ute=ute_valor,
                 proc=proc,
+                ato_ute=ato_ute,
                 obs=obs,
                 situacao=situacao,
                 flash_error="Preencha os campos obrigatórios: " + ", ".join(erros),
@@ -264,8 +272,9 @@ async def post_inserir(request: Request):
         "Largura em kHz": larg,
         "Faixa de Frequência": faixa,
         "Identificação": ident,
-        "UTE?": ute,
-        "Processo SEI ou Ato UTE": proc,
+        "UTE?": ute_valor,
+        "Processo SEI UTE": proc,
+        "Ato UTE": ato_ute,
         "Observações/Detalhes/Contatos": obs,
         "Situação": situacao,
         "Autorizado? (Q)": "Indefinido",
@@ -301,8 +310,9 @@ async def post_inserir(request: Request):
                 fiscais_participantes=fiscais_participantes,
                 fiscais_participantes_ids=fiscais_participantes_ids,
                 interferente=interferente,
-                ute=ute,
+                ute=ute_valor,
                 proc=proc,
+                ato_ute=ato_ute,
                 obs=obs,
                 situacao=situacao,
                 flash_error=str(exc),
@@ -342,8 +352,9 @@ async def post_inserir(request: Request):
             fiscais_participantes=fiscais_participantes,
             fiscais_participantes_ids=fiscais_participantes_ids,
             interferente=interferente,
-            ute=ute,
+            ute=ute_valor,
             proc=proc,
+            ato_ute=ato_ute,
             obs=obs,
             situacao=situacao,
             flash_error=None,
@@ -387,6 +398,17 @@ async def api_inserir(request: Request):
     if situacao not in SITUACOES_DISPONIVEIS_AO_FISCAL:
         return JSONResponse({"erro": "Status da emissão inválido."}, status_code=400)
     dados["Situação"] = situacao
+    ute = str(dados.get("UTE?", "")).strip()
+    if ute not in {"Sim", "Não"}:
+        return JSONResponse({"erro": "UTE inválida."}, status_code=400)
+    if ute == "Sim" and not (
+        str(dados.get("Processo SEI UTE", "")).strip()
+        or str(dados.get("Ato UTE", "")).strip()
+        or str(dados.get("Processo SEI ou Ato UTE", "")).strip()
+    ):
+        return JSONResponse(
+            {"erro": "Informe Processo SEI ou Ato UTE."}, status_code=400
+        )
     estacao_id = str(dados.get("Estação ID", dados.get("estacao_id", ""))).strip()
     dados["Estação ID"] = int(estacao_id) if estacao_id.isdigit() else None
     dados["Origem da captura"] = ORIGENS_CAMPO.get(estacao_id)
