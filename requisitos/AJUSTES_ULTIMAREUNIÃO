@@ -190,16 +190,16 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 3. Tipos de incidente
 
-- [ ] Trocar **Jammer** por uma descrição compreensível ao fiscal: **Bloqueador de sinal (BSR)**. **Referência: 00:18:01–00:18:35.**
-- [ ] Trocar **Reclamação externa** por **Reclamação de interferência**. **Referência: 00:02:52–00:03:03 e 00:17:18–00:17:28.**
-- [ ] Trocar **Falha de Wi‑Fi** por **Falha de rede**, com exemplos entre parênteses, como Wi‑Fi, SMP e outros. **Referência: 00:02:34–00:02:40 e 00:17:27–00:17:35.**
-- [ ] Substituir o rótulo específico **Incêndio que afeta equipamentos** por **Incidente crítico**, abrangendo, por exemplo, incêndio e queda de energia. **Referência: 00:02:08–00:03:28.**
-- [ ] Incluir **Problemas com equipamentos da agência** para casos como sensor ou RFI inoperante que exijam verificação física. **Referência: 00:03:32–00:04:05 e 00:17:37–00:17:47.**
+- [x] Trocar **Jammer** por uma descrição compreensível ao fiscal: **Bloqueador de sinal (BSR)**. **Referência: 00:18:01–00:18:35.**
+- [x] Trocar **Reclamação externa** por **Reclamação de interferência**. **Referência: 00:02:52–00:03:03 e 00:17:18–00:17:28.**
+- [x] Trocar **Falha de Wi‑Fi** por **Falha de rede**, com exemplos entre parênteses, como Wi‑Fi, SMP e outros. **Referência: 00:02:34–00:02:40 e 00:17:27–00:17:35.**
+- [x] Substituir o rótulo específico **Incêndio que afeta equipamentos** por **Incidente crítico**, abrangendo, por exemplo, incêndio e queda de energia. **Referência: 00:02:08–00:03:28.**
+- [x] Incluir **Problemas com equipamentos da agência** para casos como sensor ou RFI inoperante que exijam verificação física. **Referência: 00:03:32–00:04:05 e 00:17:37–00:17:47.**
 
 ## 4. Formulário do incidente e seleção de local
 
-- [ ] Tornar **Observações** obrigatório no registro de incidente, assim como **Local**, evitando demandas sem explicação suficiente para tratamento. **Referência: 00:18:42–00:18:51 e 00:23:18–00:24:01.**
-- [ ] Tornar o comando de seleção no mapa compreensível em dispositivos sem hover. O botão atual, representado por “+”, deve receber texto curto visível — como **Escolher no mapa** ou **Selecionar local no mapa** — ou um ícone inequívoco de mapa/globo, preservando o layout responsivo de celular e tablet. **Referência: 00:19:05–00:19:30 e 00:21:38–00:22:44.**
+- [x] Tornar **Observações** obrigatório no registro de incidente, assim como **Local**, evitando demandas sem explicação suficiente para tratamento. **Referência: 00:18:42–00:18:51 e 00:23:18–00:24:01.**
+- [x] Tornar o comando de seleção no mapa compreensível em dispositivos sem hover. O botão atual, representado por “+”, deve receber texto curto visível — como **Escolher no mapa** ou **Selecionar local no mapa** — ou um ícone inequívoco de mapa/globo, preservando o layout responsivo de celular e tablet. **Referência: 00:19:05–00:19:30 e 00:21:38–00:22:44.**
 
 ## 5. Auditoria
 
@@ -237,3 +237,20 @@ Modificações solicitadas — AppGrandesEventos
 
 - [ ] Leonardo Lago Araujo
 Andre Vinicius Pereira de Rezende, esqueci de falar um pedido para o sistema: permitir a etiquetagem em lotes. É comum se fazer a etiquetagem de diversos equipamentos iguais de uma só vez. Isso facilita o trabalho. Bastaria colocar um ranger de etiquetas e a quantidade de equipamentos iguais. 
+
+Reunião dia 03/09/2026
+
+Gerar token
+
+https://controledeacesso.anatel.gov.br/flow/auth/signin
+ 
+Ações:
+ 
+1) Verificar com a SGI para aumentar a RHFISNSPDEX02 de 16GB de RAM para 32GB de RAM.
+2) Pedir liberação de portas do firewall para página web, ssh.
+3) Migrar os containeres do ambiente local para o ambiente podman da RHFISNSPDEX02
+ 
+
+Segundo essa página tem que ter acesso mesmo. Deixa eu ver se o João já libera:
+ 
+https://anatel365.sharepoint.com/sites/WikiAnatel/SitePages/conta-servico-senha-segura.aspx?d=w7a8dcf94006c45b59fd393f6bb76c32e&csf=1&web=1&e=1QpfWN&TeamsCID=6c3a1c6d-f294-4668-9027-abe4f41f0e72&CID=a06da3aa-e880-4247-a47e-e421c2535919

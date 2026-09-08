@@ -30,6 +30,22 @@
         </div>
         <div class="form-group">
             <div class="estacao-campo-cabecalho">
+                <label>Fiscal <span class="required">*</span> <button id="adicionar-fiscal-participante" class="teq-list-btn" type="button" data-sem-confirmacao aria-label="Adicionar fiscal participante" title="Adicionar fiscal participante">+</button></label>
+                <input class="form-control" type="text" value="{{ request.session.get('fiscal_nome', 'Usuário') }}" readonly>
+                <div id="seletor-fiscal-participante" hidden>
+                    <label for="fiscal-participante">Fiscal participante</label>
+                    <select id="fiscal-participante" class="form-control">
+                        <option value=""></option>
+                        {% for fiscal in fiscais_participantes %}<option value="{{ fiscal.id }}">{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div id="lista-fiscais-participantes" class="fiscais-participantes-lista">
+                    {% for fiscal in fiscais_participantes if fiscal.id in fiscais_participantes_ids %}<span data-fiscal-id="{{ fiscal.id }}">{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }} <button type="button" class="fiscal-participante-remover" data-sem-confirmacao aria-label="Remover {{ fiscal.nome }}" title="Remover fiscal">×</button><input type="hidden" name="fiscais_participantes" value="{{ fiscal.id }}"></span>{% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="estacao-campo-cabecalho">
                 <label for="local-ocorrencia">Local <span class="required">*</span></label>
                 {% if evento and evento.latitude is not none and evento.longitude is not none %}
                 <button type="button" id="abrir-mapa-ocorrencia" class="teq-list-btn mapa-estacao-abrir" aria-label="Selecionar local no mapa" title="Selecionar local no mapa">+</button>
@@ -48,8 +64,18 @@
             </div>
         </div>
         <div class="form-group">
-            <label for="observacoes-bsr-erb">Observações</label>
-            <textarea class="form-control" id="observacoes-bsr-erb" name="observacoes" rows="4">{{ observacoes or '' }}</textarea>
+            <label for="observacoes-bsr-erb">Observações <span class="required">*</span></label>
+            <textarea class="form-control" id="observacoes-bsr-erb" name="observacoes" rows="4" required>{{ observacoes or '' }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="situacao-incidente">Status <span class="required">*</span></label>
+            <div class="select-shell">
+                <select id="situacao-incidente" name="situacao" class="form-control" required>
+                    {% for opcao in situacao_opcoes %}
+                    <option value="{{ opcao }}" {% if situacao == opcao %}selected{% endif %}>{{ opcao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
         <div class="form-group imagem-upload">
             <label for="imagens-bsr-erb">Fotos do incidente</label>
@@ -67,7 +93,7 @@
             <ul id="lista-imagens-bsr-erb" class="lista-imagens" aria-live="polite"></ul>
         </div>
         <div class="inserir-acoes">
-            <button type="submit" class="btn btn-submit">{{ "Salvar alterações" if registro_edicao else "Registrar" }}</button>
+            <button type="submit" class="btn btn-submit">{{ "Salvar alterações" if registro_edicao else "Submeter o incidente ao coordenador" }}</button>
             {% if registro_edicao %}<a href="/bsr-erb" class="btn btn-back">Cancelar</a>{% endif %}
         </div>
     </form>
@@ -139,17 +165,17 @@
 <section class="form-card font-semi-bold incidentes-lista">
     <div class="section-heading">
         <h5 class="teq-title">Incidentes cadastrados</h5>
-        <a href="/bsr-erb?novo=1" class="btn">Novo incidente</a>
     </div>
     {% if registros %}
     <div class="table-scroll">
-        <table class="ute-table">
+        <table class="ute-table" data-paginacao="10">
             <thead>
-                <tr><th>Tipo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th>Fotos</th><th>Registrado em</th><th class="bsr-acao">Ação</th></tr>
+                <tr><th>ID</th><th>Tipo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th>Fotos</th><th>Registrado em</th></tr>
             </thead>
             <tbody>
                 {% for registro in registros %}
                 <tr>
+                    <td>{{ registro.id_exibicao or registro.id }}</td>
                     <td>{{ registro.tipo }}</td>
                     <td>{{ registro.regiao or "-" }}</td>
                     <td>{{ registro.latitude or "-" }}</td>
@@ -167,24 +193,17 @@
                         {% else %}-{% endif %}
                     </td>
                     <td>{{ registro.criado_em.strftime('%d/%m/%Y %H:%M') if registro.criado_em else "-" }}</td>
-                    <td class="bsr-acao">
-                        <div class="bsr-acoes">
-                            <a class="btn" href="/bsr-erb?editar={{ registro.id }}" data-sem-confirmacao>Editar</a>
-                            <form method="post" action="/bsr-erb/{{ registro.id }}/excluir">
-                                <button type="submit" class="btn btn-red">Excluir</button>
-                            </form>
-                        </div>
-                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    <nav class="pendencias-pagination" aria-label="Paginação dos incidentes cadastrados"></nav>
     {% else %}<p>Nenhum registro cadastrado.</p>{% endif %}
 </section>
 
 <script src="/static/db.js"></script>
 <script src="/static/sync.js"></script>
-<script src="/static/bsr_erb.js?v=5"></script>
+<script src="/static/bsr_erb.js?v=6"></script>
 <script src="/static/upload-imagens.js?v=5"></script>
 {% endblock %}

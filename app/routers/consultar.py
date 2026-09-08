@@ -389,6 +389,7 @@ async def api_pendencias(request: Request):
                 "label": _make_label(row),
                 "fonte": str(row.get("Fonte", "")),
                 "id": str(row.get("ID", "")),
+                "id_exibicao": str(row.get("IDExibicao", "") or row.get("ID", "")),
                 "local": str(row.get("Local", "")),
                 "fiscal": str(row.get("Fiscal", "")),
                 "data": str(row.get("Data", "")),

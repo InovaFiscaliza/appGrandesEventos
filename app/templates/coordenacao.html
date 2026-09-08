@@ -22,12 +22,58 @@
         <div id="tab-tickets" class="tab-panel active" role="tabpanel" aria-label="Tickets de trabalho">
 
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-bottom:1.25rem;">
+        <h2 class="font-semi-bold margin-bottom-m">Incidentes submetidos para inspeção</h2>
+        <div class="table-scroll" role="region" aria-label="Incidentes submetidos para inspeção" tabindex="0">
+            <table class="ute-table" data-paginacao="10">
+                <thead>
+                    <tr>
+                        <th aria-label="Selecionar"></th>
+                        <th>ID</th>
+                        <th>Tipo</th>
+                        <th>Local</th>
+                        <th>Observações</th>
+                        <th>Cadastrado por</th>
+                        <th>Status</th>
+                        <th>Registrado em</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for incidente in incidentes %}
+                    <tr{% if incidente.ja_possui_ticket %} class="emissao-ja-vinculada"{% endif %}>
+                        <td>
+                            <input type="checkbox" name="incidente_ids" value="{{ incidente.id }}" form="ticket-form" aria-label="Selecionar incidente {{ incidente.id_exibicao or incidente.id }}" {% if incidente.ja_possui_ticket %}disabled title="Incidente já vinculado ao ticket #{{ incidente.ticket_id_vinculado }}"{% endif %}>
+                        </td>
+                        <td>{{ incidente.id_exibicao or incidente.id }}</td>
+                        <td>{{ incidente.tipo }}</td>
+                        <td>{{ incidente.regiao or 'Não informado' }}</td>
+                        <td>{{ incidente.observacoes or 'Não informado' }}</td>
+                        <td>{{ incidente.cadastrado_por or 'Não informado' }}</td>
+                        <td>
+                            {{ incidente.situacao or 'Pendente' }}
+                            {% if incidente.ja_possui_ticket %}
+                            <span class="text-neutral-6 font-size-s">(ticket #{{ incidente.ticket_id_vinculado }})</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ incidente.criado_em.strftime('%d/%m/%Y %H:%M') if incidente.criado_em else '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8">Nenhum incidente submetido para inspeção.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <nav class="pendencias-pagination" aria-label="Paginação dos incidentes submetidos"></nav>
+    </div>
+
+    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-bottom:1.25rem;">
         <h2 class="font-semi-bold margin-bottom-m">Emissões submetidas para inspeção</h2>
         <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
             Revise as emissões pendentes ou concluídas pelo fiscal. A coordenação pode concluir definitivamente cada emissão ou selecionar uma ou mais para atribuir um ticket. Linhas em cinza já estão vinculadas a ticket.
         </p>
         <div class="table-scroll" role="region" aria-label="Emissões submetidas para inspeção" tabindex="0" style="margin-bottom:1rem;">
-            <table class="ute-table">
+            <table class="ute-table" data-paginacao="10">
                 <thead>
                     <tr>
                         <th aria-label="Selecionar"></th>
@@ -49,7 +95,7 @@
                             <input type="checkbox" name="ocorrencia_ids" value="{{ emissao.id }}" form="ticket-form" aria-label="Selecionar emissão {{ emissao.id }}" {% if emissao.ja_possui_ticket %}disabled title="Emissão já vinculada ao ticket #{{ emissao.ticket_id_vinculado }}"{% endif %}>
                         </td>
                         <td>
-                            <button type="button" class="emissao-id-btn" data-emissao-id="{{ emissao.id }}">{{ emissao.id }}</button>
+                            <button type="button" class="emissao-id-btn" data-emissao-id="{{ emissao.id }}">{{ emissao.id_exibicao or emissao.id }}</button>
                         </td>
                         <td>
                             {{ emissao.identificacao or ('Emissão #' ~ emissao.id) }}
@@ -81,6 +127,7 @@
                 </tbody>
             </table>
         </div>
+        <nav class="pendencias-pagination" aria-label="Paginação das emissões submetidas"></nav>
 
         <form id="ticket-form" method="post" action="/coordenacao/ticket" data-sem-confirmacao>
             <button type="button" id="abrir-popup-ticket" class="btn btn-primary" data-sem-confirmacao>Criar novo ticket</button>
@@ -135,7 +182,7 @@
         <h2 class="font-semi-bold margin-bottom-m">Tickets pendentes</h2>
         {% if tickets %}
         <div class="table-scroll" role="region" aria-label="Tickets abertos" tabindex="0">
-            <table class="ute-table tickets-tabela">
+            <table class="ute-table tickets-tabela" data-paginacao="10">
                 <thead>
                     <tr>
                         <th>Ticket</th>
@@ -163,6 +210,7 @@
                                 <button type="button" class="emissao-id-btn" data-emissao-id="{{ ocorrencia_id.strip() }}">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
                                 {% else %}-
                                 {% endfor %}
+                                {% if item.incidente_ids %}<br>Incidentes: {{ item.incidente_ids }}{% endif %}
                             </div>
                         </td>
                         <td>{{ item.local_regiao or 'Não informado' }}</td>
@@ -184,6 +232,7 @@
                 </tbody>
             </table>
         </div>
+        <nav class="pendencias-pagination" aria-label="Paginação dos tickets pendentes"></nav>
         {% else %}
         <p>Nenhum ticket pendente para este evento.</p>
         {% endif %}
@@ -196,7 +245,7 @@
         </p>
         {% if tickets_concluidos_fiscais %}
         <div class="table-scroll" role="region" aria-label="Tickets concluídos pelos fiscais" tabindex="0">
-            <table class="ute-table tickets-tabela">
+            <table class="ute-table tickets-tabela" data-paginacao="10">
                 <thead>
                     <tr>
                         <th>Ticket</th>
@@ -221,11 +270,12 @@
                                 <button type="button" class="emissao-id-btn" data-emissao-id="{{ ocorrencia_id.strip() }}">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
                                 {% else %}-
                                 {% endfor %}
+                                {% if item.incidente_ids %}<br>Incidentes: {{ item.incidente_ids }}{% endif %}
                             </div>
                         </td>
                         <td>{{ item.local_regiao or 'Não informado' }}</td>
                         <td>{{ item.prioridade }}</td>
-                        <td>{{ item.observacoes or 'Nenhuma providência informada' }}</td>
+                        <td>{{ item.providencias or 'Nenhuma providência informada' }}</td>
                         <td>{{ item.fiscais or 'Nenhum fiscal atribuído' }}</td>
                         <td>{{ item.atualizado_em or '-' }}</td>
                         <td class="ticket-acoes">
@@ -240,8 +290,54 @@
                 </tbody>
             </table>
         </div>
+        <nav class="pendencias-pagination" aria-label="Paginação dos tickets concluídos pelos fiscais"></nav>
         {% else %}
         <p>Nenhum ticket concluído pelos fiscais aguardando inspeção.</p>
+        {% endif %}
+    </div>
+
+    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-top:1.25rem;">
+        <h2 class="font-semi-bold margin-bottom-m">Tickets concluídos definitivamente</h2>
+        {% if tickets_concluidos_coordenador %}
+        <div class="table-scroll" role="region" aria-label="Tickets concluídos definitivamente" tabindex="0">
+            <table class="ute-table tickets-tabela" data-paginacao="10">
+                <thead>
+                    <tr>
+                        <th>Ticket</th>
+                        <th>Emissões</th>
+                        <th>Local</th>
+                        <th>Prioridade</th>
+                        <th>Providências tomadas</th>
+                        <th>Fiscais</th>
+                        <th>Concluído em</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in tickets_concluidos_coordenador %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td>
+                            <div>{{ item.identificacao or 'Não informado' }}</div>
+                            <div class="font-size-s text-neutral-6">IDs: {{ item.ocorrencia_ids or '-' }}</div>
+                            {% if item.incidente_ids %}<div class="font-size-s text-neutral-6">Incidentes: {{ item.incidente_ids }}</div>{% endif %}
+                        </td>
+                        <td>{{ item.local_regiao or 'Não informado' }}</td>
+                        <td>{{ item.prioridade }}</td>
+                        <td>{{ item.providencias or 'Nenhuma providência informada' }}</td>
+                        <td>{{ item.fiscais or 'Nenhum fiscal atribuído' }}</td>
+                        <td>{{ item.atualizado_em or '-' }}</td>
+                        <td class="ticket-acoes">
+                            <button type="button" class="btn-ticket-mini js-abrir-popup-detalhe-ticket" data-ticket-id="{{ item.id }}">Detalhes</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <nav class="pendencias-pagination" aria-label="Paginação dos tickets concluídos definitivamente"></nav>
+        {% else %}
+        <p>Nenhum ticket concluído definitivamente neste evento.</p>
         {% endif %}
     </div>
 
@@ -363,6 +459,18 @@
         </div>
     </div>
 
+    <div id="popup-detalhe-ticket" class="popup-ticket" hidden>
+        <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-detalhe-ticket-titulo">
+            <div class="popup-ticket-cabecalho">
+                <h2 id="popup-detalhe-ticket-titulo">Detalhes do ticket</h2>
+                <button type="button" class="popup-ticket-fechar" id="fechar-popup-detalhe-ticket" aria-label="Fechar detalhes">×</button>
+            </div>
+            <div id="popup-detalhe-ticket-corpo" class="emissao-detalhe-corpo">
+                <p class="text-neutral-6">Carregando detalhes...</p>
+            </div>
+        </div>
+    </div>
+
     <div id="popup-devolver-ticket" class="popup-ticket" hidden>
         <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-devolver-ticket-titulo">
             <div class="popup-ticket-cabecalho">
@@ -440,6 +548,9 @@
         const popupDetalheEmissao = document.getElementById('popup-detalhe-emissao');
         const fecharPopupDetalheEmissaoBotao = document.getElementById('fechar-popup-detalhe-emissao');
         const corpoPopupDetalheEmissao = document.getElementById('popup-detalhe-emissao-corpo');
+        const popupDetalheTicket = document.getElementById('popup-detalhe-ticket');
+        const fecharPopupDetalheTicketBotao = document.getElementById('fechar-popup-detalhe-ticket');
+        const corpoPopupDetalheTicket = document.getElementById('popup-detalhe-ticket-corpo');
 
         const fecharPopup = () => {
             if (popup) {
@@ -615,6 +726,66 @@
             }
         };
 
+        const renderRegistrosTicket = (titulo, registros, campos) => {
+            if (!Array.isArray(registros) || registros.length === 0) {
+                return '<h3 class="emissao-fotos-titulo">' + titulo + '</h3><p class="text-neutral-6">Nenhum registro vinculado.</p>';
+            }
+            return '<h3 class="emissao-fotos-titulo">' + titulo + '</h3>'
+                + registros.map((registro) => {
+                    const detalhes = campos.map((campo) => renderDetalheLinha(campo.rotulo, registro[campo.chave])).join('');
+                    return '<div class="ticket-detalhe-registro">'
+                        + '<div class="emissao-detalhe-grid">' + detalhes + '</div>'
+                        + '<h4 class="emissao-fotos-titulo">Fotos</h4>'
+                        + renderImagens(registro.imagens)
+                        + '</div>';
+                }).join('');
+        };
+
+        const abrirPopupDetalheTicket = async (ticketId) => {
+            if (!popupDetalheTicket || !corpoPopupDetalheTicket) return;
+            popupDetalheTicket.hidden = false;
+            corpoPopupDetalheTicket.innerHTML = '<p class="text-neutral-6">Carregando detalhes...</p>';
+            try {
+                const resposta = await fetch('/coordenacao/api/ticket/' + ticketId, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                if (!resposta.ok) throw new Error('Falha ao carregar o ticket.');
+                const ticket = await resposta.json();
+                const resumo = [
+                    renderDetalheLinha('Ticket', ticket.id),
+                    renderDetalheLinha('Prioridade', ticket.prioridade),
+                    renderDetalheLinha('Observações', ticket.observacoes),
+                    renderDetalheLinha('Providências tomadas', ticket.providencias),
+                    renderDetalheLinha('Concluído em', ticket.atualizado_em),
+                ].join('');
+                corpoPopupDetalheTicket.innerHTML = '<div class="emissao-detalhe-grid">' + resumo + '</div>'
+                    + renderRegistrosTicket('Emissões', ticket.emissoes, [
+                        { rotulo: 'ID', chave: 'id_exibicao' }, { rotulo: 'Identificação', chave: 'identificacao' },
+                        { rotulo: 'Local', chave: 'local_regiao' }, { rotulo: 'Fiscal', chave: 'fiscal' },
+                        { rotulo: 'Frequência (MHz)', chave: 'frequencia_mhz' }, { rotulo: 'Observações', chave: 'observacoes' },
+                    ])
+                    + renderRegistrosTicket('Incidentes', ticket.incidentes, [
+                        { rotulo: 'ID', chave: 'id_exibicao' }, { rotulo: 'Tipo', chave: 'tipo' },
+                        { rotulo: 'Local', chave: 'regiao' }, { rotulo: 'Cadastrado por', chave: 'cadastrado_por' },
+                        { rotulo: 'Observações', chave: 'observacoes' },
+                    ]);
+            } catch (erro) {
+                corpoPopupDetalheTicket.innerHTML = '<p class="flash flash-error">Não foi possível carregar os detalhes do ticket.</p>';
+            }
+        };
+
+        const fecharPopupDetalheTicket = () => {
+            if (popupDetalheTicket) popupDetalheTicket.hidden = true;
+        };
+
+        document.querySelectorAll('.js-abrir-popup-detalhe-ticket').forEach((botao) => {
+            botao.addEventListener('click', () => abrirPopupDetalheTicket(botao.dataset.ticketId));
+        });
+        fecharPopupDetalheTicketBotao?.addEventListener('click', fecharPopupDetalheTicket);
+        popupDetalheTicket?.addEventListener('click', (event) => {
+            if (event.target === popupDetalheTicket) fecharPopupDetalheTicket();
+        });
+
         botoesEmissaoId.forEach((botao) => {
             botao.addEventListener('click', function () {
                 const emissaoId = botao.dataset.emissaoId;
@@ -636,6 +807,41 @@
             });
         }
 
+        document.querySelectorAll('table[data-paginacao]').forEach((tabela) => {
+            const linhas = Array.from(tabela.querySelectorAll('tbody tr'));
+            const paginacao = tabela.parentElement.nextElementSibling;
+            const tamanhoPagina = Number(tabela.dataset.paginacao) || 10;
+            let paginaAtual = 1;
+
+            if (!paginacao || linhas.length <= tamanhoPagina) {
+                if (paginacao) paginacao.hidden = true;
+                return;
+            }
+
+            const renderizar = () => {
+                const totalPaginas = Math.ceil(linhas.length / tamanhoPagina);
+                const inicio = (paginaAtual - 1) * tamanhoPagina;
+                linhas.forEach((linha, indice) => {
+                    linha.hidden = indice < inicio || indice >= inicio + tamanhoPagina;
+                });
+                paginacao.replaceChildren();
+                for (let pagina = 1; pagina <= totalPaginas; pagina += 1) {
+                    const botao = document.createElement('button');
+                    botao.type = 'button';
+                    botao.textContent = String(pagina);
+                    botao.className = pagina === paginaAtual ? 'pagina-atual' : '';
+                    botao.addEventListener('click', () => {
+                        paginaAtual = pagina;
+                        renderizar();
+                    });
+                    paginacao.appendChild(botao);
+                }
+            };
+
+            paginacao.hidden = false;
+            renderizar();
+        });
+
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape' && popup && !popup.hidden) {
                 fecharPopup();
@@ -645,6 +851,9 @@
             }
             if (event.key === 'Escape' && popupDetalheEmissao && !popupDetalheEmissao.hidden) {
                 fecharPopupDetalheEmissao();
+            }
+            if (event.key === 'Escape' && popupDetalheTicket && !popupDetalheTicket.hidden) {
+                fecharPopupDetalheTicket();
             }
         });
     });

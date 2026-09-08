@@ -9,6 +9,7 @@ O parâmetro spreadsheet_id é tratado como evento_id (inteiro).
 """
 
 import base64
+import hashlib
 import logging
 import re
 from datetime import datetime, timezone
@@ -37,6 +38,12 @@ PAPEIS_FISCAL = ("Coordenação", "Abordagem", "Monitoração")
 
 class FrequenciaOcupadaError(Exception):
     """Indica que a frequência já está cadastrada no evento selecionado."""
+
+
+def _codigo_id_exibicao(instante, registro_id: int, tamanho: int = 4) -> str:
+    """Gera o trecho alfanumérico compacto do ID a partir da data e hora."""
+    semente = f"{instante.isoformat()}:{registro_id}".encode("utf-8")
+    return hashlib.sha256(semente).hexdigest().upper()[:tamanho]
 
 
 # =========================================================================
@@ -466,12 +473,13 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
             conn.execute(
                 text("""
                   SELECT t.id, t.evento_id, t.status, t.prioridade, t.observacoes,
-                      t.motivo_devolucao,
+                      t.providencias, t.motivo_devolucao,
                       to_char(t.criado_em AT TIME ZONE 'America/Sao_Paulo',
                           'DD/MM/YYYY HH24:MI') AS criado_em,
                       to_char(t.atualizado_em AT TIME ZONE 'America/Sao_Paulo',
                           'DD/MM/YYYY HH24:MI') AS atualizado_em,
                       string_agg(DISTINCT o.id::text, ', ' ORDER BY o.id::text) AS ocorrencia_ids,
+                      string_agg(DISTINCT bi.id::text, ', ' ORDER BY bi.id::text) AS incidente_ids,
                       string_agg(DISTINCT COALESCE(o.identificacao, 'Emissão #' || o.id::text), ', ' ORDER BY COALESCE(o.identificacao, 'Emissão #' || o.id::text)) AS identificacao,
                       string_agg(DISTINCT COALESCE(o.local_regiao, 'Não informado'), ', ' ORDER BY COALESCE(o.local_regiao, 'Não informado')) AS local_regiao,
                       string_agg(DISTINCT o.frequencia_mhz::text, ', ' ORDER BY o.frequencia_mhz::text) AS frequencia_mhz,
@@ -484,24 +492,15 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
                 FROM tickets t
                 LEFT JOIN ticket_ocorrencias toco ON toco.ticket_id = t.id
                 LEFT JOIN ocorrencias o ON o.id = toco.ocorrencia_id
+                LEFT JOIN ticket_incidentes tic ON tic.ticket_id = t.id
+                LEFT JOIN bsr_erb bi ON bi.id = tic.incidente_id
                 LEFT JOIN ticket_fiscais tf ON tf.ticket_id = t.id
                 LEFT JOIN fiscais f ON f.id = tf.fiscal_id
                 WHERE t.evento_id = :evento_id
                 GROUP BY t.id, t.evento_id, t.status, t.prioridade, t.observacoes,
-                         t.motivo_devolucao,
+                         t.providencias, t.motivo_devolucao,
                          t.criado_em, t.atualizado_em
-                ORDER BY
-                    CASE t.status
-                        WHEN 'pendente' THEN 0
-                        WHEN 'concluido_pelos_fiscais' THEN 1
-                        ELSE 2
-                    END,
-                    CASE t.prioridade
-                        WHEN 'alta' THEN 0
-                        WHEN 'normal' THEN 1
-                        ELSE 2
-                    END,
-                    t.id
+                ORDER BY t.atualizado_em DESC NULLS LAST, t.id DESC
             """),
                 {"evento_id": int(evento_id)},
             )
@@ -518,13 +517,86 @@ def listar_tickets_evento(evento_id: int) -> list[dict]:
     return tickets
 
 
-def listar_emissoes_evento(evento_id: int) -> list[dict]:
+def obter_detalhes_ticket_evento(evento_id: int, ticket_id: int) -> dict | None:
+    """Retorna os registros e fotos vinculados a um ticket do evento."""
+    with get_engine().connect() as conn:
+        ticket = (
+            conn.execute(
+                text("""
+                    SELECT id, status, prioridade, observacoes, providencias,
+                           motivo_devolucao,
+                           to_char(criado_em AT TIME ZONE 'America/Sao_Paulo',
+                               'DD/MM/YYYY HH24:MI') AS criado_em,
+                           to_char(atualizado_em AT TIME ZONE 'America/Sao_Paulo',
+                               'DD/MM/YYYY HH24:MI') AS atualizado_em
+                    FROM tickets
+                    WHERE id = :ticket_id AND evento_id = :evento_id
+                """),
+                {"evento_id": int(evento_id), "ticket_id": int(ticket_id)},
+            )
+            .mappings()
+            .first()
+        )
+        if ticket is None:
+            return None
+
+        emissoes = (
+            conn.execute(
+                text("""
+                    SELECT o.id, o.id_exibicao, o.identificacao, o.local_regiao,
+                           o.fiscal, o.data, o.hora, o.frequencia_mhz, o.largura_khz,
+                           o.observacoes, o.situacao
+                    FROM ticket_ocorrencias vinculacao
+                    JOIN ocorrencias o ON o.id = vinculacao.ocorrencia_id
+                    WHERE vinculacao.ticket_id = :ticket_id
+                    ORDER BY o.id
+                """),
+                {"ticket_id": int(ticket_id)},
+            )
+            .mappings()
+            .all()
+        )
+        incidentes = (
+            conn.execute(
+                text("""
+                    SELECT b.id, b.id_exibicao, b.tipo, b.regiao, b.observacoes,
+                           b.cadastrado_por, b.situacao
+                    FROM ticket_incidentes vinculacao
+                    JOIN bsr_erb b ON b.id = vinculacao.incidente_id
+                    WHERE vinculacao.ticket_id = :ticket_id
+                    ORDER BY b.id
+                """),
+                {"ticket_id": int(ticket_id)},
+            )
+            .mappings()
+            .all()
+        )
+
+    detalhes = dict(ticket)
+    detalhes["emissoes"] = [dict(emissao) for emissao in emissoes]
+    for emissao in detalhes["emissoes"]:
+        emissao["imagens"] = carregar_imagens_ocorrencia(evento_id, emissao["id"])
+
+    detalhes["incidentes"] = [dict(incidente) for incidente in incidentes]
+    for incidente in detalhes["incidentes"]:
+        incidente["imagens"] = [
+            imagem
+            for registro in listar_bsr_erb(evento_id)
+            if registro["id"] == incidente["id"]
+            for imagem in registro["imagens"]
+        ]
+    return detalhes
+
+
+def listar_emissoes_evento(
+    evento_id: int, ocultar_vinculadas: bool = False
+) -> list[dict]:
     """Lista emissões que ainda aguardam uma decisão da coordenação."""
     with get_engine().connect() as conn:
         rows = (
             conn.execute(
                 text("""
-                  SELECT o.id, o.identificacao,
+                  SELECT o.id, o.id_exibicao, o.identificacao,
                       NULLIF(concat_ws(', ', o.fiscal, participantes.nomes), '') AS fiscal,
                       o.local_regiao, o.data,
                        o.hora, o.frequencia_mhz, o.largura_khz, o.situacao,
@@ -548,6 +620,7 @@ def listar_emissoes_evento(evento_id: int) -> list[dict]:
                     LIMIT 1
                 ) vinculacao ON true
                 WHERE o.evento_id = :evento_id
+                                    AND (:ocultar_vinculadas = false OR vinculacao.ticket_id IS NULL)
                   AND (
                       lower(trim(o.situacao)) = 'pendente'
                       OR (
@@ -561,7 +634,10 @@ def listar_emissoes_evento(evento_id: int) -> list[dict]:
                     CASE WHEN lower(trim(o.situacao)) = 'pendente' THEN 0 ELSE 1 END,
                     data DESC NULLS LAST, hora DESC NULLS LAST, id DESC
             """),
-                {"evento_id": int(evento_id)},
+                {
+                    "evento_id": int(evento_id),
+                    "ocultar_vinculadas": ocultar_vinculadas,
+                },
             )
             .mappings()
             .all()
@@ -575,7 +651,7 @@ def obter_emissao_evento(evento_id: int, ocorrencia_id: int) -> dict | None:
         registro = (
             conn.execute(
                 text("""
-                SELECT o.id, o.identificacao, o.local_regiao, o.fiscal,
+                SELECT o.id, o.id_exibicao, o.identificacao, o.local_regiao, o.fiscal,
                        o.data, o.hora, o.frequencia_mhz, o.largura_khz,
                        o.faixa, o.autorizado, o.ute, o.processo_sei_ute,
                        o.observacoes, o.alguem_ciente, o.interferente,
@@ -599,16 +675,20 @@ def obter_emissao_evento(evento_id: int, ocorrencia_id: int) -> dict | None:
 def salvar_ticket_evento(
     evento_id: int,
     ocorrencia_ids: list[int],
+    incidente_ids: list[int] | None = None,
     prioridade: str = "normal",
     observacoes: str | None = None,
     fiscal_ids: list[int] | None = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
 ) -> int:
-    """Cria um ticket e devolve as emissões selecionadas ao estado pendente."""
+    """Cria um ticket para emissões e/ou incidentes selecionados."""
     with get_engine().begin() as conn:
         ids = list(dict.fromkeys(int(item) for item in ocorrencia_ids))
-        if not ids:
-            raise ValueError("Selecione ao menos uma emissão para abrir o ticket.")
+        incidentes = list(dict.fromkeys(int(item) for item in (incidente_ids or [])))
+        if not ids and not incidentes:
+            raise ValueError(
+                "Selecione ao menos uma emissão ou incidente para abrir o ticket."
+            )
 
         emissoes = (
             conn.execute(
@@ -667,6 +747,40 @@ def salvar_ticket_evento(
                 "Uma ou mais emissões selecionadas já estão vinculadas a ticket."
             )
 
+        if incidentes:
+            incidentes_validos = (
+                conn.execute(
+                    text("""
+                    SELECT id
+                    FROM bsr_erb
+                    WHERE evento_id = :evento_id
+                      AND id = ANY(CAST(:incidente_ids AS BIGINT[]))
+                      AND excluido_em IS NULL
+                """),
+                    {"evento_id": int(evento_id), "incidente_ids": incidentes},
+                )
+                .scalars()
+                .all()
+            )
+            if set(incidentes_validos) != set(incidentes):
+                raise ValueError(
+                    "Um ou mais incidentes não pertencem ao evento selecionado."
+                )
+            incidente_ja_vinculado = conn.execute(
+                text("""
+                    SELECT COUNT(*)
+                    FROM ticket_incidentes vinculacao
+                    JOIN tickets t ON t.id = vinculacao.ticket_id
+                    WHERE vinculacao.incidente_id = ANY(CAST(:incidente_ids AS BIGINT[]))
+                      AND t.evento_id = :evento_id
+                """),
+                {"evento_id": int(evento_id), "incidente_ids": incidentes},
+            ).scalar_one()
+            if int(incidente_ja_vinculado) > 0:
+                raise ValueError(
+                    "Um ou mais incidentes selecionados já estão vinculados a ticket."
+                )
+
         ticket_id = conn.execute(
             text("""
                 INSERT INTO tickets (evento_id, prioridade, observacoes)
@@ -687,6 +801,29 @@ def salvar_ticket_evento(
             """),
             {"ticket_id": int(ticket_id), "ocorrencia_ids": ids},
         )
+
+        (
+            conn.execute(
+                text("""
+                INSERT INTO ticket_incidentes (ticket_id, incidente_id)
+                SELECT :ticket_id, unnest(CAST(:incidente_ids AS BIGINT[]))
+            """),
+                {"ticket_id": int(ticket_id), "incidente_ids": incidentes},
+            )
+            if incidentes
+            else None
+        )
+
+        if incidentes:
+            conn.execute(
+                text("""
+                    UPDATE bsr_erb
+                    SET situacao = 'Pendente', concluida_por = NULL
+                    WHERE evento_id = :evento_id
+                      AND id = ANY(CAST(:incidente_ids AS BIGINT[]))
+                """),
+                {"evento_id": int(evento_id), "incidente_ids": incidentes},
+            )
 
         for emissao in emissoes_validas:
             situacao_anterior = emissao["situacao"]
@@ -835,6 +972,7 @@ def atualizar_ticket_evento(
     status: str,
     fiscal_ids: list[int] | None = None,
     observacoes: str | None = None,
+    providencias: str | None = None,
     prioridade: str | None = None,
     motivo_devolucao: str | None = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
@@ -850,6 +988,7 @@ def atualizar_ticket_evento(
                 SET status = :status,
                     prioridade = COALESCE(:prioridade, prioridade),
                     observacoes = COALESCE(:observacoes, observacoes),
+                    providencias = COALESCE(:providencias, providencias),
                     motivo_devolucao = COALESCE(:motivo_devolucao, motivo_devolucao),
                     atualizado_em = now()
                 WHERE id = :ticket_id AND evento_id = :evento_id
@@ -860,6 +999,7 @@ def atualizar_ticket_evento(
                 "status": status,
                 "prioridade": prioridade,
                 "observacoes": observacoes,
+                "providencias": providencias,
                 "motivo_devolucao": motivo_devolucao,
             },
         )
@@ -960,6 +1100,36 @@ def atualizar_ticket_evento(
                     },
                 )
 
+        incidentes_vinculados = (
+            conn.execute(
+                text("""
+                    SELECT b.id, b.situacao, b.concluida_por
+                    FROM bsr_erb b
+                    JOIN ticket_incidentes vinculacao
+                      ON vinculacao.incidente_id = b.id
+                    WHERE vinculacao.ticket_id = :ticket_id
+                      AND b.evento_id = :evento_id
+                    FOR UPDATE OF b
+                """),
+                {"ticket_id": int(ticket_id), "evento_id": int(evento_id)},
+            )
+            .mappings()
+            .all()
+        )
+        for incidente in incidentes_vinculados:
+            conn.execute(
+                text("""
+                    UPDATE bsr_erb
+                    SET situacao = :situacao, concluida_por = :concluida_por
+                    WHERE id = :incidente_id AND evento_id = :evento_id
+                """),
+                {
+                    "situacao": situacao_nova,
+                    "concluida_por": conclusao_nova,
+                    "incidente_id": int(incidente["id"]),
+                    "evento_id": int(evento_id),
+                },
+            )
         if fiscal_ids is not None:
             conn.execute(
                 text("DELETE FROM ticket_fiscais WHERE ticket_id = :ticket_id"),
@@ -1740,6 +1910,7 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
                 o.estacao_id::text AS "EstacaoID",
                 o.origem_captura AS "OrigemCaptura",
                 o.id::text AS "ID",
+                o.id_exibicao AS "IDExibicao",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
                 to_char(
@@ -1785,6 +1956,7 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
                 o.estacao_id::text AS "EstacaoID",
                 o.origem_captura AS "OrigemCaptura",
                 o.id::text AS "ID",
+                o.id_exibicao AS "IDExibicao",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
                 to_char(
@@ -2369,6 +2541,34 @@ def inserir_emissao_I_W(
                 },
             )
             ocorrencia_id = resultado.scalar_one()
+            criado_em = conn.execute(
+                text("SELECT criado_em FROM ocorrencias WHERE id = :ocorrencia_id"),
+                {"ocorrencia_id": ocorrencia_id},
+            ).scalar_one()
+            tamanho = 4
+            while True:
+                codigo_id = _codigo_id_exibicao(criado_em, ocorrencia_id, tamanho)
+                id_exibicao = f"{ocorrencia_id}-{codigo_id}"
+                colisao = conn.execute(
+                    text("""
+                        SELECT 1 FROM ocorrencias
+                        WHERE id_exibicao LIKE :sufixo AND id <> :ocorrencia_id
+                        UNION ALL
+                        SELECT 1 FROM bsr_erb
+                        WHERE id_exibicao LIKE :sufixo
+                        LIMIT 1
+                    """),
+                    {"sufixo": f"%-{codigo_id}", "ocorrencia_id": ocorrencia_id},
+                ).scalar_one_or_none()
+                if colisao is None:
+                    break
+                tamanho += 1
+            conn.execute(
+                text(
+                    "UPDATE ocorrencias SET id_exibicao = :id_exibicao WHERE id = :ocorrencia_id"
+                ),
+                {"id_exibicao": id_exibicao, "ocorrencia_id": ocorrencia_id},
+            )
             if concluida_por:
                 conn.execute(
                     text("""
@@ -2488,6 +2688,9 @@ def inserir_bsr_erb(
     lat="",
     lon="",
     observacoes="",
+    situacao=SITUACAO_PENDENTE,
+    cadastrado_por=None,
+    fiscal_ids=None,
     imagens=None,
 ) -> str:
     """Insere registro de incidente."""
@@ -2505,8 +2708,10 @@ def inserir_bsr_erb(
             bsr_erb_id = conn.execute(
                 text("""
                     INSERT INTO bsr_erb
-                        (evento_id, tipo, regiao, latitude, longitude, observacoes)
-                    VALUES (:ev, :tipo, :regiao, :lat, :lon, :observacoes)
+                        (evento_id, tipo, regiao, latitude, longitude, observacoes,
+                                 cadastrado_por, situacao, concluida_por)
+                    VALUES (:ev, :tipo, :regiao, :lat, :lon, :observacoes,
+                                     :cadastrado_por, :situacao, :concluida_por)
                     RETURNING id
                 """),
                 {
@@ -2516,8 +2721,70 @@ def inserir_bsr_erb(
                     "lat": lat_v,
                     "lon": lon_v,
                     "observacoes": observacoes or "",
+                    "cadastrado_por": cadastrado_por or "Usuário não identificado",
+                    "situacao": situacao,
+                    "concluida_por": (
+                        "Fiscal" if situacao == SITUACAO_CONCLUIDA_FISCAL else None
+                    ),
                 },
             ).scalar_one()
+            criado_em = conn.execute(
+                text("SELECT criado_em FROM bsr_erb WHERE id = :registro_id"),
+                {"registro_id": bsr_erb_id},
+            ).scalar_one()
+            codigo_id = _codigo_id_exibicao(criado_em, bsr_erb_id)
+            id_exibicao = f"{bsr_erb_id}-{codigo_id}"
+            colisao = conn.execute(
+                text("""
+                    SELECT 1 FROM bsr_erb
+                    WHERE id_exibicao LIKE :sufixo
+                    UNION ALL
+                    SELECT 1 FROM ocorrencias
+                    WHERE id_exibicao LIKE :sufixo
+                    LIMIT 1
+                """),
+                {"sufixo": f"%-{codigo_id}"},
+            ).scalar_one_or_none()
+            if colisao is not None:
+                tamanho = 5
+                while colisao is not None:
+                    codigo_id = _codigo_id_exibicao(criado_em, bsr_erb_id, tamanho)
+                    id_exibicao = f"{bsr_erb_id}-{codigo_id}"
+                    colisao = conn.execute(
+                        text("""
+                            SELECT 1 FROM bsr_erb
+                            WHERE id_exibicao LIKE :sufixo
+                            LIMIT 1
+                        """),
+                        {"sufixo": f"%-{codigo_id}"},
+                    ).scalar_one_or_none()
+                    tamanho += 1
+            conn.execute(
+                text("""
+                    UPDATE bsr_erb
+                    SET id_exibicao = :id_exibicao
+                    WHERE id = :registro_id
+                """),
+                {"id_exibicao": id_exibicao, "registro_id": bsr_erb_id},
+            )
+            for fiscal_id in dict.fromkeys(int(item) for item in (fiscal_ids or [])):
+                fiscal_valido = conn.execute(
+                    text("""
+                        SELECT 1 FROM eventos_fiscais
+                        WHERE evento_id = :evento_id AND fiscal_id = :fiscal_id
+                    """),
+                    {"evento_id": int(evento_id), "fiscal_id": fiscal_id},
+                ).scalar_one_or_none()
+                if fiscal_valido is None:
+                    raise ValueError("Fiscal participante não pertence ao evento.")
+                conn.execute(
+                    text("""
+                        INSERT INTO incidente_fiscais (incidente_id, fiscal_id)
+                        VALUES (:incidente_id, :fiscal_id)
+                        ON CONFLICT DO NOTHING
+                    """),
+                    {"incidente_id": bsr_erb_id, "fiscal_id": fiscal_id},
+                )
             nome_evento = conn.execute(
                 text("SELECT nome FROM eventos WHERE id = :evento_id"),
                 {"evento_id": int(evento_id)},
@@ -2576,7 +2843,7 @@ def inserir_bsr_erb(
                         "valor": nome_arquivo,
                     },
                 )
-        return f"'{tipo}' incluído com sucesso."
+        return f"'{tipo}' incluído com sucesso. ID: {id_exibicao}."
     except Exception as e:
         return f"ERRO: {e}"
 
@@ -2589,6 +2856,7 @@ def atualizar_bsr_erb(
     lat="",
     lon="",
     observacoes="",
+    situacao=SITUACAO_PENDENTE,
     imagens=None,
 ) -> str:
     """Atualiza um registro BSR/ERB e acrescenta novas fotos, se houver."""
@@ -2604,7 +2872,8 @@ def atualizar_bsr_erb(
             anterior = (
                 conn.execute(
                     text("""
-                    SELECT tipo, regiao, latitude, longitude, observacoes
+                          SELECT tipo, regiao, latitude, longitude, observacoes,
+                              situacao, concluida_por
                     FROM bsr_erb
                     WHERE id = :id AND evento_id = :evento_id AND excluido_em IS NULL
                     FOR UPDATE
@@ -2620,7 +2889,9 @@ def atualizar_bsr_erb(
                 text("""
                     UPDATE bsr_erb
                     SET tipo = :tipo, regiao = :regiao, latitude = :lat,
-                        longitude = :lon, observacoes = :observacoes
+                        longitude = :lon, observacoes = :observacoes,
+                        situacao = :situacao,
+                        concluida_por = :concluida_por
                     WHERE id = :id AND evento_id = :evento_id
                 """),
                 {
@@ -2631,6 +2902,10 @@ def atualizar_bsr_erb(
                     "lat": lat_v,
                     "lon": lon_v,
                     "observacoes": observacoes or "",
+                    "situacao": situacao,
+                    "concluida_por": (
+                        "Fiscal" if situacao == SITUACAO_CONCLUIDA_FISCAL else None
+                    ),
                 },
             ).rowcount
             if not atualizado:
@@ -2819,21 +3094,45 @@ def excluir_imagem_bsr_erb(
         return f"ERRO: {e}"
 
 
-def listar_bsr_erb(evento_id: int) -> list[dict]:
+def listar_bsr_erb(evento_id: int, ocultar_vinculados: bool = False) -> list[dict]:
     """Lista registros BSR/ERB do evento com as fotos anexadas."""
     with get_engine().connect() as conn:
         registros = (
             conn.execute(
                 text("""
-                SELECT b.id, b.tipo, b.regiao, b.latitude, b.longitude,
-                       b.observacoes, b.criado_em,
+                  SELECT b.id, b.id_exibicao, b.tipo, b.regiao, b.latitude, b.longitude,
+                       b.observacoes, b.cadastrado_por, b.situacao, b.concluida_por, b.criado_em,
+                      vinculacao.ticket_id AS ticket_id_vinculado,
+                      (vinculacao.ticket_id IS NOT NULL) AS ja_possui_ticket,
+                       COALESCE(string_agg(DISTINCT f.nome, ', ' ORDER BY f.nome), '') AS fiscais,
+                       COALESCE(array_agg(DISTINCT inf.fiscal_id) FILTER (WHERE inf.fiscal_id IS NOT NULL), '{}') AS fiscal_ids,
                        i.id AS imagem_id, i.nome_arquivo, i.tipo_mime, i.conteudo
                 FROM bsr_erb b
                 LEFT JOIN bsr_erb_imagens i ON i.bsr_erb_id = b.id
-                WHERE b.evento_id = :evento_id AND b.excluido_em IS NULL
+                LEFT JOIN incidente_fiscais inf ON inf.incidente_id = b.id
+                LEFT JOIN fiscais f ON f.id = inf.fiscal_id
+                  LEFT JOIN LATERAL (
+                      SELECT t.id AS ticket_id
+                      FROM ticket_incidentes tic
+                      JOIN tickets t ON t.id = tic.ticket_id
+                      WHERE tic.incidente_id = b.id
+                     AND t.evento_id = :evento_id
+                      ORDER BY t.id DESC
+                      LIMIT 1
+                  ) vinculacao ON true
+                                WHERE b.evento_id = :evento_id
+                                    AND b.excluido_em IS NULL
+                                    AND (:ocultar_vinculados = false OR vinculacao.ticket_id IS NULL)
+                GROUP BY b.id, b.id_exibicao, b.tipo, b.regiao, b.latitude, b.longitude,
+                         b.observacoes, b.cadastrado_por, b.situacao, b.concluida_por,
+                        b.criado_em, vinculacao.ticket_id, i.id, i.nome_arquivo, i.tipo_mime,
+                        i.conteudo
                 ORDER BY b.criado_em DESC, i.id
             """),
-                {"evento_id": int(evento_id)},
+                {
+                    "evento_id": int(evento_id),
+                    "ocultar_vinculados": ocultar_vinculados,
+                },
             )
             .mappings()
             .all()
@@ -2845,12 +3144,20 @@ def listar_bsr_erb(evento_id: int) -> list[dict]:
             registro["id"],
             {
                 "id": registro["id"],
+                "id_exibicao": registro["id_exibicao"],
                 "tipo": registro["tipo"],
                 "regiao": registro["regiao"],
                 "latitude": registro["latitude"],
                 "longitude": registro["longitude"],
                 "observacoes": registro["observacoes"],
+                "cadastrado_por": registro["cadastrado_por"],
+                "fiscais": registro["fiscais"],
+                "fiscal_ids": [int(item) for item in (registro["fiscal_ids"] or [])],
+                "situacao": registro["situacao"],
+                "concluida_por": registro["concluida_por"],
                 "criado_em": registro["criado_em"],
+                "ticket_id_vinculado": registro["ticket_id_vinculado"],
+                "ja_possui_ticket": registro["ja_possui_ticket"],
                 "imagens": [],
             },
         )
@@ -3431,6 +3738,7 @@ def _buscar_por_texto_livre(
         sql = text("""
             SELECT
                 o.id::text AS "ID",
+                o.id_exibicao AS "IDExibicao",
                 COALESCE(e.nome, o.local_regiao) AS "Local",
                 o.fiscal AS "Fiscal",
                 o.data::text AS "Data",
@@ -3465,6 +3773,7 @@ def _buscar_por_texto_livre(
                                                 COALESCE(o.processo_sei_ute,'')
                                             )) LIKE unaccent(lower(:q))
                                             OR o.id::text LIKE :q
+                                            OR o.id_exibicao LIKE :q
                                         )
                                     )
               )
@@ -3496,7 +3805,7 @@ def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
             rows = (
                 conn.execute(
                     text("""
-                        SELECT o.id::text AS id,
+                        SELECT o.id::text AS id, o.id_exibicao,
                                COALESCE(e.nome, o.local_regiao, 'Sem local') AS local,
                                o.frequencia_mhz::text AS frequencia,
                                o.identificacao AS identificacao
@@ -3505,6 +3814,7 @@ def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
                         WHERE o.evento_id = :evento_id
                           AND (
                               o.id::text LIKE :termo
+                              OR o.id_exibicao LIKE :termo
                               OR unaccent(lower(
                                   COALESCE(e.nome, '') || ' ' ||
                                   COALESCE(o.local_regiao, '') || ' ' ||
@@ -3523,10 +3833,11 @@ def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
         return [
             {
                 "id": row["id"],
+                "id_exibicao": row["id_exibicao"] or row["id"],
                 "label": " | ".join(
                     parte
                     for parte in [
-                        f"ID {row['id']}",
+                        f"ID {row['id_exibicao'] or row['id']}",
                         row["local"],
                         f"{row['frequencia']} MHz" if row["frequencia"] else "",
                         row["identificacao"] or "",

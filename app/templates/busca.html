@@ -1,3 +1,4 @@
+                    <td>{{ row.id_exibicao or row.id }}</td>
 {% extends "base.html" %}
 {% block content %}
 {% include "partials/header.html" %}
@@ -49,7 +50,7 @@
             <tbody>
                 {% for row in resultados %}
                 <tr>
-                    <td>{{ row.id }}</td>
+                    <td>{{ row.id_exibicao or row.id }}</td>
                     <td>{{ row.local }}</td>
                     <td>{{ row.data }}</td>
                     <td>{{ row.frequencia }}</td>

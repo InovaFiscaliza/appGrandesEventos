@@ -9,10 +9,16 @@ from app.services.postgres import (
     excluir_bsr_erb,
     inserir_bsr_erb,
     listar_bsr_erb,
+    listar_fiscais,
+    listar_fiscais_evento,
     obter_evento,
 )
 from app.utils.formatters import _img_b64, _normalize_coord, _valid_coord
-from app.config import TITULO_PRINCIPAL
+from app.config import (
+    SITUACAO_CONCLUIDA_FISCAL,
+    SITUACAO_PENDENTE,
+    TITULO_PRINCIPAL,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -20,14 +26,21 @@ EXTENSOES_IMAGEM = {".jpeg", ".jpg", ".png"}
 TIPOS_IMAGEM = {"image/jpeg", "image/png"}
 TAMANHO_MAXIMO_IMAGEM = 10 * 1024 * 1024
 TIPOS_OCORRENCIA = (
-    "Jammer",
+    "Bloqueador de sinal (BSR)",
     "ERB Fake",
+    "Reclamação de interferência",
+    "Falha de rede",
+    "Incidente crítico",
+    "Problemas com equipamentos da agência",
+    "Outra situação relevante",
+)
+TIPOS_OCORRENCIA_VALIDOS = set(TIPOS_OCORRENCIA) | {
+    "Jammer",
+    "BSR/Jammer",
     "Reclamação externa",
     "Falha de Wi-Fi",
     "Incêndio que afeta equipamentos",
-    "Outra situação relevante",
-)
-TIPOS_OCORRENCIA_VALIDOS = set(TIPOS_OCORRENCIA) | {"BSR/Jammer"}
+}
 
 
 async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
@@ -76,11 +89,23 @@ def _ctx(request: Request, **kwargs):
     }
 
 
+def _fiscais_participantes_evento(request: Request, evento_id: int) -> list[dict]:
+    fiscal_logado_id = str(request.session.get("fiscal_id", ""))
+    ids_evento = set(listar_fiscais_evento(evento_id))
+    return [
+        fiscal for fiscal in listar_fiscais()
+        if int(fiscal["id"]) in ids_evento and str(fiscal["id"]) != fiscal_logado_id
+    ]
+
+
 @router.get("/bsr-erb", response_class=HTMLResponse)
 async def get_bsr_erb(request: Request):
     if not request.session.get("spreadsheet_id"):
         return RedirectResponse("/", status_code=302)
     registros = listar_bsr_erb(int(request.session["spreadsheet_id"]))
+    fiscais_participantes = _fiscais_participantes_evento(
+        request, int(request.session["spreadsheet_id"])
+    )
     evento = obter_evento(int(request.session["spreadsheet_id"]))
     editar_id = request.query_params.get("editar")
     novo = request.query_params.get("novo") == "1"
@@ -98,16 +123,24 @@ async def get_bsr_erb(request: Request):
         "bsr_erb.html",
         _ctx(
             request,
-            tipo=registro_edicao["tipo"] if registro_edicao else "Jammer",
+            tipo=(
+                registro_edicao["tipo"]
+                if registro_edicao
+                else "Bloqueador de sinal (BSR)"
+            ),
             tipo_opcoes=TIPOS_OCORRENCIA,
             regiao=registro_edicao["regiao"] if registro_edicao else "",
             lat=registro_edicao["latitude"] if registro_edicao else "",
             lon=registro_edicao["longitude"] if registro_edicao else "",
             observacoes=registro_edicao["observacoes"] if registro_edicao else "",
+            situacao=registro_edicao["situacao"] if registro_edicao else SITUACAO_PENDENTE,
+            situacao_opcoes=[SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL],
+            fiscais_participantes=fiscais_participantes,
+            fiscais_participantes_ids=(registro_edicao.get("fiscal_ids", []) if registro_edicao else []),
             registros=registros,
             registro_edicao=registro_edicao,
             evento=evento,
-            mostrar_form=bool(registro_edicao or novo),
+            mostrar_form=bool(registro_edicao or novo or not editar_id),
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -122,11 +155,13 @@ async def post_bsr_erb(request: Request):
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
-    tipo = form.get("tipo", "Jammer")
+    tipo = form.get("tipo", "Bloqueador de sinal (BSR)")
     regiao = form.get("regiao", "").strip()
     lat = form.get("lat", "").strip()
     lon = form.get("lon", "").strip()
     observacoes = form.get("observacoes", "").strip()
+    situacao = form.get("situacao", SITUACAO_PENDENTE).strip()
+    fiscais_participantes_ids = list(dict.fromkeys(int(item) for item in form.getlist("fiscais_participantes") if str(item).isdigit()))
 
     lat = _normalize_coord(lat)
     lon = _normalize_coord(lon)
@@ -134,8 +169,12 @@ async def post_bsr_erb(request: Request):
     error = "; ".join(erros_imagens) if erros_imagens else None
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
         error = "Selecione um tipo de incidente válido."
+    if situacao not in {SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL}:
+        error = "Selecione um status de incidente válido."
     if not regiao:
         error = "O campo 'Local' é obrigatório."
+    elif not observacoes:
+        error = "O campo 'Observações' é obrigatório."
     elif not _valid_coord(lat, -90.0, 90.0):
         error = "Latitude inválida. Deve ser um número entre -90 e 90."
     elif not _valid_coord(lon, -180.0, 180.0):
@@ -152,6 +191,8 @@ async def post_bsr_erb(request: Request):
                 lat=lat,
                 lon=lon,
                 observacoes=observacoes,
+                situacao=situacao,
+                situacao_opcoes=[SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL],
                 registros=listar_bsr_erb(int(sp_id)),
                 registro_edicao=None,
                 mostrar_form=True,
@@ -169,6 +210,8 @@ async def post_bsr_erb(request: Request):
         lat=lat,
         lon=lon,
         observacoes=observacoes,
+        situacao=situacao,
+        cadastrado_por=request.session.get("fiscal_nome", "Usuário não identificado"),
         imagens=imagens,
     )
 
@@ -205,17 +248,22 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
-    tipo = form.get("tipo", "Jammer")
+    tipo = form.get("tipo", "Bloqueador de sinal (BSR)")
     regiao = form.get("regiao", "").strip()
     lat = _normalize_coord(form.get("lat", "").strip())
     lon = _normalize_coord(form.get("lon", "").strip())
     observacoes = form.get("observacoes", "").strip()
+    situacao = form.get("situacao", SITUACAO_PENDENTE).strip()
 
     error = "; ".join(erros_imagens) if erros_imagens else None
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
         error = "Selecione um tipo de incidente válido."
+    if situacao not in {SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL}:
+        error = "Selecione um status de incidente válido."
     if not regiao:
         error = "O campo 'Local' é obrigatório."
+    elif not observacoes:
+        error = "O campo 'Observações' é obrigatório."
     elif not _valid_coord(lat, -90.0, 90.0):
         error = "Latitude inválida. Deve ser um número entre -90 e 90."
     elif not _valid_coord(lon, -180.0, 180.0):
@@ -240,6 +288,8 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
                 lat=lat,
                 lon=lon,
                 observacoes=observacoes,
+                situacao=situacao,
+                situacao_opcoes=[SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL],
                 registros=listar_bsr_erb(int(sp_id)),
                 registro_edicao=registro_edicao,
                 mostrar_form=True,
@@ -258,6 +308,8 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
         lat=lat,
         lon=lon,
         observacoes=observacoes,
+        situacao=situacao,
+        fiscal_ids=fiscais_participantes_ids,
         imagens=imagens,
     )
     if res.startswith("ERRO"):
@@ -306,19 +358,25 @@ async def api_bsr_erb(request: Request):
     except Exception:
         return JSONResponse({"erro": "JSON inválido"}, status_code=400)
 
-    tipo = dados.get("tipo", "Jammer")
+    tipo = dados.get("tipo", "Bloqueador de sinal (BSR)")
     regiao = dados.get("regiao", "").strip()
     lat = _normalize_coord(dados.get("lat", ""))
     lon = _normalize_coord(dados.get("lon", ""))
     observacoes = dados.get("observacoes", "").strip()
+    situacao = str(dados.get("situacao", SITUACAO_PENDENTE)).strip()
+    fiscais_participantes_ids = list(dict.fromkeys(int(item) for item in dados.get("fiscais_participantes", []) if str(item).isdigit()))
 
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
-        return JSONResponse(
-            {"erro": "Tipo de incidente inválido"}, status_code=400
-        )
+        return JSONResponse({"erro": "Tipo de incidente inválido"}, status_code=400)
+    if situacao not in {SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL}:
+        return JSONResponse({"erro": "Status de incidente inválido"}, status_code=400)
 
     if not regiao:
         return JSONResponse({"erro": "Campo 'Local' obrigatório"}, status_code=400)
+    if not observacoes:
+        return JSONResponse(
+            {"erro": "Campo 'Observações' obrigatório"}, status_code=400
+        )
     if not _valid_coord(lat, -90.0, 90.0):
         return JSONResponse({"erro": "Latitude inválida"}, status_code=400)
     if not _valid_coord(lon, -180.0, 180.0):
@@ -331,6 +389,9 @@ async def api_bsr_erb(request: Request):
         lat=lat,
         lon=lon,
         observacoes=observacoes,
+        situacao=situacao,
+        fiscal_ids=fiscais_participantes_ids,
+        cadastrado_por=request.session.get("fiscal_nome", "Usuário não identificado"),
     )
     if res.startswith("ERRO"):
         return JSONResponse({"erro": res}, status_code=500)

@@ -118,6 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_tickets_evento_status
 
 ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_status_check;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS motivo_devolucao TEXT;
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS providencias TEXT;
 UPDATE tickets SET status = 'pendente' WHERE status = 'em_andamento';
 UPDATE tickets SET status = 'concluido_pelo_coordenador' WHERE status = 'concluido';
 ALTER TABLE tickets ADD CONSTRAINT tickets_status_check
@@ -128,6 +129,24 @@ CREATE TABLE IF NOT EXISTS ticket_ocorrencias (
     ocorrencia_id BIGINT NOT NULL REFERENCES ocorrencias(id) ON DELETE CASCADE,
     PRIMARY KEY (ticket_id, ocorrencia_id)
 );
+
+CREATE TABLE IF NOT EXISTS ticket_incidentes (
+    ticket_id BIGINT NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    incidente_id BIGINT NOT NULL REFERENCES bsr_erb(id) ON DELETE CASCADE,
+    PRIMARY KEY (ticket_id, incidente_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_incidentes_incidente
+    ON ticket_incidentes (incidente_id);
+
+CREATE TABLE IF NOT EXISTS incidente_fiscais (
+    incidente_id BIGINT NOT NULL REFERENCES bsr_erb(id) ON DELETE CASCADE,
+    fiscal_id    BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
+    PRIMARY KEY (incidente_id, fiscal_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidente_fiscais_fiscal
+    ON incidente_fiscais (fiscal_id);
 
 INSERT INTO ticket_ocorrencias (ticket_id, ocorrencia_id)
 SELECT id, ocorrencia_id
@@ -192,6 +211,7 @@ ALTER TABLE estacoes ADD COLUMN IF NOT EXISTS desabilitada_em TIMESTAMPTZ;
 -- Ocorrências/emissões (unifica PAINEL + Abordagem + abas de estação)
 CREATE TABLE IF NOT EXISTS ocorrencias (
     id                BIGSERIAL PRIMARY KEY,
+    id_exibicao       TEXT,
     evento_id         BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     estacao_id        BIGINT REFERENCES estacoes(id) ON DELETE SET NULL,
     origem_captura    TEXT,
@@ -219,6 +239,11 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS origem_captura TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS concluida_por TEXT;
+ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS id_exibicao TEXT;
+UPDATE ocorrencias
+SET id_exibicao = id::text || '-' || upper(substr(md5('emissao:' || criado_em::text || ':' || id::text), 1, 4));
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ocorrencias_id_exibicao
+    ON ocorrencias (id_exibicao);
 
 -- Registros concluídos anteriores a esta distinção foram concluídos no
 -- fluxo do fiscal, exceto quando já pertencem a um ticket encerrado.
@@ -344,12 +369,16 @@ CREATE INDEX IF NOT EXISTS idx_ute_evento_freq ON tabela_ute (evento_id, frequen
 -- BSR / Jammer / ERB
 CREATE TABLE IF NOT EXISTS bsr_erb (
     id          BIGSERIAL PRIMARY KEY,
+    id_exibicao TEXT,
     evento_id   BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     tipo        TEXT NOT NULL,
     regiao      TEXT,
     latitude    NUMERIC(9,6),
     longitude   NUMERIC(9,6),
     observacoes TEXT,
+    cadastrado_por TEXT,
+    situacao    TEXT NOT NULL DEFAULT 'Pendente',
+    concluida_por TEXT,
     criado_em   TIMESTAMPTZ NOT NULL DEFAULT now(),
     excluido_em TIMESTAMPTZ,
     excluido_por TEXT
@@ -357,6 +386,15 @@ CREATE TABLE IF NOT EXISTS bsr_erb (
 
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS excluido_em TIMESTAMPTZ;
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS excluido_por TEXT;
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS id_exibicao TEXT;
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT 'Pendente';
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS concluida_por TEXT;
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS cadastrado_por TEXT;
+UPDATE bsr_erb SET situacao = 'Pendente' WHERE situacao IS NULL OR trim(situacao) = '';
+UPDATE bsr_erb
+SET id_exibicao = id::text || '-' || upper(substr(md5(criado_em::text || ':' || id::text), 1, 4));
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bsr_erb_id_exibicao
+    ON bsr_erb (id_exibicao);
 
 CREATE TABLE IF NOT EXISTS bsr_erb_imagens (
     id            BIGSERIAL PRIMARY KEY,

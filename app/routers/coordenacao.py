@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.config import (
     STATUS_TICKET_CONCLUIDO_FISCAIS,
+    STATUS_TICKET_CONCLUIDO_COORDENADOR,
     STATUS_TICKET_PENDENTE,
     STATUS_TICKET_ROTULOS,
     STATUS_TICKET_VALIDOS,
@@ -22,7 +23,9 @@ from app.services.postgres import (
     listar_escalas_evento,
     listar_fiscais,
     listar_fiscais_evento,
+    listar_bsr_erb,
     listar_tickets_evento,
+    obter_detalhes_ticket_evento,
     obter_emissao_evento,
     registrar_auditoria_coordenacao,
     salvar_escala_evento,
@@ -89,6 +92,11 @@ async def get_coordenacao(request: Request):
         for ticket in todos_tickets
         if ticket.get("status") == STATUS_TICKET_CONCLUIDO_FISCAIS
     ]
+    tickets_concluidos_coordenador = [
+        ticket
+        for ticket in todos_tickets
+        if ticket.get("status") == STATUS_TICKET_CONCLUIDO_COORDENADOR
+    ]
 
     return templates.TemplateResponse(
         request,
@@ -97,8 +105,10 @@ async def get_coordenacao(request: Request):
             request,
             tickets=tickets_pendentes,
             tickets_concluidos_fiscais=tickets_concluidos_fiscais,
+            tickets_concluidos_coordenador=tickets_concluidos_coordenador,
             status_ticket_rotulos=STATUS_TICKET_ROTULOS,
-            emissões=listar_emissoes_evento(int(evento_id)),
+            emissões=listar_emissoes_evento(int(evento_id), ocultar_vinculadas=True),
+            incidentes=listar_bsr_erb(int(evento_id), ocultar_vinculados=True),
             escalas=listar_escalas_evento(int(evento_id)),
             fiscais=fiscais_evento,
             flash_success=request.session.pop("flash_success", None),
@@ -124,15 +134,22 @@ async def post_ticket_evento(request: Request):
             if str(item).strip().isdigit()
         )
     )
+    incidente_ids = list(
+        dict.fromkeys(
+            int(item)
+            for item in form.getlist("incidente_ids")
+            if str(item).strip().isdigit()
+        )
+    )
     prioridade = str(form.get("prioridade", "normal")).strip() or "normal"
     observacoes = str(form.get("observacoes", "")).strip() or None
     fiscais = [
         int(item) for item in form.getlist("fiscais") if str(item).strip().isdigit()
     ]
 
-    if not ocorrencia_ids:
+    if not ocorrencia_ids and not incidente_ids:
         request.session["flash_error"] = (
-            "Selecione ao menos uma emissão para abrir o ticket."
+            "Selecione ao menos uma emissão ou incidente para abrir o ticket."
         )
         return RedirectResponse("/coordenacao", status_code=303)
 
@@ -140,6 +157,7 @@ async def post_ticket_evento(request: Request):
         ticket_id = salvar_ticket_evento(
             evento_id=int(evento_id),
             ocorrencia_ids=ocorrencia_ids,
+            incidente_ids=incidente_ids,
             prioridade=prioridade,
             observacoes=observacoes,
             fiscal_ids=fiscais,
@@ -157,7 +175,8 @@ async def post_ticket_evento(request: Request):
         acao="Ticket criado",
         valor_anterior=None,
         valor_novo=(
-            f"Ticket #{ticket_id}; emissões: {', '.join(f'#{item}' for item in ocorrencia_ids)}; "
+            f"Ticket #{ticket_id}; emissões: {', '.join(f'#{item}' for item in ocorrencia_ids) or 'nenhuma'}; "
+            f"incidentes: {', '.join(f'#{item}' for item in incidente_ids) or 'nenhum'}; "
             f"prioridade: {prioridade}; fiscais: {', '.join(f'#{item}' for item in fiscais) or 'nenhum'}; "
             f"observações: {observacoes or 'nenhuma'}"
         ),
@@ -356,6 +375,23 @@ async def get_emissao_detalhe(request: Request, ocorrencia_id: int):
         ocorrencia_id=int(ocorrencia_id),
     )
     return JSONResponse(jsonable_encoder(emissao))
+
+
+@router.get("/coordenacao/api/ticket/{ticket_id}")
+async def get_ticket_detalhe(request: Request, ticket_id: int):
+    """Retorna os dados vinculados a um ticket para consulta da coordenação."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    if not _usuario_e_coordenador(request, int(evento_id)):
+        return JSONResponse(
+            {"erro": "Acesso restrito aos coordenadores do evento."}, status_code=403
+        )
+
+    ticket = obter_detalhes_ticket_evento(int(evento_id), int(ticket_id))
+    if not ticket:
+        return JSONResponse({"erro": "Ticket não encontrado"}, status_code=404)
+    return JSONResponse(jsonable_encoder(ticket))
 
 
 @router.post("/coordenacao/emissao/{ocorrencia_id}/concluir")

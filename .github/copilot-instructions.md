@@ -136,6 +136,7 @@ requisitos/                # Documentação de requisitos
 
 ### Tickets e auditoria
 
+- Incidentes também podem ser selecionados na coordenação e vinculados a tickets. Emissões e incidentes devem compartilhar os status `Pendente`, `Concluída Pelo Fiscal` e `Concluída Pelo Coordenador`, mantendo seus IDs internos e vínculos próprios.
 - Ao devolver ticket concluído pelo fiscal, exigir motivo da devolução, persistir em `tickets.motivo_devolucao`, exibir ao fiscal e registrar o coordenador, o estado anterior e o novo motivo na auditoria.
 - Identificar tickets devolvidos na lista do fiscal com o ícone FontAwesome `fa-exclamation-circle` quando houver `motivo_devolucao`.
 - Antes de gravar auditoria de edição, normalizar `NULL`, vazio, `NaN`, `none` e `null`; não registrar alteração quando os valores anterior e novo forem equivalentes após normalização.

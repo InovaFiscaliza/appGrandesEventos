@@ -1,3 +1,4 @@
+  textoSeguro(row.id_exibicao || row.id),
 const STORE = "cache_pendencias";
 let pendencias = [];
 let paginaAtual = 1;
@@ -117,7 +118,7 @@ function renderizarTabela(lista) {
     const tr = document.createElement("tr");
     tr.dataset.rowKey = row.row_key;
     const valores = [
-      textoSeguro(row.id),
+      textoSeguro(row.id_exibicao || row.id),
       textoSeguro(row.estacao_raw || row.fonte),
       textoSeguro(row.local),
       formatarInicio(row),

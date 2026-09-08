@@ -101,11 +101,11 @@ async def post_tratamento_ticket(request: Request, ticket_id: int):
 
     form = await request.form()
     status = str(form.get("status", "")).strip()
-    observacoes = str(form.get("observacoes", "")).strip() or None
+    providencias = str(form.get("providencias", "")).strip() or None
     if status not in STATUS_VALIDOS:
         request.session["flash_error"] = "Status de ticket inválido."
         return RedirectResponse("/tratamento-tickets", status_code=303)
-    if status == STATUS_TICKET_CONCLUIDO_FISCAIS and not observacoes:
+    if status == STATUS_TICKET_CONCLUIDO_FISCAIS and not providencias:
         request.session["flash_error"] = (
             "Informe as providências tomadas antes de concluir o ticket."
         )
@@ -115,7 +115,7 @@ async def post_tratamento_ticket(request: Request, ticket_id: int):
         ticket_id=ticket_id,
         evento_id=int(evento_id),
         status=status,
-        observacoes=observacoes,
+        providencias=providencias,
         usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
     )
     registrar_auditoria_coordenacao(
@@ -124,11 +124,11 @@ async def post_tratamento_ticket(request: Request, ticket_id: int):
         acao="Ticket tratado",
         valor_anterior=(
             f"Ticket #{ticket_id}; status: {ticket['status']}; "
-            f"observações: {ticket.get('observacoes') or 'nenhuma'}"
+            f"providências: {ticket.get('providencias') or 'nenhuma'}"
         ),
         valor_novo=(
             f"Ticket #{ticket_id}; status: {status}; "
-            f"observações: {observacoes or 'nenhuma'}"
+            f"providências: {providencias or 'nenhuma'}"
         ),
     )
     request.session["flash_success"] = "Ticket atualizado com sucesso."

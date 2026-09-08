@@ -50,6 +50,12 @@
                             <button type="button" class="emissao-id-btn js-editar-emissao" data-ocorrencia-id="{{ ocorrencia_id.strip() }}" title="Abrir emissão {{ ocorrencia_id.strip() }} para edição">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
                             {% else %}-
                             {% endfor %}
+                            {% if ticket.incidente_ids %}
+                            <br>Incidentes:
+                            {% for incidente_id in (ticket.incidente_ids or '').split(',') if incidente_id.strip() %}
+                            <button type="button" class="emissao-id-btn js-editar-incidente" data-incidente-id="{{ incidente_id.strip() }}" title="Abrir incidente {{ incidente_id.strip() }} para edição">{{ incidente_id.strip() }}</button>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                            {% endif %}
                         </span>
                     </td>
                     <td>{{ ticket.local_regiao or 'Não informado' }}</td>
@@ -57,7 +63,7 @@
                     <td>{{ ticket.largura_khz or '-' }}{% if ticket.largura_khz %} kHz{% endif %}</td>
                     <td>{{ ticket.prioridade }}</td>
                     <td>{{ status_ticket_rotulos.get(ticket.status, ticket.status) }}</td>
-                    <td>{{ ticket.observacoes or '-' }}</td>
+                    <td>{{ ticket.providencias or '-' }}</td>
                     <td>{{ ticket.motivo_devolucao or '-' }}</td>
                     <td>{{ ticket.fiscais or 'Nenhum fiscal atribuído' }}</td>
                     <td>{{ ticket.criado_em or '-' }}</td>
@@ -68,7 +74,7 @@
                                 <option value="pendente" {% if ticket.status == 'pendente' %}selected{% endif %}>Pendente</option>
                                 <option value="concluido_pelos_fiscais">Concluído pelos Fiscais</option>
                             </select>
-                            <textarea name="observacoes" class="form-control" rows="2" aria-label="Providências tomadas no ticket {{ ticket.id }}" placeholder="Descreva as providências tomadas">{{ ticket.observacoes or '' }}</textarea>
+                            <textarea name="providencias" class="form-control" rows="2" aria-label="Providências tomadas no ticket {{ ticket.id }}" placeholder="Descreva as providências tomadas">{{ ticket.providencias or '' }}</textarea>
                             <button type="submit" class="btn btn-primary">Atualizar</button>
                         </form>
                     </td>
@@ -89,6 +95,16 @@
             <button type="button" class="popup-ticket-fechar" id="fechar-popup-editar-emissao-ticket" aria-label="Fechar edição">×</button>
         </div>
         <iframe id="popup-editar-emissao-ticket-frame" class="popup-editar-emissao-ticket-frame" title="Edição da emissão"></iframe>
+    </div>
+</div>
+
+<div id="popup-editar-incidente-ticket" class="popup-ticket" hidden>
+    <div class="popup-ticket-conteudo popup-editar-emissao-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-editar-incidente-ticket-titulo">
+        <div class="popup-ticket-cabecalho">
+            <h2 id="popup-editar-incidente-ticket-titulo">Editar incidente</h2>
+            <button type="button" class="popup-ticket-fechar" id="fechar-popup-editar-incidente-ticket" aria-label="Fechar edição">×</button>
+        </div>
+        <iframe id="popup-editar-incidente-ticket-frame" class="popup-editar-emissao-ticket-frame" title="Edição do incidente"></iframe>
     </div>
 </div>
 <script>
@@ -115,6 +131,23 @@
                 }
                 frame.src = `/consultar?key=${encodeURIComponent(emissao.row_key)}`;
                 popup.hidden = false;
+            });
+        });
+
+        const popupIncidente = document.getElementById("popup-editar-incidente-ticket");
+        const frameIncidente = document.getElementById("popup-editar-incidente-ticket-frame");
+        const fecharIncidente = () => {
+            popupIncidente.hidden = true;
+            frameIncidente.src = "about:blank";
+        };
+        document.getElementById("fechar-popup-editar-incidente-ticket").addEventListener("click", fecharIncidente);
+        popupIncidente.addEventListener("click", (event) => {
+            if (event.target === popupIncidente) fecharIncidente();
+        });
+        document.querySelectorAll(".js-editar-incidente").forEach((botao) => {
+            botao.addEventListener("click", () => {
+                frameIncidente.src = `/bsr-erb?editar=${encodeURIComponent(botao.dataset.incidenteId)}`;
+                popupIncidente.hidden = false;
             });
         });
 
