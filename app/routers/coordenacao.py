@@ -14,10 +14,12 @@ from app.config import (
     TITULO_PRINCIPAL,
 )
 from app.services.postgres import (
+    atualizar_escala_evento,
     cancelar_ticket_evento,
     atualizar_ticket_evento,
     carregar_imagens_ocorrencia,
     concluir_emissao_coordenador,
+    excluir_escala_evento,
     listar_emissoes_evento,
     listar_coordenadores_evento,
     listar_escalas_evento,
@@ -49,6 +51,14 @@ def _acesso_negado(request: Request) -> RedirectResponse:
     """Redireciona para o menu quando o usuário não tem perfil de coordenação."""
     request.session["flash_error"] = "Acesso restrito aos coordenadores do evento."
     return RedirectResponse("/menu", status_code=303)
+
+
+def _observacao_opcional(valor) -> str | None:
+    """Converte observação vazia ou sentinela textual em NULL."""
+    observacao = str(valor or "").strip()
+    if not observacao or observacao.casefold() in {"none", "null", "nan"}:
+        return None
+    return observacao
 
 
 def _ctx(request: Request, **kwargs):
@@ -142,7 +152,7 @@ async def post_ticket_evento(request: Request):
         )
     )
     prioridade = str(form.get("prioridade", "normal")).strip() or "normal"
-    observacoes = str(form.get("observacoes", "")).strip() or None
+    observacoes = _observacao_opcional(form.get("observacoes", ""))
     fiscais = [
         int(item) for item in form.getlist("fiscais") if str(item).strip().isdigit()
     ]
@@ -201,7 +211,7 @@ async def post_escala_evento(request: Request):
     data_trabalho = str(form.get("data_trabalho", "")).strip()
     turno_inicio = str(form.get("turno_inicio", "")).strip() or None
     turno_fim = str(form.get("turno_fim", "")).strip() or None
-    observacoes = str(form.get("observacoes", "")).strip() or None
+    observacoes = _observacao_opcional(form.get("observacoes", ""))
 
     if not fiscal_id or not data_trabalho:
         request.session["flash_error"] = "Selecione o fiscal e a data de trabalho."
@@ -227,7 +237,82 @@ async def post_escala_evento(request: Request):
         ),
     )
     request.session["flash_success"] = "Escala salva com sucesso."
-    return RedirectResponse("/coordenacao", status_code=303)
+    return RedirectResponse("/coordenacao?aba=escala", status_code=303)
+
+
+@router.post("/coordenacao/escala/{escala_id}/editar")
+async def post_editar_escala_evento(request: Request, escala_id: int):
+    """Atualiza a escala selecionada no calendário."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    if not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
+
+    form = await request.form()
+    fiscal_id = str(form.get("fiscal_id", "")).strip()
+    data_trabalho = str(form.get("data_trabalho", "")).strip()
+    turno_inicio = str(form.get("turno_inicio", "")).strip() or None
+    turno_fim = str(form.get("turno_fim", "")).strip() or None
+    observacoes = str(form.get("observacoes", "")).strip() or None
+
+    if not fiscal_id or not data_trabalho:
+        request.session["flash_error"] = "Selecione o fiscal e a data da escala."
+        return RedirectResponse("/coordenacao?aba=escala", status_code=303)
+
+    try:
+        atualizar_escala_evento(
+            evento_id=int(evento_id),
+            escala_id=int(escala_id),
+            fiscal_id=int(fiscal_id),
+            data_trabalho=data_trabalho,
+            turno_inicio=turno_inicio,
+            turno_fim=turno_fim,
+            observacoes=observacoes,
+        )
+    except ValueError as erro:
+        request.session["flash_error"] = str(erro)
+        return RedirectResponse("/coordenacao?aba=escala", status_code=303)
+
+    registrar_auditoria_coordenacao(
+        evento_id=int(evento_id),
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
+        acao="Escala atualizada",
+        valor_anterior=None,
+        valor_novo=(
+            f"Escala #{escala_id}; fiscal #{fiscal_id}; data: {data_trabalho}; "
+            f"início: {turno_inicio or 'não informado'}; fim: {turno_fim or 'não informado'}; "
+            f"observações: {observacoes or 'nenhuma'}"
+        ),
+    )
+    request.session["flash_success"] = "Escala atualizada com sucesso."
+    return RedirectResponse("/coordenacao?aba=escala", status_code=303)
+
+
+@router.post("/coordenacao/escala/{escala_id}/excluir")
+async def post_excluir_escala_evento(request: Request, escala_id: int):
+    """Exclui a escala selecionada do calendário."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    if not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
+
+    try:
+        excluir_escala_evento(evento_id=int(evento_id), escala_id=int(escala_id))
+    except ValueError as erro:
+        request.session["flash_error"] = str(erro)
+        return RedirectResponse("/coordenacao?aba=escala", status_code=303)
+
+    registrar_auditoria_coordenacao(
+        evento_id=int(evento_id),
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
+        acao="Escala excluída",
+        valor_anterior=None,
+        valor_novo=f"Escala #{escala_id} removida do evento",
+    )
+    request.session["flash_success"] = "Escala removida com sucesso."
+    return RedirectResponse("/coordenacao?aba=escala", status_code=303)
 
 
 @router.post("/coordenacao/ticket/{ticket_id}/status")

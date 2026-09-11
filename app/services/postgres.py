@@ -970,7 +970,7 @@ def listar_escalas_evento(evento_id: int) -> list[dict]:
         rows = (
             conn.execute(
                 text("""
-                SELECT e.id, e.evento_id, e.data_trabalho, e.turno_inicio,
+                SELECT e.id, e.evento_id, e.fiscal_id, e.data_trabalho, e.turno_inicio,
                        e.turno_fim, e.observacoes, f.nome AS fiscal_nome
                 FROM escalas_trabalho e
                 JOIN fiscais f ON f.id = e.fiscal_id
@@ -983,6 +983,55 @@ def listar_escalas_evento(evento_id: int) -> list[dict]:
             .all()
         )
     return [dict(row) for row in rows]
+
+
+def atualizar_escala_evento(
+    evento_id: int,
+    escala_id: int,
+    fiscal_id: int,
+    data_trabalho: str,
+    turno_inicio: str | None = None,
+    turno_fim: str | None = None,
+    observacoes: str | None = None,
+) -> None:
+    """Atualiza uma escala de trabalho do evento."""
+    with get_engine().begin() as conn:
+        resultado = conn.execute(
+            text("""
+                UPDATE escalas_trabalho
+                SET fiscal_id = :fiscal_id,
+                    data_trabalho = :data_trabalho,
+                    turno_inicio = :turno_inicio,
+                    turno_fim = :turno_fim,
+                    observacoes = :observacoes
+                WHERE id = :escala_id AND evento_id = :evento_id
+            """),
+            {
+                "evento_id": int(evento_id),
+                "escala_id": int(escala_id),
+                "fiscal_id": int(fiscal_id),
+                "data_trabalho": data_trabalho,
+                "turno_inicio": turno_inicio,
+                "turno_fim": turno_fim,
+                "observacoes": observacoes,
+            },
+        )
+        if resultado.rowcount == 0:
+            raise ValueError("Escala não encontrada no evento selecionado.")
+
+
+def excluir_escala_evento(evento_id: int, escala_id: int) -> None:
+    """Exclui uma escala de trabalho do evento."""
+    with get_engine().begin() as conn:
+        resultado = conn.execute(
+            text("""
+                DELETE FROM escalas_trabalho
+                WHERE id = :escala_id AND evento_id = :evento_id
+            """),
+            {"evento_id": int(evento_id), "escala_id": int(escala_id)},
+        )
+        if resultado.rowcount == 0:
+            raise ValueError("Escala não encontrada no evento selecionado.")
 
 
 def atualizar_ticket_evento(

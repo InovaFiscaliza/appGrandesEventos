@@ -428,6 +428,97 @@
         </div>
     </div>
 
+    <div id="popup-incluir-escala" class="popup-ticket" hidden>
+        <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-incluir-escala-titulo">
+            <div class="popup-ticket-cabecalho">
+                <h2 id="popup-incluir-escala-titulo">Incluir escala</h2>
+                <button type="button" class="popup-ticket-fechar" id="fechar-popup-incluir-escala" aria-label="Fechar inclusão">×</button>
+            </div>
+            <form method="post" action="/coordenacao/escala" id="form-incluir-escala" data-sem-confirmacao>
+                <div class="ticket-edicao-campos">
+                    <div class="ticket-edicao-item">
+                        <label for="popup_escala_fiscal">Fiscal</label>
+                        <select id="popup_escala_fiscal" name="fiscal_id" class="form-control" required>
+                            <option value="">Selecione o fiscal</option>
+                            {% for fiscal in fiscais %}
+                            <option value="{{ fiscal.id }}">{{ fiscal.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="popup_escala_data">Data de trabalho</label>
+                        <input id="popup_escala_data" name="data_trabalho" class="form-control" type="date" required>
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="popup_escala_inicio">Hora início</label>
+                        <input id="popup_escala_inicio" name="turno_inicio" class="form-control" type="time">
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="popup_escala_fim">Hora fim</label>
+                        <input id="popup_escala_fim" name="turno_fim" class="form-control" type="time">
+                    </div>
+                </div>
+
+                <div class="ticket-edicao-acoes">
+                    <button type="submit" class="btn btn-primary">Incluir escala</button>
+                    <button type="button" class="btn-ticket-mini" id="cancelar-popup-incluir-escala" data-sem-confirmacao>Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="popup-editar-escala" class="popup-ticket" hidden>
+        <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-editar-escala-titulo">
+            <div class="popup-ticket-cabecalho">
+                <h2 id="popup-editar-escala-titulo">Editar escala</h2>
+                <button type="button" class="popup-ticket-fechar" id="fechar-popup-editar-escala" aria-label="Fechar edição">×</button>
+            </div>
+            <form method="post" action="/coordenacao/escala/0/excluir" id="form-excluir-escala" data-confirmacao-msg="Confirma a exclusão desta escala?"></form>
+            <form method="post" action="/coordenacao/escala/0/editar" id="form-editar-escala" data-confirmacao-msg="Confirma o salvamento das alterações desta escala?">
+                <div class="ticket-edicao-campos">
+                    <div class="ticket-edicao-item">
+                        <label for="editar_escala_fiscal">Fiscal</label>
+                        <select id="editar_escala_fiscal" name="fiscal_id" class="form-control" required>
+                            <option value="">Selecione o fiscal</option>
+                            {% for fiscal in fiscais %}
+                            <option value="{{ fiscal.id }}">{{ fiscal.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="editar_escala_data">Data de trabalho</label>
+                        <input id="editar_escala_data" name="data_trabalho" class="form-control" type="date" required>
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="editar_escala_inicio">Hora início</label>
+                        <input id="editar_escala_inicio" name="turno_inicio" class="form-control" type="time">
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="editar_escala_fim">Hora fim</label>
+                        <input id="editar_escala_fim" name="turno_fim" class="form-control" type="time">
+                    </div>
+
+                    <div class="ticket-edicao-item">
+                        <label for="editar_escala_observacoes">Observações</label>
+                        <textarea id="editar_escala_observacoes" name="observacoes" rows="3" class="form-control"></textarea>
+                    </div>
+                </div>
+
+                <div class="ticket-edicao-acoes escala-popup-acoes">
+                    <button type="submit" class="btn-ticket-mini escala-popup-btn">Salvar alteração</button>
+                    <button type="submit" class="btn-ticket-mini escala-popup-btn" id="btn-excluir-escala" form="form-excluir-escala">Apagar escala</button>
+                    <button type="button" class="btn-ticket-mini escala-popup-btn" id="cancelar-popup-editar-escala" data-sem-confirmacao>Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div id="popup-editar-ticket" class="popup-ticket" hidden>
         <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-editar-ticket-titulo">
             <div class="popup-ticket-cabecalho">
@@ -531,10 +622,13 @@
         const escalas = [
             {% for item in escalas %}
             {
+                id: {{ item.id if item.id is not none else 0 }},
                 data: {{ (item.data_trabalho|string)|tojson }},
                 inicio: {{ (item.turno_inicio|string)|tojson }},
                 fim: {{ (item.turno_fim|string)|tojson }},
                 fiscal: {{ (item.fiscal_nome|string)|tojson }},
+                fiscalId: {{ item.fiscal_id if item.fiscal_id is not none else 0 }},
+                observacoes: {{ (item.observacoes or '')|tojson }},
             },
             {% endfor %}
         ];
@@ -544,7 +638,88 @@
         const cabecalho = document.getElementById('escala-calendario-cabecalho');
         const corpo = document.getElementById('escala-calendario-corpo');
         const vazio = document.getElementById('escala-calendario-vazio');
+        const popupEscala = document.getElementById('popup-incluir-escala');
+        const formEscala = document.getElementById('form-incluir-escala');
+        const campoEscalaData = document.getElementById('popup_escala_data');
+        const botaoFecharEscala = document.getElementById('fechar-popup-incluir-escala');
+        const botaoCancelarEscala = document.getElementById('cancelar-popup-incluir-escala');
         if (!dataInput || !passoInput || !titulo || !cabecalho || !corpo || !vazio) return;
+
+        const popupEditarEscala = document.getElementById('popup-editar-escala');
+        const formEditarEscala = document.getElementById('form-editar-escala');
+        const formExcluirEscala = document.getElementById('form-excluir-escala');
+        const botaoFecharEditarEscala = document.getElementById('fechar-popup-editar-escala');
+        const botaoCancelarEditarEscala = document.getElementById('cancelar-popup-editar-escala');
+        const campoEditarEscalaFiscal = document.getElementById('editar_escala_fiscal');
+        const campoEditarEscalaData = document.getElementById('editar_escala_data');
+        const campoEditarEscalaInicio = document.getElementById('editar_escala_inicio');
+        const campoEditarEscalaFim = document.getElementById('editar_escala_fim');
+        const campoEditarEscalaObservacoes = document.getElementById('editar_escala_observacoes');
+
+        const abrirPopupEscala = (data) => {
+            if (!popupEscala || !campoEscalaData) return;
+            campoEscalaData.value = data;
+            popupEscala.hidden = false;
+        };
+
+        const fecharPopupEscala = () => {
+            if (!popupEscala) return;
+            popupEscala.hidden = true;
+            if (formEscala) formEscala.reset();
+        };
+
+        const abrirPopupEditarEscala = (escala) => {
+            if (!popupEditarEscala || !formEditarEscala || !formExcluirEscala) return;
+            if (!escala) return;
+
+            formEditarEscala.action = `/coordenacao/escala/${escala.id}/editar`;
+            formExcluirEscala.action = `/coordenacao/escala/${escala.id}/excluir`;
+
+            if (campoEditarEscalaFiscal) campoEditarEscalaFiscal.value = String(escala.fiscalId || '');
+            if (campoEditarEscalaData) campoEditarEscalaData.value = String(escala.data || '');
+            if (campoEditarEscalaInicio) campoEditarEscalaInicio.value = String(escala.inicio || '');
+            if (campoEditarEscalaFim) campoEditarEscalaFim.value = String(escala.fim || '');
+            if (campoEditarEscalaObservacoes) campoEditarEscalaObservacoes.value = String(escala.observacoes || '');
+            popupEditarEscala.hidden = false;
+        };
+
+        const fecharPopupEditarEscala = () => {
+            if (!popupEditarEscala) return;
+            popupEditarEscala.hidden = true;
+            if (formEditarEscala) formEditarEscala.reset();
+        };
+
+        if (botaoFecharEscala) {
+            botaoFecharEscala.addEventListener('click', fecharPopupEscala);
+        }
+
+        if (botaoCancelarEscala) {
+            botaoCancelarEscala.addEventListener('click', fecharPopupEscala);
+        }
+
+        if (popupEscala) {
+            popupEscala.addEventListener('click', (evento) => {
+                if (evento.target === popupEscala) {
+                    fecharPopupEscala();
+                }
+            });
+        }
+
+        if (botaoFecharEditarEscala) {
+            botaoFecharEditarEscala.addEventListener('click', fecharPopupEditarEscala);
+        }
+
+        if (botaoCancelarEditarEscala) {
+            botaoCancelarEditarEscala.addEventListener('click', fecharPopupEditarEscala);
+        }
+
+        if (popupEditarEscala) {
+            popupEditarEscala.addEventListener('click', (evento) => {
+                if (evento.target === popupEditarEscala) {
+                    fecharPopupEditarEscala();
+                }
+            });
+        }
 
         const nomesDias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
         const hoje = new Date();
@@ -563,6 +738,10 @@
         };
         const dataChave = (data) => [data.getFullYear(), String(data.getMonth() + 1).padStart(2, '0'), String(data.getDate()).padStart(2, '0')].join('-');
         const textoSeguro = (valor) => String(valor || '').replace(/[&<>"']/g, (caractere) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[caractere]);
+        const observacaoEscala = (valor) => {
+            const observacao = String(valor || '').trim();
+            return ['none', 'null', 'nan'].includes(observacao.toLowerCase()) ? '' : observacao;
+        };
         const minutos = (valor, padrao) => {
             const partes = String(valor || '').match(/^(\d{1,2}):(\d{2})/);
             return partes ? Number(partes[1]) * 60 + Number(partes[2]) : padrao;
@@ -588,6 +767,8 @@
                 const data = String(escala.data || '').slice(0, 10);
                 return data >= dataChave(inicioSemana) && data <= dataChave(fimSemana);
             });
+            const paletaCores = ['#e8eef5', '#e8f5e9', '#fff3e0', '#f3e8ff', '#fce4ec', '#e0f7fa', '#f1f8e9', '#ede7f6'];
+            const obterCorEscala = (indice) => paletaCores[indice % paletaCores.length];
             vazio.hidden = escalasSemana.length > 0 || escalas.length === 0;
             corpo.innerHTML = '';
             for (let inicio = 0; inicio < 1440; inicio += passo) {
@@ -606,10 +787,53 @@
                     const celula = document.createElement('td');
                     celula.style.verticalAlign = 'top';
                     celula.style.height = passo <= 30 ? '2.5rem' : '2rem';
-                    celula.innerHTML = eventos.map((escala) => {
+                    const grupoEscalas = document.createElement('div');
+                    grupoEscalas.style.display = 'flex';
+                    grupoEscalas.style.flexDirection = 'column';
+                    grupoEscalas.style.gap = '.2rem';
+                    grupoEscalas.innerHTML = eventos.map((escala, indice) => {
                         const horario = escala.inicio || escala.fim ? `${escala.inicio || '--:--'} às ${escala.fim || '--:--'}` : 'Dia inteiro';
-                        return `<div style="padding:.2rem .3rem; margin:-.15rem; border-left:3px solid #1d4f86; background:#e8eef5; font-size:.78rem;" title="${textoSeguro(horario)}"><strong>${textoSeguro(escala.fiscal)}</strong><br>${textoSeguro(horario)}</div>`;
+                        const cor = obterCorEscala((escala.fiscal || '').length + indice);
+                        return `<div data-escala-id="${escala.id}" data-escala-fiscal-id="${escala.fiscalId || ''}" data-escala-data="${textoSeguro(escala.data || '')}" data-escala-inicio="${textoSeguro(escala.inicio || '')}" data-escala-fim="${textoSeguro(escala.fim || '')}" data-escala-observacoes="${textoSeguro(observacaoEscala(escala.observacoes))}" style="padding:.25rem .35rem; margin:0; border:1px solid rgba(18,58,98,.08); border-left:3px solid #1d4f86; background:${cor}; font-size:.78rem; line-height:1.35; border-radius:4px; box-shadow:0 1px 0 rgba(18,58,98,.04); cursor:pointer;" title="${textoSeguro(horario)}"><strong>${textoSeguro(escala.fiscal)}</strong><br>${textoSeguro(horario)}</div>`;
                     }).join('');
+                    grupoEscalas.querySelectorAll('div[data-escala-id]').forEach((item) => {
+                        item.addEventListener('click', () => {
+                            const escala = {
+                                id: Number(item.dataset.escalaId),
+                                fiscalId: item.dataset.escalaFiscalId || '',
+                                data: item.dataset.escalaData || chave,
+                                inicio: item.dataset.escalaInicio || '',
+                                fim: item.dataset.escalaFim || '',
+                                observacoes: item.dataset.escalaObservacoes || '',
+                            };
+                            abrirPopupEditarEscala(escala);
+                        });
+                    });
+                    const botaoAdicionar = document.createElement('span');
+                    botaoAdicionar.className = 'escala-celula-add-btn';
+                    botaoAdicionar.textContent = '+';
+                    botaoAdicionar.title = `Incluir escala para ${formatarDia(dia)}`;
+                    botaoAdicionar.setAttribute('role', 'button');
+                    botaoAdicionar.setAttribute('tabindex', '0');
+                    botaoAdicionar.style.cursor = 'pointer';
+                    botaoAdicionar.style.display = 'block';
+                    botaoAdicionar.style.marginLeft = 'auto';
+                    botaoAdicionar.style.marginTop = '0';
+                    botaoAdicionar.style.alignSelf = 'flex-end';
+                    botaoAdicionar.addEventListener('click', () => abrirPopupEscala(chave));
+                    botaoAdicionar.addEventListener('keydown', (evento) => {
+                        if (evento.key === 'Enter' || evento.key === ' ') {
+                            evento.preventDefault();
+                            abrirPopupEscala(chave);
+                        }
+                    });
+                    const blocoCelula = document.createElement('div');
+                    blocoCelula.style.display = 'flex';
+                    blocoCelula.style.flexDirection = 'column';
+                    blocoCelula.style.height = '100%';
+                    blocoCelula.appendChild(grupoEscalas);
+                    blocoCelula.appendChild(botaoAdicionar);
+                    celula.appendChild(blocoCelula);
                     linha.appendChild(celula);
                 }
                 corpo.appendChild(linha);
@@ -672,10 +896,21 @@
             });
         });
 
+        const abaSolicitada = new URLSearchParams(window.location.search).get('aba');
+        if (abaSolicitada) {
+            const botaoAbaSolicitada = document.querySelector(`.tab-button[data-tab="${abaSolicitada}"]`);
+            botaoAbaSolicitada?.click();
+        }
+
         const botaoAbrir = document.getElementById('abrir-popup-ticket');
         const popup = document.getElementById('popup-criar-ticket');
         const botaoFechar = document.getElementById('fechar-popup-ticket');
         const botaoCancelar = document.getElementById('cancelar-popup-ticket');
+        const popupEscala = document.getElementById('popup-incluir-escala');
+        const formEscala = document.getElementById('form-incluir-escala');
+        const campoEscalaData = document.getElementById('popup_escala_data');
+        const botaoFecharEscala = document.getElementById('fechar-popup-incluir-escala');
+        const botaoCancelarEscala = document.getElementById('cancelar-popup-incluir-escala');
         const popupEditar = document.getElementById('popup-editar-ticket');
         const formEditar = document.getElementById('form-editar-ticket');
         const botoesAbrirEditar = document.querySelectorAll('.js-abrir-popup-editar');
