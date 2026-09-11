@@ -1,4 +1,4 @@
-const CACHE = "appEventos-v153";
+const CACHE = "appEventos-v154";
 const SHELL = [
   "/static/style.css",
   "/static/app.js",
