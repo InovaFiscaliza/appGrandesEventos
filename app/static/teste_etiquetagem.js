@@ -20,12 +20,17 @@
   const frequenciaConsulta = document.querySelector('#frequencia-consulta');
   const cpfCnpj = document.querySelector('#cpfcnpj');
   const cpfCnpjAjuda = document.querySelector('#cpfcnpj-ajuda');
+  const etiqueta = document.querySelector('#numero-etiqueta');
+  const etiquetaPrefixo = document.querySelector('#etiqueta-prefixo');
+  const etiquetaInicio = document.querySelector('#etiqueta-inicio');
+  const etiquetaFinal = document.querySelector('#etiqueta-final');
+  const etiquetaSufixo = document.querySelector('#etiqueta-sufixo');
   const perfis = [...document.querySelectorAll('input[name="perfil"]')];
   const form = document.querySelector('.teq-form');
   const adicionar = document.querySelector('#adicionar-frequencia');
   const remover = document.querySelector('#remover-frequencia');
 
-  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !form || !adicionar || !remover) return;
+  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaPrefixo || !etiquetaInicio || !etiquetaFinal || !etiquetaSufixo || !form || !adicionar || !remover) return;
 
   const invalidosServidor = new Set(
     JSON.parse(form.dataset.invalidFields || '[]')
@@ -52,7 +57,8 @@
         faixa,
         frequencias_selecionadas: lista,
         tipo_equipamento: document.querySelector('#tipo-equipamento'),
-        numero_etiqueta: document.querySelector('#numero-etiqueta'),
+        numero_equipamentos: document.querySelector('#numero-equipamentos'),
+        numero_etiqueta: etiquetaInicio,
       }[campo],
       !condicaoValida
     );
@@ -273,9 +279,23 @@
   document.querySelector('#tipo-equipamento')?.addEventListener('change', (event) => {
     limparErroSePreenchido('tipo_equipamento', event.target.value.trim().length > 0);
   });
-  document.querySelector('#numero-etiqueta')?.addEventListener('input', (event) => {
-    limparErroSePreenchido('numero_etiqueta', event.target.value.trim().length > 0);
+  function atualizarNumeroEtiqueta() {
+    etiqueta.value = [
+      etiquetaPrefixo.value,
+      etiquetaInicio.value,
+      etiquetaFinal.value,
+      etiquetaSufixo.value,
+    ].map((valor) => valor.trim()).join('');
+    limparErroSePreenchido('numero_etiqueta', etiqueta.value.length > 0);
+  }
+
+  [etiquetaPrefixo, etiquetaInicio, etiquetaFinal, etiquetaSufixo].forEach((campo) => {
+    campo.addEventListener('input', atualizarNumeroEtiqueta);
   });
+
+  const etiquetaOriginal = etiqueta.value.trim();
+  if (etiquetaOriginal && !etiquetaInicio.value) etiquetaInicio.value = etiquetaOriginal;
+  atualizarNumeroEtiqueta();
 
   adicionar.addEventListener('click', async () => {
     const valor = formatarFrequencia(frequencia.value);

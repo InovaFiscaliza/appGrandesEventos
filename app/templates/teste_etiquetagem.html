@@ -17,7 +17,7 @@
             <table class="teq-table teq-edit-records-table">
                 <colgroup>
                     <col class="teq-actions-col">
-                    <col span="16">
+                    <col span="17">
                 </colgroup>
                 <thead>
                     <tr>
@@ -35,6 +35,7 @@
                         <th>Faixa</th>
                         <th>Frequências</th>
                         <th>Tipo do equipamento</th>
+                        <th>Nº de equipamentos</th>
                         <th>Número da etiqueta</th>
                         <th>Fotos</th>
                         <th>Observações</th>
@@ -65,6 +66,7 @@
                         <td data-label="Faixa">{{ registro.frequencias_selecionadas[0].split(' • ')[1] if registro.frequencias_selecionadas and ' • ' in registro.frequencias_selecionadas[0] else '' }}</td>
                         <td data-label="Frequências">{{ (registro.frequencias_selecionadas or []) | join('; ') }}</td>
                         <td data-label="Tipo do equipamento">{{ registro.tipo_equipamento }}</td>
+                        <td data-label="Nº de equipamentos">{{ registro.numero_equipamentos }}</td>
                         <td data-label="Número da etiqueta">{{ registro.numero_etiqueta }}</td>
                         <td data-label="Fotos">
                             {% if registro.imagens %}
@@ -217,8 +219,19 @@
                 </div>
 
                 <div class="form-group teq-number-box teq-order-12">
-                    <label class="teq-label teq-checkbox-title{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-etiqueta">Número da etiqueta</label>
-                    <input id="numero-etiqueta" name="numero_etiqueta" class="form-control teq-control{% if 'numero_etiqueta' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.numero_etiqueta }}" required>
+                    <label class="teq-label teq-checkbox-title{% if 'numero_equipamentos' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-equipamentos">Número de equipamentos do mesmo tipo</label>
+                    <input id="numero-equipamentos" name="numero_equipamentos" class="form-control teq-control{% if 'numero_equipamentos' in values.invalid_fields %} teq-invalid{% endif %}" type="number" min="1" step="1" value="{{ values.numero_equipamentos or 1 }}" required>
+                </div>
+
+                <div class="form-group teq-number-box teq-order-13 teq-label-group">
+                    <label class="teq-label teq-checkbox-title{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="etiqueta-prefixo">Número da etiqueta</label>
+                    <div class="teq-label-fields" role="group" aria-label="Composição do número da etiqueta">
+                        <input id="etiqueta-prefixo" class="form-control teq-control" type="text" value="" placeholder="Prefixo" aria-label="Prefixo">
+                        <input id="etiqueta-inicio" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número inicial" aria-label="Número inicial" required>
+                        <input id="etiqueta-final" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número final" aria-label="Número final">
+                        <input id="etiqueta-sufixo" class="form-control teq-control" type="text" value="" placeholder="Sufixo" aria-label="Sufixo">
+                    </div>
+                    <input id="numero-etiqueta" name="numero_etiqueta" type="hidden" value="{{ values.numero_etiqueta }}" required>
                 </div>
             </div>
         </div>

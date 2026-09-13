@@ -1363,6 +1363,7 @@ body {
 .teq-grid > .teq-col > .teq-order-10 { order: 10; }
 .teq-grid > .teq-col > .teq-order-11 { order: 11; }
 .teq-grid > .teq-col > .teq-order-12 { order: 12; }
+.teq-grid > .teq-col > .teq-order-13 { order: 13; }
 .teq-field { position: relative; }
 .teq-label {
     display: block;
@@ -1393,6 +1394,12 @@ body {
 .teq-control.teq-valid { border-color: #2e7d32; }
 .teq-control.teq-invalid { border-color: #c62828; }
 .teq-label.teq-label-invalid { color: #c62828; }
+.teq-label-fields {
+    display: grid;
+    grid-template-columns: minmax(5rem, 0.85fr) minmax(7rem, 1.2fr) minmax(7rem, 1.2fr) minmax(5rem, 0.85fr);
+    gap: 0.5rem;
+}
+.teq-label-fields .teq-control { min-width: 0; }
 .teq-field-help { display: block; margin-top: 0.2rem; font-size: 0.8rem; }
 .teq-field-help.teq-valid { color: #2e7d32; }
 .teq-field-help.teq-invalid { color: #c62828; }
@@ -1593,6 +1600,7 @@ select[multiple] { min-height: 100px; }
     .form-group select,
     .form-group textarea,
     .teq-control { min-height: 2.7rem; font-size: 1rem; }
+    .teq-label-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .teq-listbox { min-height: 8rem; }
     .teq-number-box,
     .teq-inline { width: 100%; }
