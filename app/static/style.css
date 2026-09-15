@@ -412,6 +412,51 @@ input[type="number"]::-webkit-outer-spin-button {
 .coordenacao-tela :is(button, input, select, textarea, label, p, span, td, th, li, caption, strong) {
     font-size: 0.85rem !important;
 }
+.coordenacao-tela > .card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden !important;
+}
+.coordenacao-listas-grupo {
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0 0 1.75rem;
+    padding: 1rem;
+    box-sizing: border-box;
+    overflow: hidden;
+    border: 1px solid #dce7ef;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f9fcff 0%, #f3f8fc 58%, #e6f0f8 100%);
+    box-shadow: inset 0 0 0 3px #fff, 0 1px 6px rgba(0, 0, 0, .1);
+}
+.coordenacao-lista-card {
+    flex: 0 1 auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0 !important;
+    padding-top: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    overflow: hidden;
+}
+.coordenacao-lista-card + .coordenacao-lista-card {
+    margin-top: 1rem !important;
+}
+.coordenacao-lista-titulo {
+    margin: 0 0 1rem !important;
+    padding: .8rem 1rem;
+    background: transparent;
+    border-bottom: 1px solid rgba(18, 58, 98, .16);
+    color: #07569a;
+    font-size: 1rem !important;
+    letter-spacing: .01em;
+}
 
 .coordenacao-escala-form {
     margin-bottom: 1.25rem;
@@ -854,6 +899,37 @@ input[type="number"]::-webkit-outer-spin-button {
 #tab-tickets:not([hidden]) {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+.coordenacao-listas-grupo,
+.coordenacao-lista-card,
+.coordenacao-lista-card .table-scroll {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+}
+.coordenacao-lista-card .table-scroll {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+.coordenacao-lista-card .ute-table {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    table-layout: fixed;
+}
+.coordenacao-lista-card .ute-table th,
+.coordenacao-lista-card .ute-table td {
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 #tab-tickets > .tickets-coordenacao > h2 { order: 0; }
 #tab-tickets > .tickets-coordenacao > .table-scroll { order: 2; }

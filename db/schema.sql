@@ -449,12 +449,14 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
                               )),
     frequencias_selecionadas  TEXT[] NOT NULL DEFAULT '{}',
     tipo_equipamento          TEXT NOT NULL,
+    numero_equipamentos       INTEGER NOT NULL DEFAULT 1,
     numero_etiqueta           TEXT NOT NULL,
     observacoes               TEXT,
     criado_em                 TIMESTAMPTZ NOT NULL DEFAULT now(),
     atualizado_em             TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (evento_id, numero_etiqueta)
 );
+ALTER TABLE testes_etiquetagem ADD COLUMN IF NOT EXISTS numero_equipamentos INTEGER NOT NULL DEFAULT 1;
 
 -- Migra os valores legados para a etiqueta completa antes de remover as colunas.
 DO $do$

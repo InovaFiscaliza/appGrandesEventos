@@ -25,12 +25,13 @@
   const etiquetaInicio = document.querySelector('#etiqueta-inicio');
   const etiquetaFinal = document.querySelector('#etiqueta-final');
   const etiquetaSufixo = document.querySelector('#etiqueta-sufixo');
+  const numeroEquipamentos = document.querySelector('#numero-equipamentos');
   const perfis = [...document.querySelectorAll('input[name="perfil"]')];
   const form = document.querySelector('.teq-form');
   const adicionar = document.querySelector('#adicionar-frequencia');
   const remover = document.querySelector('#remover-frequencia');
 
-  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaPrefixo || !etiquetaInicio || !etiquetaFinal || !etiquetaSufixo || !form || !adicionar || !remover) return;
+  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaPrefixo || !etiquetaInicio || !etiquetaFinal || !etiquetaSufixo || !numeroEquipamentos || !form || !adicionar || !remover) return;
 
   const invalidosServidor = new Set(
     JSON.parse(form.dataset.invalidFields || '[]')
@@ -280,6 +281,14 @@
     limparErroSePreenchido('tipo_equipamento', event.target.value.trim().length > 0);
   });
   function atualizarNumeroEtiqueta() {
+    const inicioTexto = etiquetaInicio.value.trim();
+    const inicio = Number(inicioTexto);
+    const quantidade = Number(numeroEquipamentos.value);
+    if (/^\d+$/.test(inicioTexto) && Number.isSafeInteger(inicio) && Number.isSafeInteger(quantidade) && quantidade >= 1) {
+      etiquetaFinal.value = String(inicio + quantidade - 1).padStart(inicioTexto.length, '0');
+    } else {
+      etiquetaFinal.value = '';
+    }
     etiqueta.value = [
       etiquetaPrefixo.value,
       etiquetaInicio.value,
@@ -289,9 +298,10 @@
     limparErroSePreenchido('numero_etiqueta', etiqueta.value.length > 0);
   }
 
-  [etiquetaPrefixo, etiquetaInicio, etiquetaFinal, etiquetaSufixo].forEach((campo) => {
+  [etiquetaPrefixo, etiquetaInicio, etiquetaSufixo, numeroEquipamentos].forEach((campo) => {
     campo.addEventListener('input', atualizarNumeroEtiqueta);
   });
+  numeroEquipamentos.addEventListener('change', atualizarNumeroEtiqueta);
 
   const etiquetaOriginal = etiqueta.value.trim();
   if (etiquetaOriginal && !etiquetaInicio.value) etiquetaInicio.value = etiquetaOriginal;

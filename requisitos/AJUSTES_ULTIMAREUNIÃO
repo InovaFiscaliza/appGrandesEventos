@@ -53,7 +53,7 @@ Modificações solicitadas — AppGrandesEventos
 ## 2. Gerenciamento de eventos
 
 - [X] Adicionar ao evento uma opção para ativar ou desativar o **Teste de etiquetagem**. **Referência: 00:04:38–00:05:02.**
-- [ ] Permitir configurar no evento a regra de formação/abrangência das etiquetas, incluindo autorização local e autorização válida para todos os locais aplicáveis. **Referência: 00:04:51–00:05:11.**
+- [x] Permitir configurar no evento a regra de formação/abrangência das etiquetas, incluindo autorização local e autorização válida para todos os locais aplicáveis. **Referência: 00:04:51–00:05:11.**
 - [X] Substituir o campo livre **Local** do evento por dois campos controlados: **UF** e **Cidade/Município**. A cidade deverá ser escolhida em uma lista, evitando grafias diferentes para o mesmo município. **Referência: 00:09:34–00:12:50.**
 - [X] Manter o termo **Local** para a posição física de uma estação, como estádio, tribuna de imprensa, centro de monitoração ou área externa. **Referência: 00:09:52–00:12:40.**
 - [X] Manter os dados históricos existentes ao alterar os campos de localização do evento. **Referência: 00:12:52–00:13:04.**
@@ -81,7 +81,7 @@ Modificações solicitadas — AppGrandesEventos
 - [x] Tornar obrigatório o campo que identifica o equipamento/estação que realizou a captura. **Referência: 00:38:48–00:39:05.**
 - [x] Preencher a lista de origem da captura com todas as estações cadastradas no evento e com as opções genéricas **Analisador de espectro — campo** e **ETM — campo**. **Referência: 00:37:37–00:39:05.**
 - [X] Não bloquear a origem da captura com base no perfil do fiscal, pois um fiscal pode eventualmente operar uma estação diferente. **Referência: 00:36:26–00:38:48.**
-- [ ] Manter a inserção manual em tempo real rápida e com poucos passos. **Referência: 00:35:47–00:36:26.**
+- [x] Manter a inserção manual em tempo real rápida e com poucos passos. **Referência: 00:35:47–00:36:26.**
 - [x] Restringir o campo de frequência a valores numéricos e acrescentar máscara/orientação visual de formato, incluindo unidade em MHz e exemplo do separador decimal esperado. **Referência: 00:39:20–00:41:05.**
 - [x] Padronizar a largura de banda por uma lista de valores usuais, começando em torno de 12,5 e incluindo valores como 25, 50, 75 e 100 MHz, evitando entradas livres inconsistentes e permitindo consultas posteriores por sobreposição. A lista completa ainda precisa ser validada. **Referência: 00:41:05–00:43:42.**
 - [x] Adicionar **SARC** e **Outros** às opções de serviço/faixa relacionada. **Referência: 00:43:34–00:44:55.**
@@ -96,12 +96,12 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 6. Pendências e tela do coordenador
 
-- [ ] Criar o fluxo de ticket/pendência para que emissões e ocorrências que necessitem tratamento cheguem primeiro à tela do coordenador. **Referência: 00:19:27–00:19:41 e 00:51:12–00:51:36.**
-- [ ] Fazer o coordenador visualizar todas as pendências do evento, realizar a triagem e decidir quais serão enviadas para campo. **Referência: 00:57:27–00:59:14.**
-- [ ] Permitir que o coordenador atribua cada pendência a um fiscal disponível na escala. **Referência: 00:58:20–01:02:18.**
-- [ ] Fazer o fiscal visualizar somente as pendências que lhe foram atribuídas; o coordenador deve visualizar todas. **Referência: 00:59:19–01:01:30.**
-- [ ] Manter o botão/tela **Tratar emissões pendentes**, alterando quantidade e conteúdo conforme o perfil do usuário. **Referência: 00:59:14–00:59:49.**
-- [ ] Criar telas ou modos distintos para a triagem do coordenador e para o tratamento executado pelo fiscal. **Referência: 01:05:54–01:07:33.**
+- [x] Criar o fluxo de ticket/pendência para que emissões e ocorrências que necessitem tratamento cheguem primeiro à tela do coordenador. **Referência: 00:19:27–00:19:41 e 00:51:12–00:51:36.**
+- [x] Fazer o coordenador visualizar todas as pendências do evento, realizar a triagem e decidir quais serão enviadas para campo. **Referência: 00:57:27–00:59:14.**
+- [x] Permitir que o coordenador atribua cada pendência a um fiscal disponível na escala. **Referência: 00:58:20–01:02:18.**
+- [x] Fazer o fiscal visualizar somente as pendências que lhe foram atribuídas; o coordenador deve visualizar todas. **Referência: 00:59:19–01:01:30.**
+- [x] Manter o botão/tela **Tratar emissões pendentes**, alterando quantidade e conteúdo conforme o perfil do usuário. **Referência: 00:59:14–00:59:49.**
+- [x] Criar telas ou modos distintos para a triagem do coordenador e para o tratamento executado pelo fiscal. **Referência: 01:05:54–01:07:33.**
 - [ ] Dar prioridade visual máxima às ocorrências interferentes, utilizando alerta, triângulo vermelho ou ícone de exclamação. **Referência: 00:51:23–00:51:36 e 00:57:51–00:58:20.**
 - [ ] Manter na tela de trabalho apenas itens abertos. Itens concluídos devem sair da fila, mas permanecer disponíveis no histórico. **Referência: 01:08:48–01:09:41.**
 - [ ] Disponibilizar a ação **Salvar e próxima**, gravando o tratamento atual e avançando diretamente para a próxima pendência aberta. **Referência: 01:08:40–01:09:03.**

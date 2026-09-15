@@ -21,7 +21,8 @@
 
         <div id="tab-tickets" class="tab-panel active" role="tabpanel" aria-label="Tickets de trabalho">
 
-    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-bottom:1.25rem;">
+    <div class="coordenacao-listas-grupo">
+    <div class="card background-neutral-0 padding-l border-radius-m coordenacao-lista-card">
         <h2 class="font-semi-bold margin-bottom-m">Incidentes submetidos para inspeção</h2>
         <div class="table-scroll" role="region" aria-label="Incidentes submetidos para inspeção" tabindex="0">
             <table class="ute-table" data-paginacao="10">
@@ -67,7 +68,7 @@
         <nav class="pendencias-pagination" aria-label="Paginação dos incidentes submetidos"></nav>
     </div>
 
-    <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-bottom:1.25rem;">
+    <div class="card background-neutral-0 padding-l border-radius-m coordenacao-lista-card">
         <h2 class="font-semi-bold margin-bottom-m">Emissões submetidas para inspeção</h2>
         <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
             Revise as emissões pendentes ou concluídas pelo fiscal. A coordenação pode concluir definitivamente cada emissão ou selecionar uma ou mais para atribuir um ticket. Linhas em cinza já estão vinculadas a ticket.
@@ -177,7 +178,10 @@
             </div>
         </form>
     </div>
-
+    </div>
+    
+    
+    <div class="coordenacao-listas-grupo">
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb;">
         <h2 class="font-semi-bold margin-bottom-m">Tickets pendentes</h2>
         {% if tickets %}
@@ -237,7 +241,9 @@
         <p>Nenhum ticket pendente para este evento.</p>
         {% endif %}
     </div>
-
+    </div>
+    
+    <div class="coordenacao-listas-grupo">
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-top:1.25rem;">
         <h2 class="font-semi-bold margin-bottom-m">Tickets concluídos pelos Fiscais</h2>
         <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
@@ -295,7 +301,9 @@
         <p>Nenhum ticket concluído pelos fiscais aguardando inspeção.</p>
         {% endif %}
     </div>
+    </div>
 
+    <div class="coordenacao-listas-grupo">
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb; margin-top:1.25rem;">
         <h2 class="font-semi-bold margin-bottom-m">Tickets concluídos definitivamente</h2>
         {% if tickets_concluidos_coordenador %}
@@ -339,6 +347,7 @@
         {% else %}
         <p>Nenhum ticket concluído definitivamente neste evento.</p>
         {% endif %}
+    </div>
     </div>
 
         </div>

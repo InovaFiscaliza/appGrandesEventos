@@ -2356,12 +2356,14 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
                         cpf_cnpj,
                         equipamento_homologado, permissao,
                         frequencias_selecionadas, tipo_equipamento,
+                        numero_equipamentos,
                         numero_etiqueta, observacoes
                     ) VALUES (
                         :ev, :licenca, :perfil, :entidade, :contato, :local,
                         :cpf_cnpj,
                         :homologado, :permissao, :frequencias,
-                        :tipo_equipamento, :numero_etiqueta, :observacoes
+                        :tipo_equipamento, :numero_equipamentos,
+                        :numero_etiqueta, :observacoes
                     )
                     RETURNING id
                 """),
@@ -2377,6 +2379,7 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
                     "permissao": dados["permissao"],
                     "frequencias": dados.get("frequencias_selecionadas", []),
                     "tipo_equipamento": dados["tipo_equipamento"],
+                    "numero_equipamentos": int(dados.get("numero_equipamentos") or 1),
                     "numero_etiqueta": dados["numero_etiqueta"],
                     "observacoes": dados.get("observacoes", ""),
                 },
@@ -2410,6 +2413,7 @@ def listar_testes_etiquetagem(_client=None, evento_id=None) -> list[dict]:
                               cpf_cnpj,
                            equipamento_homologado, permissao,
                            frequencias_selecionadas, tipo_equipamento,
+                           numero_equipamentos,
                            numero_etiqueta, observacoes, criado_em, atualizado_em
                     FROM testes_etiquetagem
                     WHERE evento_id = :ev
@@ -2446,6 +2450,7 @@ def obter_teste_etiquetagem(
                               cpf_cnpj,
                            equipamento_homologado, permissao,
                            frequencias_selecionadas, tipo_equipamento,
+                           numero_equipamentos,
                            numero_etiqueta, observacoes
                     FROM testes_etiquetagem
                     WHERE id = :id AND evento_id = :ev
@@ -2492,6 +2497,7 @@ def atualizar_teste_etiquetagem(
                         equipamento_homologado = :homologado, permissao = :permissao,
                         frequencias_selecionadas = :frequencias,
                         tipo_equipamento = :tipo_equipamento,
+                        numero_equipamentos = :numero_equipamentos,
                         numero_etiqueta = :numero_etiqueta, observacoes = :observacoes,
                         atualizado_em = now()
                     WHERE id = :id AND evento_id = :ev
@@ -2509,6 +2515,7 @@ def atualizar_teste_etiquetagem(
                     "permissao": dados["permissao"],
                     "frequencias": dados.get("frequencias_selecionadas", []),
                     "tipo_equipamento": dados["tipo_equipamento"],
+                    "numero_equipamentos": int(dados.get("numero_equipamentos") or 1),
                     "numero_etiqueta": dados["numero_etiqueta"],
                     "observacoes": dados.get("observacoes", ""),
                 },

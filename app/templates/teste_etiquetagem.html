@@ -219,7 +219,7 @@
                 </div>
 
                 <div class="form-group teq-number-box teq-order-12">
-                    <label class="teq-label teq-checkbox-title{% if 'numero_equipamentos' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-equipamentos">Número de equipamentos do mesmo tipo</label>
+                    <label class="teq-label teq-checkbox-title{% if 'numero_equipamentos' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-equipamentos">Número de equipamentos iguais sendo etiquetados</label>
                     <input id="numero-equipamentos" name="numero_equipamentos" class="form-control teq-control{% if 'numero_equipamentos' in values.invalid_fields %} teq-invalid{% endif %}" type="number" min="1" step="1" value="{{ values.numero_equipamentos or 1 }}" required>
                 </div>
 
@@ -228,7 +228,7 @@
                     <div class="teq-label-fields" role="group" aria-label="Composição do número da etiqueta">
                         <input id="etiqueta-prefixo" class="form-control teq-control" type="text" value="" placeholder="Prefixo" aria-label="Prefixo">
                         <input id="etiqueta-inicio" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número inicial" aria-label="Número inicial" required>
-                        <input id="etiqueta-final" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número final" aria-label="Número final">
+                        <input id="etiqueta-final" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número final" aria-label="Número final" readonly>
                         <input id="etiqueta-sufixo" class="form-control teq-control" type="text" value="" placeholder="Sufixo" aria-label="Sufixo">
                     </div>
                     <input id="numero-etiqueta" name="numero_etiqueta" type="hidden" value="{{ values.numero_etiqueta }}" required>
