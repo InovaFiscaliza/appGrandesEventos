@@ -28,7 +28,7 @@
                         <th>Contato</th>
                         <th>Local</th>
                         <th>Licença</th>
-                        <th>Equipamento Homologado</th>
+                        <th>Tipo de etiqueta</th>
                         <th>Permissão</th>
                         <th>Frequência (MHz)</th>
                         <th>Banda</th>
@@ -57,7 +57,7 @@
                         <td data-label="Licença">
                             {% if registro.licenca == 'ute' %}UTE{% elif registro.licenca == 'outorgado' %}Outorgado{% elif registro.licenca == 'nao_outorgado' %}Não Outorgado{% else %}Radiação Restrita{% endif %}
                         </td>
-                        <td data-label="Equipamento Homologado">{{ 'Sim' if registro.equipamento_homologado else 'Não' }}</td>
+                        <td data-label="Tipo de etiqueta">{{ 'Sim' if registro.equipamento_homologado else 'Não' }}</td>
                         <td data-label="Permissão">
                             {% if registro.permissao == 'permitido' %}Permitido{% elif registro.permissao == 'todos' %}Permitido em todos{% else %}Não permitido{% endif %}
                         </td>
@@ -128,7 +128,7 @@
                 </div>
 
                 <div class="teq-checkbox-line teq-order-7">
-                    <span class="teq-checkbox-title">Equipamento Homologado</span>
+                    <span class="teq-checkbox-title">Tipo de etiqueta</span>
                     <label class="teq-checkbox"><input name="equipamento_homologado" type="checkbox" {% if values.equipamento_homologado %}checked{% endif %}> </label>
                 </div>
 
