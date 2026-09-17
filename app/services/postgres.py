@@ -13,6 +13,7 @@ import hashlib
 import logging
 import re
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 from typing import Dict, List, Optional
 
 import pandas as pd
@@ -3873,6 +3874,10 @@ def _buscar_por_texto_livre(
         return pd.DataFrame()
     try:
         termo_clean = _escape_like(termo)
+        try:
+            frequencia = Decimal(termo.replace(",", "."))
+        except (InvalidOperation, ValueError):
+            frequencia = Decimal("-1")
         sql = text("""
             SELECT
                 o.id::text AS "ID",
@@ -3913,6 +3918,8 @@ def _buscar_por_texto_livre(
                                             )) LIKE unaccent(lower(:q))
                                             OR o.id::text LIKE :q
                                             OR o.id_exibicao LIKE :q
+                                            OR o.frequencia_mhz::text LIKE :q
+                                            OR o.frequencia_mhz = :frequencia
                                         )
                                     )
               )
@@ -3925,6 +3932,7 @@ def _buscar_por_texto_livre(
             params={
                 "ev": int(evento_id),
                 "q": f"%{termo_clean}%",
+                "frequencia": frequencia,
                 "listar_tratadas": not bool(termo),
             },
         )
@@ -3940,6 +3948,10 @@ def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
     if evento_id is None or not termo:
         return []
     try:
+        try:
+            frequencia = Decimal(termo.replace(",", "."))
+        except (InvalidOperation, ValueError):
+            frequencia = Decimal("-1")
         with get_engine().connect() as conn:
             rows = (
                 conn.execute(
@@ -3954,6 +3966,8 @@ def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
                           AND (
                               o.id::text LIKE :termo
                               OR o.id_exibicao LIKE :termo
+                              OR o.frequencia_mhz::text LIKE :termo
+                              OR o.frequencia_mhz = :frequencia
                               OR unaccent(lower(
                                   COALESCE(e.nome, '') || ' ' ||
                                   COALESCE(o.local_regiao, '') || ' ' ||
@@ -3964,7 +3978,11 @@ def sugerir_busca_emissoes(evento_id=None, termo: str = "") -> list[dict]:
                         ORDER BY o.id DESC
                         LIMIT 10
                     """),
-                    {"evento_id": int(evento_id), "termo": f"%{_escape_like(termo)}%"},
+                    {
+                        "evento_id": int(evento_id),
+                        "termo": f"%{_escape_like(termo)}%",
+                        "frequencia": frequencia,
+                    },
                 )
                 .mappings()
                 .all()
