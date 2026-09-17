@@ -42,6 +42,7 @@ def _row_to_display(row, i: int, imagens_por_ocorrencia: dict | None = None) -> 
     dt = str(row.get("Data", row.get("Dia", "")))
     fr = str(row.get("Frequência (MHz)", row.get("Frequência", "")))
     id_val = str(row.get("ID", ""))
+    id_exibicao = str(row.get("IDExibicao", "") or id_val)
     imagens = (imagens_por_ocorrencia or {}).get(
         int(id_val) if id_val.isdigit() else -1,
         [],
@@ -64,6 +65,7 @@ def _row_to_display(row, i: int, imagens_por_ocorrencia: dict | None = None) -> 
     return {
         "titulo": titulo,
         "id": id_val,
+        "id_exibicao": id_exibicao,
         "local": loc,
         "data": dt,
         "frequencia": fr,
