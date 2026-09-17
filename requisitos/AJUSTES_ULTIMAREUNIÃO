@@ -113,23 +113,23 @@ Modificações solicitadas — AppGrandesEventos
 - [X] Renomear o módulo **BSR/Jammer e ERB Fake** para **Ocorrências especiais**. **Referência: 01:10:34–01:12:26.**
 - [X] Tornar o módulo genérico para fatos excepcionais, não apenas interferências: Jammer, ERB Fake, reclamações externas, falhas de Wi‑Fi, incêndios que afetem equipamentos e outras situações relevantes. **Referência: 01:10:49–01:12:19.**
 - [X] Encaminhar ocorrências especiais que exijam ação para o fluxo de tickets do coordenador. **Referência: 00:19:27–00:19:41.**
-- [ ] Para Jammer de faixa larga, permitir o registro da faixa percebida e evidências nas observações/fotos, sem obrigar uma frequência única. **Referência: 00:18:39–00:19:27.**
+- [x] Para Jammer de faixa larga, permitir o registro da faixa percebida e evidências nas observações/fotos, sem obrigar uma frequência única. **Referência: 00:18:39–00:19:27.**
 
 ## 8. Teste de etiquetagem
 
-- [ ] Manter os tipos de pessoa **Física**, **Jurídica** e **Estrangeira**, exibindo CPF somente para pessoa física, CNPJ somente para pessoa jurídica e nenhum dos dois para estrangeiro. **Referência: 01:13:21–01:13:43.**
-- [ ] Reduzir digitação repetitiva oferecendo consulta, autocomplete ou seleção de dados cadastrados anteriormente, especialmente entidade, contato e outros dados recorrentes. **Referência: 01:14:01–01:15:09.**
-- [ ] Preencher automaticamente o evento/local de etiquetagem conforme o evento e a escala/atribuição do fiscal, evitando que o mesmo local seja digitado dezenas de vezes. **Referência: 01:15:09–01:18:30.**
-- [ ] Quando o fiscal puder atuar em mais de um local no mesmo dia, oferecer seleção do local atual ou avaliar uso de localização do dispositivo. Essa forma final ficou pendente de definição. **Referência: 01:17:27–01:18:30.**
+- [x] Manter os tipos de pessoa **Física**, **Jurídica** e **Estrangeira**, exibindo CPF somente para pessoa física, CNPJ somente para pessoa jurídica e nenhum dos dois para estrangeiro. **Referência: 01:13:21–01:13:43.**
+- [x] Reduzir digitação repetitiva oferecendo consulta, autocomplete ou seleção de dados cadastrados anteriormente, especialmente entidade, contato e outros dados recorrentes. **Referência: 01:14:01–01:15:09.**
+- [x] Preencher automaticamente o evento/local de etiquetagem conforme o evento e a escala/atribuição do fiscal, evitando que o mesmo local seja digitado dezenas de vezes. **Referência: 01:15:09–01:18:30.**
+- [x] Quando o fiscal puder atuar em mais de um local no mesmo dia, oferecer seleção do local atual ou avaliar uso de localização do dispositivo. Essa forma final ficou pendente de definição. **Referência: 01:17:27–01:18:30.**
 - [ ] Restringir o fiscal aos testes de etiquetagem dos eventos/locais para os quais foi escalado. **Referência: 01:16:44–01:18:04.**
 - [ ] Tratar etiquetas locais e globais de forma diferente: uma etiqueta local vale apenas para o evento/local correspondente; uma etiqueta “permitida em todos os estádios” deve ser cadastrada uma única vez e aparecer na consulta de todos os eventos. **Referência: 01:18:38–01:20:08.**
-- [ ] Corrigir o nome do campo **Equipamento homologado** para **Tipo de etiqueta**, pois o campo representa a etiqueta atribuída e não a homologação do equipamento. **Referência: 01:20:14–01:20:25.**
-- [ ] Manter os tipos de etiqueta **Permitido**, **Permitido em todos os estádios** e **Não permitido**. **Referência: 01:20:09–01:20:36.**
+- [x] Corrigir o nome do campo **Equipamento homologado** para **Tipo de etiqueta**, pois o campo representa a etiqueta atribuída e não a homologação do equipamento. **Referência: 01:20:14–01:20:25.**
+- [x] Manter os tipos de etiqueta **Permitido**, **Permitido em todos os estádios** e **Não permitido**. **Referência: 01:20:09–01:20:36.**
 - [ ] Exibir e exigir o campo **Número da etiqueta** quando qualquer tipo de etiqueta for selecionado. **Referência: 01:20:36–01:21:03.**
-- [ ] Ao digitar a frequência no teste de etiquetagem, consultar automaticamente as emissões já cadastradas, inclusive as inseridas pelos fiscais de campo. **Referência: 00:55:53–00:57:21 e 01:21:03–01:22:11.**
+- [ ] Ao digitar a frequência no teste de etiquetagem, consultar automaticamente as emissões já cadastradas, inclusive as inseridas pelos fiscais de campo. **Referência: 00:55:53–00:57:21 e 01:21:03–01:22:11.** (apenas alertar)
 - [ ] Detectar conflito por intervalo, considerando frequência central e largura de banda, e alertar também quando houver sobreposição parcial entre emissões. **Referência: 00:41:59–00:42:24 e 01:21:03–01:22:11.**
 - [ ] Corrigir a validação de conflito para que ela avise o usuário já durante a inclusão. O sistema não deve apenas impedir a gravação silenciosamente nem deixar o aviso restrito à edição. **Referência: 01:22:15–01:23:14.**
-- [ ] Priorizar agilidade na tela de etiquetagem, com o menor número possível de campos e operações, pois haverá filas e grande volume de registros. **Referência: 01:17:15–01:17:24.**
+- [x] Priorizar agilidade na tela de etiquetagem, com o menor número possível de campos e operações, pois haverá filas e grande volume de registros. **Referência: 01:17:15–01:17:24.**
 
 ## 9. Integrações e relatórios futuros
 
