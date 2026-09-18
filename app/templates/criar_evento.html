@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block content %}
 {% include "partials/header.html" %}
+<link rel="stylesheet" href="/static/rf-fusion/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
@@ -50,7 +52,10 @@
         </div>
         <div class="form-cols">
             <div class="form-group">
-                <label for="latitude-evento">Latitude</label>
+                <div class="estacao-campo-cabecalho coordenadas-evento-cabecalho">
+                    <label for="latitude-evento">Latitude</label>
+                    <button type="button" id="abrir-mapa-evento" class="teq-list-btn mapa-estacao-abrir" aria-label="Selecionar coordenadas no mapa" title="Selecionar coordenadas no mapa">+</button>
+                </div>
                 <input class="form-control" id="latitude-evento" type="number" name="latitude" value="{{ evento.latitude if evento and evento.latitude is not none else '' }}" step="any" min="-90" max="90">
             </div>
             <div class="form-group">
@@ -156,6 +161,105 @@
         </div>
     </form>
 </div>
+
+<div id="popup-mapa-evento" class="popup-mapa-estacao" hidden>
+    <div class="popup-mapa-estacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-mapa-evento">
+        <div class="popup-mapa-estacao-cabecalho">
+            <h2 id="titulo-mapa-evento">Selecionar coordenadas do evento</h2>
+            <button type="button" id="fechar-mapa-evento" class="popup-mapa-estacao-fechar" aria-label="Fechar mapa">×</button>
+        </div>
+        <div class="mapa-estacao-busca">
+            <label for="busca-lugar-evento">Procurar lugar</label>
+            <div class="mapa-estacao-busca-controles">
+                <input class="form-control" id="busca-lugar-evento" type="search" placeholder="Cidade, endereço ou local" autocomplete="off">
+            </div>
+            <small id="mensagem-busca-lugar-evento" class="form-help" role="status"></small>
+        </div>
+        <div id="mapa-evento" class="mapa-estacao"></div>
+        <small class="form-help mapa-estacao-ajuda">Clique no mapa para preencher a latitude e a longitude.</small>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const mapaElement = document.getElementById("mapa-evento");
+        const abrirBotao = document.getElementById("abrir-mapa-evento");
+        const popup = document.getElementById("popup-mapa-evento");
+        const fecharBotao = document.getElementById("fechar-mapa-evento");
+        const latitudeInput = document.getElementById("latitude-evento");
+        const longitudeInput = document.getElementById("longitude-evento");
+        const buscaLugarInput = document.getElementById("busca-lugar-evento");
+        const mensagemBuscaLugar = document.getElementById("mensagem-busca-lugar-evento");
+        if (!mapaElement || !abrirBotao || !popup || !fecharBotao || !latitudeInput || !longitudeInput || !buscaLugarInput || !mensagemBuscaLugar || typeof L === "undefined") return;
+
+        const latitudeInicial = Number(latitudeInput.value);
+        const longitudeInicial = Number(longitudeInput.value);
+        const possuiCoordenadas = Number.isFinite(latitudeInicial) && Number.isFinite(longitudeInicial);
+        const centroBrasil = [-14.235, -51.9253];
+        const centroInicial = possuiCoordenadas ? [latitudeInicial, longitudeInicial] : centroBrasil;
+        const zoomInicial = possuiCoordenadas ? 13 : 4;
+        const mapa = L.map(mapaElement).setView(centroInicial, zoomInicial);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "&copy; OpenStreetMap contributors",
+            maxZoom: 19,
+        }).addTo(mapa);
+
+        const fecharPopup = () => { popup.hidden = true; };
+        abrirBotao.addEventListener("click", () => {
+            popup.hidden = false;
+            setTimeout(() => mapa.invalidateSize(), 100);
+        });
+        fecharBotao.addEventListener("click", fecharPopup);
+        popup.addEventListener("click", (evento) => {
+            if (evento.target === popup) fecharPopup();
+        });
+        let temporizadorBusca;
+        let requisicaoBusca;
+        const buscarLugar = async (termo) => {
+            if (!termo) {
+                mensagemBuscaLugar.textContent = "";
+                return;
+            }
+            mensagemBuscaLugar.textContent = "Procurando...";
+            requisicaoBusca?.abort();
+            requisicaoBusca = new AbortController();
+            try {
+                const resposta = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(termo)}`, {
+                    headers: { Accept: "application/json", "Accept-Language": "pt-BR" },
+                    signal: requisicaoBusca.signal,
+                });
+                if (!resposta.ok) throw new Error("Falha na pesquisa");
+                const resultados = await resposta.json();
+                if (!resultados.length) {
+                    mensagemBuscaLugar.textContent = "Lugar não encontrado.";
+                    return;
+                }
+                const resultado = resultados[0];
+                mapa.setView([Number(resultado.lat), Number(resultado.lon)], 15);
+                mensagemBuscaLugar.textContent = resultado.display_name || "Lugar localizado.";
+            } catch (erro) {
+                if (erro.name !== "AbortError") mensagemBuscaLugar.textContent = "Não foi possível pesquisar o lugar agora.";
+            }
+        };
+        buscaLugarInput.addEventListener("input", () => {
+            clearTimeout(temporizadorBusca);
+            const termo = buscaLugarInput.value.trim();
+            if (termo.length < 3) {
+                mensagemBuscaLugar.textContent = termo ? "Digite pelo menos 3 caracteres." : "";
+                requisicaoBusca?.abort();
+                return;
+            }
+            temporizadorBusca = setTimeout(() => buscarLugar(termo), 600);
+        });
+        mapa.on("click", (evento) => {
+            const latitude = evento.latlng.lat.toFixed(6);
+            const longitude = evento.latlng.lng.toFixed(6);
+            latitudeInput.value = latitude;
+            longitudeInput.value = longitude;
+            fecharPopup();
+        });
+    })();
+</script>
 
 <div id="fiscais-popup" class="fiscais-popup-overlay" hidden>
     <section class="fiscais-popup-dialog" role="dialog" aria-modal="true" aria-labelledby="fiscais-popup-titulo">

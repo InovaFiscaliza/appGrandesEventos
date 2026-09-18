@@ -952,15 +952,22 @@ input[type="number"]::-webkit-outer-spin-button {
     line-height: 1.2;
 }
 .estacoes-evento-table .estacao-acao { width: 1%; min-width: 9rem; text-align: center; vertical-align: middle; white-space: nowrap; }
-.popup-mapa-estacao { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 1rem; background: rgb(0 0 0 / 45%); }
+.popup-mapa-estacao { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: .5rem; background: rgb(0 0 0 / 45%); }
 .popup-mapa-estacao[hidden] { display: none; }
-.popup-mapa-estacao-conteudo { width: min(900px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow: hidden; padding: 1rem; background: #fff; border-radius: 6px; box-shadow: 0 12px 35px rgb(0 0 0 / 25%); }
-.popup-mapa-estacao-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
-.popup-mapa-estacao-cabecalho h2 { margin: 0; font-size: 1rem; }
+.popup-mapa-estacao-conteudo { display: flex; flex-direction: column; width: min(900px, calc(100vw - 1rem)); height: min(720px, calc(100vh - 1rem)); max-height: calc(100vh - 1rem); overflow: hidden; padding: .75rem; background: #fff; border-radius: 6px; box-shadow: 0 12px 35px rgb(0 0 0 / 25%); }
+.popup-mapa-estacao-cabecalho { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; gap: .5rem; margin-bottom: .4rem; }
+.popup-mapa-estacao-cabecalho h2 { margin: 0; font-size: .9rem; }
 .popup-mapa-estacao-fechar { flex: 0 0 2.25rem; width: 2.25rem; height: 2.25rem; border: 0; border-radius: 0; background: transparent; color: #243746; font-size: 1.5rem; line-height: 1; cursor: pointer; }
 .popup-mapa-estacao-fechar:hover { background: transparent; }
 .popup-mapa-estacao-fechar:focus-visible { background: transparent; outline: 2px solid #14337b; outline-offset: 1px; }
-.mapa-estacao { width: 100%; height: min(600px, calc(100vh - 8rem)); min-height: 320px; border: 1px solid var(--border-color, #d7dce2); border-radius: 4px; overflow: hidden; }
+.mapa-estacao { flex: 1 1 auto; width: 100%; min-height: 0; border: 1px solid var(--border-color, #d7dce2); border-radius: 4px; overflow: hidden; }
+.mapa-estacao-busca { flex: 0 0 auto; margin-bottom: .4rem; }
+.mapa-estacao-busca label { display: block; margin-bottom: .2rem; font-weight: 600; font-size: .8rem; }
+.mapa-estacao-busca-controles { display: flex; gap: .5rem; }
+.mapa-estacao-busca-controles .form-control { flex: 1; }
+.mapa-estacao-busca .form-control { min-height: 2rem; padding: .35rem .5rem; font-size: .8rem; }
+.mapa-estacao-busca .form-help { display: block; min-height: 1rem; margin-top: .2rem; font-size: .7rem; }
+.mapa-estacao-ajuda { flex: 0 0 auto; font-size: .7rem; }
 .popup-mapa-estacao .leaflet-container,
 .popup-mapa-estacao .leaflet-container .leaflet-grab,
 .popup-mapa-estacao .leaflet-container .leaflet-interactive,
