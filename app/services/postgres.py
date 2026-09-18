@@ -284,6 +284,7 @@ def criar_evento(
     observacoes: str | None = None,
     estacoes: list[str | dict] | None = None,
     fiscais: list[str] | None = None,
+    papeis_por_fiscal: dict[int, list[str]] | None = None,
     coordenadores: list[str] | None = None,
 ) -> int:
     """Cria um evento, suas estações e retorna o identificador do evento."""
@@ -346,13 +347,18 @@ def criar_evento(
                 {"evento_id": evento_id, "unidade_sigla": sigla},
             )
         for fiscal_id in fiscais or []:
+            papeis = [
+                papel
+                for papel in PAPEIS_FISCAL
+                if papel in (papeis_por_fiscal or {}).get(int(fiscal_id), [])
+            ]
             conn.execute(
                 text("""
-                INSERT INTO eventos_fiscais (evento_id, fiscal_id)
-                VALUES (:evento_id, :fiscal_id)
+                INSERT INTO eventos_fiscais (evento_id, fiscal_id, papeis)
+                VALUES (:evento_id, :fiscal_id, :papeis)
                 ON CONFLICT DO NOTHING
                 """),
-                {"evento_id": evento_id, "fiscal_id": int(fiscal_id)},
+                {"evento_id": evento_id, "fiscal_id": int(fiscal_id), "papeis": papeis},
             )
         for fiscal_id in coordenadores or []:
             conn.execute(
@@ -360,10 +366,9 @@ def criar_evento(
                 INSERT INTO eventos_coordenadores (evento_id, fiscal_id)
                 SELECT :evento_id, ef.fiscal_id
                 FROM eventos_fiscais ef
-                JOIN fiscais f ON f.id = ef.fiscal_id
                 WHERE ef.evento_id = :evento_id
                   AND ef.fiscal_id = :fiscal_id
-                  AND 'Coordenação' = ANY(f.papeis)
+                                    AND 'Coordenação' = ANY(ef.papeis)
                 ON CONFLICT DO NOTHING
                 """),
                 {"evento_id": evento_id, "fiscal_id": int(fiscal_id)},
@@ -382,16 +387,36 @@ def listar_unidades_executantes() -> list[dict]:
     return [dict(row) for row in rows]
 
 
-def listar_fiscais() -> list[dict]:
-    """Retorna a lista global de fiscais cadastrados."""
+def listar_fiscais(evento_id: int | None = None) -> list[dict]:
+    """Retorna fiscais básicos e, quando informado, seus papéis no evento."""
+    filtro_evento = ""
+    papeis_sql = "f.papeis"
+    parametros = {}
+    if evento_id is not None:
+        filtro_evento = "LEFT JOIN eventos_fiscais ef ON ef.fiscal_id = f.id AND ef.evento_id = :evento_id"
+        papeis_sql = "COALESCE(ef.papeis, f.papeis)"
+        parametros["evento_id"] = int(evento_id)
     with get_engine().connect() as conn:
-        rows = conn.execute(text("""
+        rows = (
+            conn.execute(
+                text(
+                    """
                  SELECT f.id, f.nome, f.local_anatel, u.nome AS local_anatel_nome,
-                     f.papeis, array_to_string(f.papeis, ', ') AS funcao_evento
+                     """ + papeis_sql + """ AS papeis,
+                     array_to_string(""" + papeis_sql + """, ', ') AS funcao_evento
             FROM fiscais f
             JOIN unidades_executantes u ON u.sigla = f.local_anatel
+            """
+                    + filtro_evento
+                    + """
                  ORDER BY f.nome, f.local_anatel
-        """)).mappings().all()
+        """
+                ),
+                parametros,
+            )
+            .mappings()
+            .all()
+        )
     fiscais = []
     for row in rows:
         fiscal = dict(row)
@@ -448,6 +473,38 @@ def listar_fiscais_evento(evento_id: int) -> list[int]:
                 {"evento_id": int(evento_id)},
             ).scalars()
         )
+
+
+def atualizar_fiscais_evento(
+    evento_id: int,
+    fiscais: list[str],
+    papeis_por_fiscal: dict[int, list[str]] | None = None,
+) -> None:
+    """Substitui participantes e seus papéis específicos do evento."""
+    papeis_por_fiscal = papeis_por_fiscal or {}
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("DELETE FROM eventos_fiscais WHERE evento_id = :evento_id"),
+            {"evento_id": int(evento_id)},
+        )
+        for fiscal_id in fiscais:
+            papeis = [
+                papel
+                for papel in PAPEIS_FISCAL
+                if papel in papeis_por_fiscal.get(int(fiscal_id), [])
+            ]
+            conn.execute(
+                text("""
+                INSERT INTO eventos_fiscais (evento_id, fiscal_id, papeis)
+                VALUES (:evento_id, :fiscal_id, :papeis)
+                ON CONFLICT (evento_id, fiscal_id) DO UPDATE SET papeis = EXCLUDED.papeis
+            """),
+                {
+                    "evento_id": int(evento_id),
+                    "fiscal_id": int(fiscal_id),
+                    "papeis": papeis,
+                },
+            )
 
 
 def listar_coordenadores_evento(evento_id: int) -> list[int]:
@@ -1251,24 +1308,6 @@ def cancelar_ticket_evento(ticket_id: int, evento_id: int) -> None:
         )
 
 
-def atualizar_fiscais_evento(evento_id: int, fiscais: list[str]) -> None:
-    """Substitui os fiscais participantes do evento."""
-    with get_engine().begin() as conn:
-        conn.execute(
-            text("DELETE FROM eventos_fiscais WHERE evento_id = :evento_id"),
-            {"evento_id": int(evento_id)},
-        )
-        for fiscal_id in fiscais:
-            conn.execute(
-                text("""
-                INSERT INTO eventos_fiscais (evento_id, fiscal_id)
-                VALUES (:evento_id, :fiscal_id)
-                ON CONFLICT DO NOTHING
-            """),
-                {"evento_id": int(evento_id), "fiscal_id": int(fiscal_id)},
-            )
-
-
 def listar_unidades_evento(evento_id: int) -> list[str]:
     """Retorna as siglas das unidades executantes vinculadas ao evento."""
     with get_engine().connect() as conn:
@@ -1329,7 +1368,7 @@ def listar_eventos_detalhes() -> list[dict]:
                       ), '') AS estacoes,
                       COALESCE((
                           SELECT string_agg(
-                              f.nome || ' (' || f.local_anatel || ' - ' || array_to_string(f.papeis, ', ') || ')',
+                              f.nome || ' (' || f.local_anatel || ' - ' || array_to_string(ef.papeis, ', ') || ')',
                               ', ' ORDER BY f.nome
                           )
                           FROM eventos_fiscais ef
@@ -1701,10 +1740,9 @@ def atualizar_evento(
                     INSERT INTO eventos_coordenadores (evento_id, fiscal_id)
                     SELECT :evento_id, ef.fiscal_id
                     FROM eventos_fiscais ef
-                    JOIN fiscais f ON f.id = ef.fiscal_id
                     WHERE ef.evento_id = :evento_id
                       AND ef.fiscal_id = :fiscal_id
-                      AND 'Coordenação' = ANY(f.papeis)
+                                            AND 'Coordenação' = ANY(ef.papeis)
                 """),
                 {"evento_id": int(evento_id), "fiscal_id": int(fiscal_id)},
             )

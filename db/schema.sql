@@ -85,8 +85,19 @@ CREATE INDEX IF NOT EXISTS idx_municipios_uf_nome
 CREATE TABLE IF NOT EXISTS eventos_fiscais (
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
     fiscal_id BIGINT NOT NULL REFERENCES fiscais(id) ON DELETE CASCADE,
+    papeis      TEXT[] NOT NULL DEFAULT '{}'
+                CHECK (papeis <@ ARRAY['Coordenação', 'Abordagem', 'Monitoração']),
     PRIMARY KEY (evento_id, fiscal_id)
 );
+
+ALTER TABLE eventos_fiscais ADD COLUMN IF NOT EXISTS papeis TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE eventos_fiscais DROP CONSTRAINT IF EXISTS eventos_fiscais_papeis_check;
+ALTER TABLE eventos_fiscais ADD CONSTRAINT eventos_fiscais_papeis_check
+    CHECK (papeis <@ ARRAY['Coordenação', 'Abordagem', 'Monitoração']);
+UPDATE eventos_fiscais ef
+SET papeis = f.papeis
+FROM fiscais f
+WHERE f.id = ef.fiscal_id AND cardinality(ef.papeis) = 0 AND cardinality(f.papeis) > 0;
 
 CREATE TABLE IF NOT EXISTS eventos_coordenadores (
     evento_id BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,

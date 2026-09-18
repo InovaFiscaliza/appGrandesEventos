@@ -57,6 +57,21 @@ def _ctx(request: Request, **kwargs):
     }
 
 
+def _papeis_por_fiscal(form) -> dict[int, list[str]]:
+    """Extrai os papéis escolhidos para cada fiscal neste evento."""
+    papeis_validos = {"Coordenação", "Abordagem", "Monitoração"}
+    resultado = {}
+    for chave in form:
+        if not str(chave).startswith("papeis_fiscal_"):
+            continue
+        fiscal_id = str(chave).removeprefix("papeis_fiscal_")
+        if fiscal_id.isdigit():
+            resultado[int(fiscal_id)] = [
+                papel for papel in form.getlist(chave) if papel in papeis_validos
+            ]
+    return resultado
+
+
 @router.get("/criar-evento", response_class=HTMLResponse)
 async def get_criar_evento(request: Request):
     if not _usuario_e_coordenador(request):
@@ -87,7 +102,7 @@ async def get_criar_evento(request: Request):
             municipios=listar_municipios(),
             ufs=listar_ufs_municipios(),
             unidades_executantes=listar_unidades_executantes(),
-            fiscais=listar_fiscais(),
+            fiscais=listar_fiscais(int(editar_id) if evento else None),
             flash_error=request.session.pop("flash_error", None),
         ),
     )
@@ -160,6 +175,7 @@ async def post_criar_evento(request: Request):
     teste_etiquetagem = str(form.get("teste_etiquetagem", "sim")).strip() == "sim"
     unidades_executantes = form.getlist("unidades_executantes")
     fiscais_evento = form.getlist("fiscais_evento")
+    papeis_por_fiscal = _papeis_por_fiscal(form)
     coordenadores_evento = [
         valor for valor in form.getlist("coordenador_responsavel") if valor.isdigit()
     ]
@@ -197,6 +213,7 @@ async def post_criar_evento(request: Request):
             teste_etiquetagem=teste_etiquetagem,
             unidades_executantes=unidades_executantes,
             fiscais=fiscais_evento,
+            papeis_por_fiscal=papeis_por_fiscal,
             coordenadores=coordenadores_evento,
             observacoes=observacoes or None,
         )
@@ -233,6 +250,7 @@ async def post_editar_evento(request: Request, evento_id: int):
     teste_etiquetagem = str(form.get("teste_etiquetagem", "sim")).strip() == "sim"
     unidades_executantes = form.getlist("unidades_executantes")
     fiscais_evento = form.getlist("fiscais_evento")
+    papeis_por_fiscal = _papeis_por_fiscal(form)
     coordenadores_evento = [
         valor for valor in form.getlist("coordenador_responsavel") if valor.isdigit()
     ]
@@ -262,7 +280,7 @@ async def post_editar_evento(request: Request, evento_id: int):
         if evento_anterior is None:
             request.session["flash_error"] = "Evento não encontrado."
             return RedirectResponse("/criar-evento", status_code=303)
-        atualizar_fiscais_evento(evento_id, fiscais_evento)
+        atualizar_fiscais_evento(evento_id, fiscais_evento, papeis_por_fiscal)
         atualizar_evento(
             evento_id=evento_id,
             nome=nome,

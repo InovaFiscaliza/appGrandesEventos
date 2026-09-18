@@ -106,11 +106,18 @@
             </div>
             <div class="unidades-checkboxes fiscais-checkboxes" id="fiscais-evento">
                 {% for fiscal in fiscais %}
-                <label class="unidade-checkbox">
-                    <input type="checkbox" name="fiscais_evento" value="{{ fiscal.id }}" data-fiscal-nome="{{ fiscal.nome }}" data-fiscal-papeis="{{ (fiscal.papeis or [])|join(',') }}"{% if evento and fiscal.id in evento.fiscais %} checked{% endif %}>
-                    <span class="unidade-checkbox-mark" aria-hidden="true"></span>
-                    <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }}</span>
-                </label>
+                <div class="fiscal-evento-item" data-fiscal-id="{{ fiscal.id }}">
+                    <label class="unidade-checkbox">
+                        <input type="checkbox" name="fiscais_evento" value="{{ fiscal.id }}" data-fiscal-nome="{{ fiscal.nome }}" data-fiscal-papeis="{{ (fiscal.papeis or [])|join(',') }}"{% if evento and fiscal.id in evento.fiscais %} checked{% endif %}>
+                        <span class="unidade-checkbox-mark" aria-hidden="true"></span>
+                        <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }}</span>
+                    </label>
+                    <div class="fiscal-papeis-evento" aria-label="Papéis de {{ fiscal.nome }}">
+                        {% for papel in ["Coordenação", "Abordagem", "Monitoração"] %}
+                        <label><input type="checkbox" name="papeis_fiscal_{{ fiscal.id }}" value="{{ papel }}"{% if papel in (fiscal.papeis or []) %} checked{% endif %}> {{ papel }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
                 {% else %}
                 <span class="fiscais-vazio">Nenhum fiscal cadastrado. Use o botão + para cadastrar.</span>
                 {% endfor %}
@@ -188,26 +195,80 @@
         const fecharBotao = document.getElementById("fechar-mapa-evento");
         const latitudeInput = document.getElementById("latitude-evento");
         const longitudeInput = document.getElementById("longitude-evento");
+        const ufSelect = document.getElementById("uf-evento");
+        const cidadeSelect = document.getElementById("cidade-evento");
         const buscaLugarInput = document.getElementById("busca-lugar-evento");
         const mensagemBuscaLugar = document.getElementById("mensagem-busca-lugar-evento");
-        if (!mapaElement || !abrirBotao || !popup || !fecharBotao || !latitudeInput || !longitudeInput || !buscaLugarInput || !mensagemBuscaLugar || typeof L === "undefined") return;
+        if (!mapaElement || !abrirBotao || !popup || !fecharBotao || !latitudeInput || !longitudeInput || !ufSelect || !cidadeSelect || !buscaLugarInput || !mensagemBuscaLugar || typeof L === "undefined") return;
 
-        const latitudeInicial = Number(latitudeInput.value);
-        const longitudeInicial = Number(longitudeInput.value);
-        const possuiCoordenadas = Number.isFinite(latitudeInicial) && Number.isFinite(longitudeInicial);
         const centroBrasil = [-14.235, -51.9253];
-        const centroInicial = possuiCoordenadas ? [latitudeInicial, longitudeInicial] : centroBrasil;
-        const zoomInicial = possuiCoordenadas ? 13 : 4;
-        const mapa = L.map(mapaElement).setView(centroInicial, zoomInicial);
+        const zoomBrasil = 4;
+        const mapa = L.map(mapaElement).setView(centroBrasil, zoomBrasil);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: "&copy; OpenStreetMap contributors",
             maxZoom: 19,
         }).addTo(mapa);
 
+        const criarGota = (posicao) => L.marker(posicao, {
+            icon: L.divIcon({
+                className: "mapa-evento-gota",
+                html: "<span></span>",
+                iconSize: [26, 36],
+                iconAnchor: [13, 36],
+            }),
+        }).addTo(mapa);
+        let marcadorBusca = null;
+
+        const ufPorNome = {
+            acre: "AC", alagoas: "AL", amapá: "AP", amapa: "AP", amazonas: "AM",
+            bahia: "BA", ceará: "CE", ceara: "CE", "distrito federal": "DF",
+            "espírito santo": "ES", "espirito santo": "ES", goiás: "GO", goias: "GO",
+            maranhão: "MA", maranhao: "MA", "mato grosso": "MT", "mato grosso do sul": "MS",
+            "minas gerais": "MG", pará: "PA", para: "PA", paraíba: "PB", paraiba: "PB",
+            paraná: "PR", parana: "PR", pernambuco: "PE", piauí: "PI", piaui: "PI",
+            "rio de janeiro": "RJ", "rio grande do norte": "RN", "rio grande do sul": "RS",
+            rondônia: "RO", rondonia: "RO", roraima: "RR", "santa catarina": "SC",
+            "são paulo": "SP", "sao paulo": "SP", sergipe: "SE", tocantins: "TO",
+        };
+        const normalizarTexto = (valor) => String(valor || "")
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const preencherLocalidade = (endereco) => {
+            if (normalizarTexto(endereco?.country_code) !== "br") return;
+            const codigoEstado = String(endereco?.["ISO3166-2-lvl4"] || endereco?.state_code || "")
+                .split("-").pop().toUpperCase();
+            const uf = codigoEstado.length === 2 ? codigoEstado : ufPorNome[normalizarTexto(endereco?.state)];
+            const cidade = endereco?.city || endereco?.town || endereco?.village || endereco?.municipality;
+            if (uf && [...ufSelect.options].some((opcao) => opcao.value === uf)) {
+                ufSelect.value = uf;
+                ufSelect.dispatchEvent(new Event("change"));
+            }
+            if (cidade) {
+                const cidadeNormalizada = normalizarTexto(cidade);
+                const opcaoCidade = [...cidadeSelect.options].find((opcao) =>
+                    normalizarTexto(opcao.value) === cidadeNormalizada
+                    || normalizarTexto(opcao.textContent) === cidadeNormalizada
+                );
+                if (opcaoCidade) {
+                    cidadeSelect.value = opcaoCidade.value;
+                    cidadeSelect.dispatchEvent(new Event("change"));
+                }
+            }
+        };
+        const buscarEndereco = async (latitude, longitude) => {
+            const resposta = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${latitude}&lon=${longitude}`, {
+                headers: { Accept: "application/json", "Accept-Language": "pt-BR" },
+            });
+            if (!resposta.ok) throw new Error("Falha na localização");
+            return resposta.json();
+        };
+
         const fecharPopup = () => { popup.hidden = true; };
         abrirBotao.addEventListener("click", () => {
             popup.hidden = false;
-            setTimeout(() => mapa.invalidateSize(), 100);
+            setTimeout(() => {
+                mapa.invalidateSize({ pan: false });
+                mapa.setView(centroBrasil, zoomBrasil, { animate: false });
+            }, 100);
         });
         fecharBotao.addEventListener("click", fecharPopup);
         popup.addEventListener("click", (evento) => {
@@ -224,7 +285,7 @@
             requisicaoBusca?.abort();
             requisicaoBusca = new AbortController();
             try {
-                const resposta = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(termo)}`, {
+                const resposta = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&q=${encodeURIComponent(termo)}`, {
                     headers: { Accept: "application/json", "Accept-Language": "pt-BR" },
                     signal: requisicaoBusca.signal,
                 });
@@ -235,7 +296,11 @@
                     return;
                 }
                 const resultado = resultados[0];
-                mapa.setView([Number(resultado.lat), Number(resultado.lon)], 15);
+                const posicao = [Number(resultado.lat), Number(resultado.lon)];
+                mapa.setView(posicao, 15);
+                if (marcadorBusca) marcadorBusca.setLatLng(posicao);
+                else marcadorBusca = criarGota(posicao);
+                preencherLocalidade(resultado.address);
                 mensagemBuscaLugar.textContent = resultado.display_name || "Lugar localizado.";
             } catch (erro) {
                 if (erro.name !== "AbortError") mensagemBuscaLugar.textContent = "Não foi possível pesquisar o lugar agora.";
@@ -251,12 +316,20 @@
             }
             temporizadorBusca = setTimeout(() => buscarLugar(termo), 600);
         });
-        mapa.on("click", (evento) => {
+        mapa.on("click", async (evento) => {
             const latitude = evento.latlng.lat.toFixed(6);
             const longitude = evento.latlng.lng.toFixed(6);
             latitudeInput.value = latitude;
             longitudeInput.value = longitude;
-            fecharPopup();
+            mensagemBuscaLugar.textContent = "Identificando cidade e UF...";
+            try {
+                const resultado = await buscarEndereco(latitude, longitude);
+                preencherLocalidade(resultado.address);
+                mensagemBuscaLugar.textContent = resultado.display_name || "Localização preenchida.";
+                fecharPopup();
+            } catch (erro) {
+                mensagemBuscaLugar.textContent = "Coordenadas preenchidas; cidade e UF não identificadas.";
+            }
         });
     })();
 </script>

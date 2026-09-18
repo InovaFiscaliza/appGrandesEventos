@@ -17,7 +17,11 @@
     lista.replaceChildren();
     document.querySelectorAll('#fiscais-evento input[name="fiscais_evento"]:checked')
       .forEach((checkbox) => {
-        if (!checkbox.dataset.fiscalPapeis.split(',').includes("Coordenação")) return;
+        const item = checkbox.closest(".fiscal-evento-item");
+        const papeis = item
+          ? Array.from(item.querySelectorAll('input[name^="papeis_fiscal_"]:checked')).map((input) => input.value)
+          : checkbox.dataset.fiscalPapeis.split(',');
+        if (!papeis.includes("Coordenação")) return;
         const fiscalId = checkbox.value;
         const nome = checkbox.dataset.fiscalNome || "";
         const texto = checkbox.closest("label")?.querySelector("span:last-child")?.textContent || nome;
@@ -89,14 +93,21 @@
     if (listaEvento) {
       const participante = document.createElement("label");
       participante.className = "unidade-checkbox";
-      participante.innerHTML = `
-        <input type="checkbox" name="fiscais_evento" value="${fiscal.id}" data-fiscal-nome="${fiscal.nome}" data-fiscal-papeis="${(fiscal.papeis || []).join(',')}">
-        <span class="unidade-checkbox-mark" aria-hidden="true"></span>
-        <span></span>
+      const item = document.createElement("div");
+      item.className = "fiscal-evento-item";
+      item.dataset.fiscalId = fiscal.id;
+      item.innerHTML = `
+        <label class="unidade-checkbox">
+          <input type="checkbox" name="fiscais_evento" value="${fiscal.id}" data-fiscal-nome="${fiscal.nome}" data-fiscal-papeis="${(fiscal.papeis || []).join(',')}">
+          <span class="unidade-checkbox-mark" aria-hidden="true"></span>
+          <span></span>
+        </label>
+        <div class="fiscal-papeis-evento" aria-label="Papéis de ${fiscal.nome}">
+          ${(fiscal.papeis || []).map((papel) => `<label><input type="checkbox" name="papeis_fiscal_${fiscal.id}" value="${papel}" checked> ${papel}</label>`).join('')}
+        </div>
       `;
-      participante.querySelector("span:last-child").textContent =
-        `${fiscal.nome} - ${fiscal.local_anatel} - ${fiscal.funcao_evento}`;
-      listaEvento.appendChild(participante);
+      item.querySelector("label span:last-child").textContent = `${fiscal.nome} - ${fiscal.local_anatel}`;
+      listaEvento.appendChild(item);
       participante.querySelector('input[name="fiscais_evento"]')?.addEventListener("change", atualizarCoordenadores);
       atualizarCoordenadores();
     }
