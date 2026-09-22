@@ -402,8 +402,12 @@ def listar_fiscais(evento_id: int | None = None) -> list[dict]:
                 text(
                     """
                  SELECT f.id, f.nome, f.local_anatel, u.nome AS local_anatel_nome,
-                     """ + papeis_sql + """ AS papeis,
-                     array_to_string(""" + papeis_sql + """, ', ') AS funcao_evento
+                     """
+                    + papeis_sql
+                    + """ AS papeis,
+                     array_to_string("""
+                    + papeis_sql
+                    + """, ', ') AS funcao_evento
             FROM fiscais f
             JOIN unidades_executantes u ON u.sigla = f.local_anatel
             """
@@ -2391,14 +2395,16 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
             resultado = conn.execute(
                 text("""
                     INSERT INTO testes_etiquetagem (
-                        evento_id, licenca, perfil, entidade, contato, local,
+                        evento_id, licenca, perfil, entidade, contato,
+                        responsavel_contato, telefone, email, local,
                         cpf_cnpj,
                         equipamento_homologado, permissao,
                         frequencias_selecionadas, tipo_equipamento,
                         numero_equipamentos,
                         numero_etiqueta, observacoes
                     ) VALUES (
-                        :ev, :licenca, :perfil, :entidade, :contato, :local,
+                        :ev, :licenca, :perfil, :entidade, :contato,
+                        :responsavel_contato, :telefone, :email, :local,
                         :cpf_cnpj,
                         :homologado, :permissao, :frequencias,
                         :tipo_equipamento, :numero_equipamentos,
@@ -2412,6 +2418,9 @@ def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) 
                     "perfil": dados["perfil"],
                     "entidade": dados["entidade"],
                     "contato": dados.get("contato", ""),
+                    "responsavel_contato": dados.get("responsavel_contato", ""),
+                    "telefone": dados.get("telefone", ""),
+                    "email": dados.get("email", ""),
                     "local": dados["local"],
                     "cpf_cnpj": dados.get("cpf_cnpj", ""),
                     "homologado": bool(dados.get("equipamento_homologado")),
@@ -2448,7 +2457,8 @@ def listar_testes_etiquetagem(_client=None, evento_id=None) -> list[dict]:
             rows = (
                 conn.execute(
                     text("""
-                    SELECT id, licenca, perfil, entidade, contato, local,
+                          SELECT id, licenca, perfil, entidade, contato,
+                              responsavel_contato, telefone, email, local,
                               cpf_cnpj,
                            equipamento_homologado, permissao,
                            frequencias_selecionadas, tipo_equipamento,
@@ -2485,7 +2495,8 @@ def obter_teste_etiquetagem(
             row = (
                 conn.execute(
                     text("""
-                    SELECT id, licenca, perfil, entidade, contato, local,
+                          SELECT id, licenca, perfil, entidade, contato,
+                              responsavel_contato, telefone, email, local,
                               cpf_cnpj,
                            equipamento_homologado, permissao,
                            frequencias_selecionadas, tipo_equipamento,
@@ -2532,7 +2543,9 @@ def atualizar_teste_etiquetagem(
                 text("""
                     UPDATE testes_etiquetagem
                     SET licenca = :licenca, perfil = :perfil, entidade = :entidade,
-                        contato = :contato, local = :local, cpf_cnpj = :cpf_cnpj,
+                        contato = :contato, responsavel_contato = :responsavel_contato,
+                        telefone = :telefone, email = :email,
+                        local = :local, cpf_cnpj = :cpf_cnpj,
                         equipamento_homologado = :homologado, permissao = :permissao,
                         frequencias_selecionadas = :frequencias,
                         tipo_equipamento = :tipo_equipamento,
@@ -2548,6 +2561,9 @@ def atualizar_teste_etiquetagem(
                     "perfil": dados["perfil"],
                     "entidade": dados["entidade"],
                     "contato": dados.get("contato", ""),
+                    "responsavel_contato": dados.get("responsavel_contato", ""),
+                    "telefone": dados.get("telefone", ""),
+                    "email": dados.get("email", ""),
                     "local": dados["local"],
                     "cpf_cnpj": dados.get("cpf_cnpj", ""),
                     "homologado": bool(dados.get("equipamento_homologado")),

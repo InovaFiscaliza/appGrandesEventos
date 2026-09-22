@@ -54,7 +54,7 @@
             <div class="form-group">
                 <div class="estacao-campo-cabecalho coordenadas-evento-cabecalho">
                     <label for="latitude-evento">Latitude</label>
-                    <button type="button" id="abrir-mapa-evento" class="teq-list-btn mapa-estacao-abrir" aria-label="Selecionar coordenadas no mapa" title="Selecionar coordenadas no mapa">+</button>
+                    <button type="button" id="abrir-mapa-evento" class="teq-list-btn mapa-estacao-abrir" data-sem-confirmacao aria-label="Selecionar coordenadas no mapa" title="Selecionar coordenadas no mapa">+</button>
                 </div>
                 <input class="form-control" id="latitude-evento" type="number" name="latitude" value="{{ evento.latitude if evento and evento.latitude is not none else '' }}" step="any" min="-90" max="90">
             </div>
@@ -176,7 +176,7 @@
             <button type="button" id="fechar-mapa-evento" class="popup-mapa-estacao-fechar" aria-label="Fechar mapa">×</button>
         </div>
         <div class="mapa-estacao-busca">
-            <label for="busca-lugar-evento">Procurar lugar</label>
+            <label for="busca-lugar-evento">Procurar lugar (país, cidade, rua, avenida)</label>
             <div class="mapa-estacao-busca-controles">
                 <input class="form-control" id="busca-lugar-evento" type="search" placeholder="Cidade, endereço ou local" autocomplete="off">
             </div>
@@ -204,9 +204,20 @@
         const centroBrasil = [-14.235, -51.9253];
         const zoomBrasil = 4;
         const mapa = L.map(mapaElement).setView(centroBrasil, zoomBrasil);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        const camadaMapa = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: "&copy; OpenStreetMap contributors",
             maxZoom: 19,
+        }).addTo(mapa);
+        const camadaSatelite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+            attribution: "Tiles &copy; Esri",
+            maxZoom: 19,
+        });
+        L.control.layers({
+            "Mapa": camadaMapa,
+            "Satélite": camadaSatelite,
+        }, null, {
+            collapsed: true,
+            position: "bottomleft",
         }).addTo(mapa);
 
         const criarGota = (posicao) => L.marker(posicao, {
@@ -267,7 +278,21 @@
             popup.hidden = false;
             setTimeout(() => {
                 mapa.invalidateSize({ pan: false });
-                mapa.setView(centroBrasil, zoomBrasil, { animate: false });
+                const latitude = Number(latitudeInput.value);
+                const longitude = Number(longitudeInput.value);
+                const coordenadasPreenchidas = latitudeInput.value !== ""
+                    && longitudeInput.value !== ""
+                    && Number.isFinite(latitude)
+                    && Number.isFinite(longitude)
+                    && latitude >= -90
+                    && latitude <= 90
+                    && longitude >= -180
+                    && longitude <= 180;
+                mapa.setView(
+                    coordenadasPreenchidas ? [latitude, longitude] : centroBrasil,
+                    coordenadasPreenchidas ? mapa.getMaxZoom() : zoomBrasil,
+                    { animate: false }
+                );
             }, 100);
         });
         fecharBotao.addEventListener("click", fecharPopup);

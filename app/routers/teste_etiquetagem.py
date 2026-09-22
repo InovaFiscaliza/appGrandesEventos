@@ -20,6 +20,7 @@ from app.services.postgres import (
 )
 from app.services.permissoes import MODULO_TESTE_ETIQUETAGEM, modulo_disponivel
 from app.utils.formatters import _img_b64
+from app.utils.geocoding import obter_endereco_por_coordenadas
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -157,13 +158,54 @@ def _bloquear_modulo_se_desativado(request: Request):
     return None
 
 
+def _local_evento(evento: dict | None) -> str:
+    """Compõe a sede usada nos testes a partir do evento selecionado."""
+    if not evento:
+        return ""
+    nome = str(evento.get("nome") or "").strip()
+    cidade = str(evento.get("cidade") or "").strip()
+    uf = str(evento.get("uf") or "").strip()
+    localidade = f"{cidade}/{uf}" if cidade and uf else cidade or uf
+    if nome and localidade:
+        return f"{nome} — {localidade}"
+    return nome or localidade
+
+
+async def _resolver_local_evento(evento: dict | None) -> str:
+    """Usa a sede cadastrada ou resolve cidade e localidade pelas coordenadas."""
+    if not evento:
+        return ""
+    if str(evento.get("cidade") or "").strip():
+        return _local_evento(evento)
+
+    endereco = await obter_endereco_por_coordenadas(
+        evento.get("latitude"),
+        evento.get("longitude"),
+    )
+    nome = str(evento.get("nome") or "").strip()
+    cidade = endereco["cidade"]
+    uf = endereco["uf"]
+    localidade = endereco["localidade"]
+    cidade_uf = f"{cidade}/{uf}" if cidade and uf else cidade or uf
+    partes_local = [parte for parte in (localidade, cidade_uf) if parte]
+    local_resolvido = ", ".join(dict.fromkeys(partes_local))
+    return (
+        f"{nome} — {local_resolvido}"
+        if nome and local_resolvido
+        else nome or local_resolvido
+    )
+
+
 def _form_values(form) -> dict:
     frequencias_selecionadas = form.getlist("frequencias_selecionadas")
     return {
         "licenca": form.get("licenca", "ute"),
         "perfil": form.get("perfil", "pf"),
         "entidade": form.get("entidade", "").strip(),
-        "contato": form.get("contato", "").strip(),
+        "responsavel_contato": form.get("responsavel_contato", "").strip(),
+        "contato": form.get("responsavel_contato", "").strip(),
+        "telefone": form.get("telefone", "").strip(),
+        "email": form.get("email", "").strip(),
         "local": form.get("local", "").strip(),
         "cpf_cnpj": form.get("cpf_cnpj", "").strip(),
         "frequencia_mhz": form.get("frequencia_mhz", "").strip(),
@@ -236,13 +278,17 @@ async def get_teste_etiquetagem(
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+    local_evento = await _resolver_local_evento(obter_evento(int(sp_id)))
 
     values = {
         "licenca": "ute",
         "perfil": "pf",
         "entidade": "",
         "contato": "",
-        "local": "",
+        "responsavel_contato": "",
+        "telefone": "",
+        "email": "",
+        "local": local_evento,
         "cpf_cnpj": "",
         "frequencia_mhz": "",
         "passo": "",
@@ -264,6 +310,7 @@ async def get_teste_etiquetagem(
         registro = obter_teste_etiquetagem(evento_id=sp_id, registro_id=edit_id)
         if registro:
             values = _record_values(registro)
+            values["local"] = local_evento
             values["registro_id"] = edit_id
             values["imagens"] = carregar_imagens_teste_etiquetagem(
                 evento_id=sp_id, teste_id=edit_id
@@ -292,7 +339,6 @@ async def verificar_frequencia_teste(
     request: Request,
     frequencia: float,
     largura_khz: float = 0,
-    local: str = "",
     excluir_id: int | None = None,
 ):
     bloqueio = _bloquear_modulo_se_desativado(request)
@@ -305,12 +351,13 @@ async def verificar_frequencia_teste(
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    local_evento = await _resolver_local_evento(obter_evento(int(evento_id)))
     return JSONResponse(
         consultar_equipamentos_frequencia(
             evento_id=evento_id,
             freq_digitada=frequencia,
             largura_khz=largura_khz,
-            localidade=local,
+            localidade=local_evento,
             excluir_id=excluir_id,
         )
     )
@@ -328,6 +375,7 @@ async def post_teste_etiquetagem(request: Request):
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
     values = _form_values(form)
+    values["local"] = await _resolver_local_evento(obter_evento(int(evento_id)))
     values["imagens_novas"] = imagens
     values["imagens_excluir"] = [
         int(valor) for valor in form.getlist("imagens_excluir") if str(valor).isdigit()

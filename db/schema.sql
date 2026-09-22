@@ -452,6 +452,9 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
                               )),
     entidade                  TEXT NOT NULL,
     contato                   TEXT,
+    responsavel_contato       TEXT,
+    telefone                  TEXT,
+    email                     TEXT,
     local                     TEXT NOT NULL,
     cpf_cnpj                  TEXT,
     equipamento_homologado   BOOLEAN NOT NULL DEFAULT FALSE,
@@ -468,6 +471,12 @@ CREATE TABLE IF NOT EXISTS testes_etiquetagem (
     UNIQUE (evento_id, numero_etiqueta)
 );
 ALTER TABLE testes_etiquetagem ADD COLUMN IF NOT EXISTS numero_equipamentos INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE testes_etiquetagem ADD COLUMN IF NOT EXISTS responsavel_contato TEXT;
+ALTER TABLE testes_etiquetagem ADD COLUMN IF NOT EXISTS telefone TEXT;
+ALTER TABLE testes_etiquetagem ADD COLUMN IF NOT EXISTS email TEXT;
+UPDATE testes_etiquetagem
+SET responsavel_contato = contato
+WHERE responsavel_contato IS NULL AND NULLIF(trim(contato), '') IS NOT NULL;
 
 -- Migra os valores legados para a etiqueta completa antes de remover as colunas.
 DO $do$

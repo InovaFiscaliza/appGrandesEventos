@@ -409,10 +409,10 @@
                 </div>
                 <p id="escala-semana-titulo" class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;"></p>
                 <div class="table-scroll" style="max-height:70vh; overflow:auto;">
-                    <table class="ute-table" id="escala-calendario" style="min-width:900px; table-layout:fixed;">
-                        <thead id="escala-calendario-cabecalho"></thead>
-                        <tbody id="escala-calendario-corpo"></tbody>
-                    </table>
+                    <div class="escala-calendario" id="escala-calendario" role="grid" aria-label="Agenda semanal da escala">
+                        <div class="escala-calendario-cabecalho" id="escala-calendario-cabecalho" role="row"></div>
+                        <div class="escala-calendario-corpo" id="escala-calendario-corpo"></div>
+                    </div>
                 </div>
                 <p id="escala-calendario-vazio" class="font-size-s text-neutral-6" hidden>Nenhuma escala cadastrada nesta semana.</p>
                 <details style="margin-top:1rem;">
@@ -763,14 +763,18 @@
         const formatarDia = (data) => `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}`;
         const renderizar = () => {
             const passo = Number(passoInput.value) || 60;
+            const alturaPasso = 32;
             const fimSemana = new Date(inicioSemana.getFullYear(), inicioSemana.getMonth(), inicioSemana.getDate() + 6);
             titulo.textContent = `Semana de ${formatarDia(inicioSemana)} a ${formatarDia(fimSemana)} de ${fimSemana.getFullYear()}`;
             preencherData(inicioSemana);
 
-            cabecalho.innerHTML = `<tr><th style="width:5.5rem;">Horário</th>${nomesDias.map((nome, indice) => {
+            cabecalho.innerHTML = `<div class="escala-cabecalho-horario" role="columnheader">Horário</div>${nomesDias.map((nome, indice) => {
                 const dia = new Date(inicioSemana.getFullYear(), inicioSemana.getMonth(), inicioSemana.getDate() + indice);
-                return `<th>${nome}<br><span class="font-size-s text-neutral-6">${formatarDia(dia)}</span></th>`;
-            }).join('')}</tr>`;
+                return `<div class="escala-cabecalho-dia" role="columnheader"><span>${nome}<br><small>${formatarDia(dia)}</small></span><button type="button" class="escala-dia-add-btn" data-data="${dataChave(dia)}" aria-label="Incluir escala em ${formatarDia(dia)}" title="Incluir escala">+</button></div>`;
+            }).join('')}`;
+            cabecalho.querySelectorAll('.escala-dia-add-btn').forEach((botao) => {
+                botao.addEventListener('click', () => abrirPopupEscala(botao.dataset.data));
+            });
 
             const escalasSemana = escalas.filter((escala) => {
                 const data = String(escala.data || '').slice(0, 10);
@@ -780,72 +784,58 @@
             const obterCorEscala = (indice) => paletaCores[indice % paletaCores.length];
             vazio.hidden = escalasSemana.length > 0 || escalas.length === 0;
             corpo.innerHTML = '';
+            const quantidadePassos = Math.ceil(1440 / passo);
+            const alturaGrade = quantidadePassos * alturaPasso;
+            const eixoHorarios = document.createElement('div');
+            eixoHorarios.className = 'escala-eixo-horarios';
+            eixoHorarios.style.height = `${alturaGrade}px`;
             for (let inicio = 0; inicio < 1440; inicio += passo) {
-                const fim = Math.min(inicio + passo, 1440);
-                const linha = document.createElement('tr');
-                linha.innerHTML = `<th>${String(Math.floor(inicio / 60)).padStart(2, '0')}:${String(inicio % 60).padStart(2, '0')}</th>`;
-                for (let indice = 0; indice < 7; indice += 1) {
-                    const dia = new Date(inicioSemana.getFullYear(), inicioSemana.getMonth(), inicioSemana.getDate() + indice);
-                    const chave = dataChave(dia);
-                    const eventos = escalasSemana.filter((escala) => {
-                        if (String(escala.data || '').slice(0, 10) !== chave) return false;
-                        const inicioEscala = minutos(escala.inicio, 0);
-                        const fimEscala = minutos(escala.fim, 1440);
-                        return inicioEscala < fim && fimEscala > inicio;
-                    });
-                    const celula = document.createElement('td');
-                    celula.style.verticalAlign = 'top';
-                    celula.style.height = passo <= 30 ? '2.5rem' : '2rem';
-                    const grupoEscalas = document.createElement('div');
-                    grupoEscalas.style.display = 'flex';
-                    grupoEscalas.style.flexDirection = 'column';
-                    grupoEscalas.style.gap = '.2rem';
-                    grupoEscalas.innerHTML = eventos.map((escala, indice) => {
-                        const horario = escala.inicio || escala.fim ? `${escala.inicio || '--:--'} às ${escala.fim || '--:--'}` : 'Dia inteiro';
-                        const cor = obterCorEscala((escala.fiscal || '').length + indice);
-                        return `<div data-escala-id="${escala.id}" data-escala-fiscal-id="${escala.fiscalId || ''}" data-escala-data="${textoSeguro(escala.data || '')}" data-escala-inicio="${textoSeguro(escala.inicio || '')}" data-escala-fim="${textoSeguro(escala.fim || '')}" data-escala-observacoes="${textoSeguro(observacaoEscala(escala.observacoes))}" style="padding:.25rem .35rem; margin:0; border:1px solid rgba(18,58,98,.08); border-left:3px solid #1d4f86; background:${cor}; font-size:.78rem; line-height:1.35; border-radius:4px; box-shadow:0 1px 0 rgba(18,58,98,.04); cursor:pointer;" title="${textoSeguro(horario)}"><strong>${textoSeguro(escala.fiscal)}</strong><br>${textoSeguro(horario)}</div>`;
-                    }).join('');
-                    grupoEscalas.querySelectorAll('div[data-escala-id]').forEach((item) => {
-                        item.addEventListener('click', () => {
-                            const escala = {
-                                id: Number(item.dataset.escalaId),
-                                fiscalId: item.dataset.escalaFiscalId || '',
-                                data: item.dataset.escalaData || chave,
-                                inicio: item.dataset.escalaInicio || '',
-                                fim: item.dataset.escalaFim || '',
-                                observacoes: item.dataset.escalaObservacoes || '',
-                            };
-                            abrirPopupEditarEscala(escala);
-                        });
-                    });
-                    const botaoAdicionar = document.createElement('span');
-                    botaoAdicionar.className = 'escala-celula-add-btn';
-                    botaoAdicionar.textContent = '+';
-                    botaoAdicionar.title = `Incluir escala para ${formatarDia(dia)}`;
-                    botaoAdicionar.setAttribute('role', 'button');
-                    botaoAdicionar.setAttribute('tabindex', '0');
-                    botaoAdicionar.style.cursor = 'pointer';
-                    botaoAdicionar.style.display = 'block';
-                    botaoAdicionar.style.marginLeft = 'auto';
-                    botaoAdicionar.style.marginTop = '0';
-                    botaoAdicionar.style.alignSelf = 'flex-end';
-                    botaoAdicionar.addEventListener('click', () => abrirPopupEscala(chave));
-                    botaoAdicionar.addEventListener('keydown', (evento) => {
-                        if (evento.key === 'Enter' || evento.key === ' ') {
-                            evento.preventDefault();
-                            abrirPopupEscala(chave);
-                        }
-                    });
-                    const blocoCelula = document.createElement('div');
-                    blocoCelula.style.display = 'flex';
-                    blocoCelula.style.flexDirection = 'column';
-                    blocoCelula.style.height = '100%';
-                    blocoCelula.appendChild(grupoEscalas);
-                    blocoCelula.appendChild(botaoAdicionar);
-                    celula.appendChild(blocoCelula);
-                    linha.appendChild(celula);
-                }
-                corpo.appendChild(linha);
+                const rotulo = document.createElement('span');
+                rotulo.style.top = `${(inicio / passo) * alturaPasso}px`;
+                rotulo.textContent = `${String(Math.floor(inicio / 60)).padStart(2, '0')}:${String(inicio % 60).padStart(2, '0')}`;
+                eixoHorarios.appendChild(rotulo);
+            }
+            corpo.appendChild(eixoHorarios);
+
+            for (let indiceDia = 0; indiceDia < 7; indiceDia += 1) {
+                const dia = new Date(inicioSemana.getFullYear(), inicioSemana.getMonth(), inicioSemana.getDate() + indiceDia);
+                const chave = dataChave(dia);
+                const coluna = document.createElement('div');
+                coluna.className = 'escala-dia-coluna';
+                coluna.style.height = `${alturaGrade}px`;
+                coluna.style.setProperty('--escala-altura-passo', `${alturaPasso}px`);
+                const eventosDia = escalasSemana
+                    .filter((escala) => String(escala.data || '').slice(0, 10) === chave)
+                    .map((escala) => ({
+                        escala,
+                        inicioMinutos: minutos(escala.inicio, 0),
+                        fimMinutos: minutos(escala.fim, 1440),
+                    }))
+                    .sort((primeiro, segundo) => primeiro.inicioMinutos - segundo.inicioMinutos);
+                const finaisPorFaixa = [];
+                eventosDia.forEach((evento) => {
+                    let faixa = finaisPorFaixa.findIndex((fim) => fim <= evento.inicioMinutos);
+                    if (faixa < 0) faixa = finaisPorFaixa.length;
+                    finaisPorFaixa[faixa] = evento.fimMinutos;
+                    evento.faixa = faixa;
+                });
+                const quantidadeFaixas = Math.max(finaisPorFaixa.length, 1);
+                eventosDia.forEach(({ escala, inicioMinutos, fimMinutos, faixa }, indice) => {
+                    const horario = escala.inicio || escala.fim ? `${escala.inicio || '--:--'} às ${escala.fim || '--:--'}` : 'Dia inteiro';
+                    const bloco = document.createElement('button');
+                    bloco.type = 'button';
+                    bloco.className = 'escala-jornada-bloco';
+                    bloco.style.top = `${(inicioMinutos / passo) * alturaPasso}px`;
+                    bloco.style.height = `${Math.max(((fimMinutos - inicioMinutos) / passo) * alturaPasso, alturaPasso)}px`;
+                    bloco.style.left = `calc(${(faixa / quantidadeFaixas) * 100}% + 2px)`;
+                    bloco.style.width = `calc(${100 / quantidadeFaixas}% - 4px)`;
+                    bloco.style.background = obterCorEscala((escala.fiscal || '').length + indice);
+                    bloco.innerHTML = `<strong>${textoSeguro(escala.fiscal)}</strong><span>${textoSeguro(horario)}</span>`;
+                    bloco.title = observacaoEscala(escala.observacoes) ? `${horario} — ${observacaoEscala(escala.observacoes)}` : horario;
+                    bloco.addEventListener('click', () => abrirPopupEditarEscala(escala));
+                    coluna.appendChild(bloco);
+                });
+                corpo.appendChild(coluna);
             }
         };
 

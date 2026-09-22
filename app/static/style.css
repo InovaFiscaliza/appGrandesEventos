@@ -533,16 +533,57 @@ input[type="number"]::-webkit-outer-spin-button {
         width: 100%;
     }
 }
-.escala-celula-add-btn {
+.escala-calendario {
+    min-width: 1120px;
+    border: 1px solid #dce4ed;
+    background: #fff;
+}
+.escala-calendario-cabecalho,
+.escala-calendario-corpo {
+    display: grid;
+    grid-template-columns: 5.25rem repeat(7, minmax(9rem, 1fr));
+}
+.escala-calendario-cabecalho {
+    position: sticky;
+    z-index: 5;
+    top: 0;
+    background: #f4f7fa;
+    box-shadow: 0 1px 0 #dce4ed;
+}
+.escala-cabecalho-horario,
+.escala-cabecalho-dia {
+    min-height: 3.25rem;
+    padding: .45rem .55rem;
+    border-right: 1px solid #dce4ed;
+    color: #173b63;
+    font-size: .8rem;
+    font-weight: 700;
+}
+.escala-cabecalho-horario {
+    display: flex;
+    align-items: center;
+}
+.escala-cabecalho-dia {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .35rem;
+}
+.escala-cabecalho-dia small {
+    color: #607389;
+    font-weight: 500;
+}
+.escala-dia-add-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: auto;
-    height: auto;
+    flex: 0 0 1.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
     margin: 0;
     padding: 0;
     border: 0;
-    border-radius: 0;
+    border-radius: 3px;
     background: transparent;
     color: #123a62;
     font-size: 1rem;
@@ -552,12 +593,70 @@ input[type="number"]::-webkit-outer-spin-button {
     opacity: 0.9;
     user-select: none;
 }
-
-.escala-celula-add-btn:hover,
-.escala-celula-add-btn:focus-visible {
-    background: transparent;
-    outline: none;
-    opacity: 1;
+.escala-dia-add-btn:hover,
+.escala-dia-add-btn:focus-visible {
+    background: #e4edf6;
+    outline: 2px solid #456f9b;
+    outline-offset: 1px;
+}
+.escala-eixo-horarios,
+.escala-dia-coluna {
+    position: relative;
+    border-right: 1px solid #dce4ed;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent calc(var(--escala-altura-passo, 32px) - 1px),
+        #e8edf2 calc(var(--escala-altura-passo, 32px) - 1px),
+        #e8edf2 var(--escala-altura-passo, 32px)
+    );
+}
+.escala-eixo-horarios {
+    background-color: #f8fafc;
+}
+.escala-eixo-horarios span {
+    position: absolute;
+    right: .45rem;
+    color: #607389;
+    font-size: .68rem;
+    line-height: 1;
+    transform: translateY(-50%);
+}
+.escala-jornada-bloco {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .12rem;
+    min-height: 1.75rem;
+    margin: 0;
+    overflow: hidden;
+    padding: .3rem .4rem;
+    border: 1px solid rgba(18, 58, 98, .16);
+    border-left: 4px solid #1d4f86;
+    border-radius: 4px;
+    color: #17324d;
+    box-shadow: 0 1px 2px rgba(18, 58, 98, .12);
+    font-family: inherit;
+    font-size: .73rem;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+.escala-jornada-bloco strong,
+.escala-jornada-bloco span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.escala-jornada-bloco:hover,
+.escala-jornada-bloco:focus-visible {
+    z-index: 3;
+    border-color: #1d4f86;
+    outline: 2px solid rgba(29, 79, 134, .3);
+    outline-offset: 1px;
 }
 
 .ticket-resumo {
@@ -993,6 +1092,20 @@ input[type="number"]::-webkit-outer-spin-button {
 .popup-mapa-estacao-fechar:hover { background: transparent; }
 .popup-mapa-estacao-fechar:focus-visible { background: transparent; outline: 2px solid #14337b; outline-offset: 1px; }
 .mapa-estacao { flex: 1 1 auto; width: 100%; min-height: 0; border: 1px solid var(--border-color, #d7dce2); border-radius: 4px; overflow: hidden; }
+.popup-mapa-estacao .leaflet-control-layers-toggle {
+    display: grid;
+    place-items: center;
+    background-image: none;
+    color: #14337b;
+    font-size: 1.25rem;
+    text-decoration: none;
+}
+.popup-mapa-estacao .leaflet-control-layers-toggle::before {
+    content: "\f24d";
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+}
 .mapa-evento-gota { position: relative; width: 24px !important; height: 32px !important; margin: 0 !important; border: 0; background: transparent; }
 .mapa-evento-gota::before { content: ""; position: absolute; top: 0; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #d62828; box-shadow: 0 2px 5px rgb(0 0 0 / 35%); }
 .mapa-evento-gota::after { content: ""; position: absolute; top: 13px; left: 7px; width: 10px; height: 10px; background: #d62828; transform: rotate(45deg); }

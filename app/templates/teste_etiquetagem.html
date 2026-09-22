@@ -17,7 +17,7 @@
             <table class="teq-table teq-edit-records-table">
                 <colgroup>
                     <col class="teq-actions-col">
-                    <col span="17">
+                    <col span="19">
                 </colgroup>
                 <thead>
                     <tr>
@@ -25,7 +25,9 @@
                         <th>Seletor</th>
                         <th>CPF/CNPJ</th>
                         <th>Entidade</th>
-                        <th>Contato</th>
+                        <th>Responsável</th>
+                        <th>Telefone</th>
+                        <th>E-mail</th>
                         <th>Local</th>
                         <th>Licença</th>
                         <th>Tipo de etiqueta</th>
@@ -52,7 +54,9 @@
                         </td>
                         <td data-label="CPF/CNPJ">{{ registro.cpf_cnpj }}</td>
                         <td data-label="Entidade">{{ registro.entidade }}</td>
-                        <td data-label="Contato">{{ registro.contato }}</td>
+                        <td data-label="Responsável">{{ registro.responsavel_contato or registro.contato }}</td>
+                        <td data-label="Telefone">{{ registro.telefone }}</td>
+                        <td data-label="E-mail">{{ registro.email }}</td>
                         <td data-label="Local">{{ registro.local }}</td>
                         <td data-label="Licença">
                             {% if registro.licenca == 'ute' %}UTE{% elif registro.licenca == 'outorgado' %}Outorgado{% elif registro.licenca == 'nao_outorgado' %}Não Outorgado{% else %}Radiação Restrita{% endif %}
@@ -117,14 +121,24 @@
                 </div>
 
                 <div class="form-group teq-order-4">
-                    <label class="teq-label teq-checkbox-title" for="contato">Contato</label>
-                    <input id="contato" name="contato" class="form-control teq-control" type="text" value="{{ values.contato }}">
+                    <label class="teq-label teq-checkbox-title" for="responsavel-contato">Nome do responsável</label>
+                    <input id="responsavel-contato" name="responsavel_contato" class="form-control teq-control" type="text" value="{{ values.responsavel_contato or values.contato }}" autocomplete="name">
                 </div>
 
-                <div class="form-group teq-search teq-order-5">
-                    <label class="teq-label teq-checkbox-title{% if 'local' in values.invalid_fields %} teq-label-invalid{% endif %}" for="local">Local</label>
-                    <input id="local" name="local" class="form-control teq-control{% if 'local' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.local }}" aria-describedby="btn-local" required>
-                    <button id="btn-local" class="teq-search-btn" type="button" aria-label="Pesquisar local">⌕</button>
+                <div class="form-cols teq-order-4">
+                    <div class="form-group">
+                        <label class="teq-label teq-checkbox-title" for="telefone">Telefone</label>
+                        <input id="telefone" name="telefone" class="form-control teq-control" type="tel" value="{{ values.telefone }}" autocomplete="tel" placeholder="+55 61 99999-9999">
+                    </div>
+                    <div class="form-group">
+                        <label class="teq-label teq-checkbox-title" for="email">E-mail</label>
+                        <input id="email" name="email" class="form-control teq-control" type="email" value="{{ values.email }}" autocomplete="email" placeholder="nome@empresa.com">
+                    </div>
+                </div>
+
+                <div class="form-group teq-order-5">
+                    <label class="teq-label teq-checkbox-title" for="local">Local do evento</label>
+                    <input id="local" name="local" class="form-control teq-control" type="text" value="{{ values.local }}" readonly aria-readonly="true" required>
                 </div>
 
                 <div class="teq-checkbox-line teq-order-7">
