@@ -15,6 +15,10 @@ from app.services.postgres import (
     consultar_equipamentos_frequencia,
     obter_teste_etiquetagem,
     obter_evento,
+    faixa_numeracao_disponivel,
+    listar_faixas_numeracao_etiqueta,
+    listar_numeros_etiqueta_ocupados,
+    proximo_numero_etiqueta_disponivel,
     verificar_etiqueta_existente,
     verificar_frequencia_etiquetagem,
 )
@@ -315,6 +319,12 @@ async def get_teste_etiquetagem(
             values["imagens"] = carregar_imagens_teste_etiquetagem(
                 evento_id=sp_id, teste_id=edit_id
             )
+    else:
+        sugestao = proximo_numero_etiqueta_disponivel(
+            evento_id=int(sp_id), permissao=values["permissao"]
+        )
+        if sugestao is not None:
+            values["numero_etiqueta"] = str(sugestao).zfill(5)
 
     return templates.TemplateResponse(
         request,
@@ -331,6 +341,51 @@ async def get_teste_etiquetagem(
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
+    )
+
+
+@router.get("/api/teste-etiquetagem/proximo-numero-etiqueta")
+async def proximo_numero_etiqueta_teste(
+    request: Request,
+    permissao: str,
+    excluir_id: int | None = None,
+):
+    """Sugere o próximo número de etiqueta livre para o tipo selecionado."""
+    bloqueio = _bloquear_modulo_se_desativado(request)
+    if bloqueio:
+        return JSONResponse(
+            {"erro": "Teste de etiquetagem não disponível neste evento."},
+            status_code=404,
+        )
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    sugestao = proximo_numero_etiqueta_disponivel(
+        evento_id=int(evento_id), permissao=permissao, excluir_id=excluir_id
+    )
+    return JSONResponse(
+        {"numero": str(sugestao).zfill(5) if sugestao is not None else None}
+    )
+
+
+@router.get("/api/teste-etiquetagem/numeros-etiqueta")
+async def numeros_etiqueta_teste(request: Request):
+    """Lista as faixas cadastradas e os números já ocupados, para consulta
+    rápida de disponibilidade na própria rotina de etiquetagem."""
+    bloqueio = _bloquear_modulo_se_desativado(request)
+    if bloqueio:
+        return JSONResponse(
+            {"erro": "Teste de etiquetagem não disponível neste evento."},
+            status_code=404,
+        )
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    return JSONResponse(
+        {
+            "faixas": listar_faixas_numeracao_etiqueta(int(evento_id)),
+            "ocupados": listar_numeros_etiqueta_ocupados(int(evento_id)),
+        }
     )
 
 
@@ -386,9 +441,39 @@ async def post_teste_etiquetagem(request: Request):
     frequencia = _frequencia_da_etiqueta(values["frequencia_mhz"])
     passo_khz = _largura_da_etiqueta(values["passo"])
 
-    etiqueta_existente = verificar_etiqueta_existente(
-        numero_etiqueta=values["numero_etiqueta"],
-        excluir_id=registro_id,
+    if values["permissao"] == "nao":
+        values["numero_etiqueta"] = ""
+    elif values["numero_etiqueta"].isdigit():
+        numero_inicial = int(values["numero_etiqueta"])
+        try:
+            quantidade = int(values["numero_equipamentos"] or 1)
+        except ValueError:
+            quantidade = 1
+        numero_final = numero_inicial + max(quantidade, 1) - 1
+        if not faixa_numeracao_disponivel(
+            evento_id=evento_id,
+            permissao=values["permissao"],
+            numero_inicial=numero_inicial,
+            numero_final=numero_final,
+        ):
+            return _render_form(
+                request,
+                values,
+                "Número da etiqueta fora das faixas de numeração cadastradas "
+                "para este evento e tipo de etiqueta. Verifique em "
+                "Gerenciar Eventos.",
+                ["numero_etiqueta"],
+            )
+
+    etiqueta_existente = (
+        verificar_etiqueta_existente(
+            numero_etiqueta=values["numero_etiqueta"],
+            excluir_id=registro_id,
+            permissao=values["permissao"],
+            evento_id=evento_id,
+        )
+        if values["permissao"] != "nao"
+        else None
     )
     if etiqueta_existente:
         return _render_form(

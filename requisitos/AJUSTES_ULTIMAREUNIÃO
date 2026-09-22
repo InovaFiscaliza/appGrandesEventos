@@ -309,14 +309,14 @@ Relatório organizado por assunto a partir da transcrição automática da grava
 
 ## 6. Tipos, numeração e disponibilidade das etiquetas
 
-- [ ] Identificar a opção de etiqueta **Permitido** com o local/evento correspondente, preenchido automaticamente, para ficar claro a que sede a autorização se refere. As opções de alcance mais amplo devem manter sua distinção. **Referência: 00:53:30–00:55:55.**
-- [ ] Associar corretamente o tipo de etiqueta à sua numeração, inclusive quando o registro abranger vários equipamentos iguais. A sequência informada deve corresponder ao tipo selecionado. **Referência: 00:55:55–01:00:18.**
-- [ ] Remover os campos de prefixo e sufixo da numeração das etiquetas; foi esclarecido que o identificador usado será numérico. **Referência: 00:56:25–00:57:53; 01:00:18–01:01:24.**
-- [ ] Aplicar a apresentação numérica com zeros à esquerda, de acordo com o padrão final da etiqueta. **Ponto a confirmar:** a quantidade de posições não ficou definida verbalmente de forma inequívoca. **Referência: 01:00:50–01:02:24.**
-- [ ] Cadastrar as faixas de numeração disponíveis para o evento/local quando houver etiquetagem, respeitando a associação com o tipo de etiqueta. **Referência: 00:57:23–01:00:18; 01:30:07–01:31:42.**
-- [ ] Validar os números informados contra as faixas cadastradas, impedindo o uso de números fora do intervalo autorizado e de números já utilizados. **Referência: 00:57:23–00:59:17; 01:30:07–01:32:15.**
-- [ ] Atualizar a disponibilidade à medida que as etiquetas forem utilizadas e sugerir o próximo número disponível ao continuar o cadastro de equipamentos. **Referência: 01:29:33–01:30:37; 01:31:08–01:32:15.**
-- [ ] Permitir consultar, na própria rotina de etiquetagem, quais números ou faixas já estão ocupados. **Referência: 01:31:42–01:32:15.**
+- [x] Identificar a opção de etiqueta **Permitido** com o local/evento correspondente, preenchido automaticamente, para ficar claro a que sede a autorização se refere. As opções de alcance mais amplo devem manter sua distinção. **Referência: 00:53:30–00:55:55.**
+- [x] Associar corretamente o tipo de etiqueta à sua numeração, inclusive quando o registro abranger vários equipamentos iguais. A sequência informada deve corresponder ao tipo selecionado. **Referência: 00:55:55–01:00:18.**
+- [x] Remover os campos de prefixo e sufixo da numeração das etiquetas; foi esclarecido que o identificador usado será numérico. **Referência: 00:56:25–00:57:53; 01:00:18–01:01:24.**
+- [x] Aplicar a apresentação numérica com zeros à esquerda, de acordo com o padrão final da etiqueta (definido em 5 dígitos, ex.: 00150). **Referência: 01:00:50–01:02:24.**
+- [x] Cadastrar as faixas de numeração disponíveis para o evento/local na tela "Gerenciar Eventos" quando houver etiquetagem, respeitando a associação com o tipo de etiqueta. **Referência: 00:57:23–01:00:18; 01:30:07–01:31:42.**
+- [x] Validar os números informados contra as faixas cadastradas, impedindo o uso de números fora do intervalo autorizado e de números já utilizados. **Referência: 00:57:23–00:59:17; 01:30:07–01:32:15.**
+- [x] Atualizar a disponibilidade à medida que as etiquetas forem utilizadas e sugerir o próximo número disponível ao continuar o cadastro de equipamentos. **Referência: 01:29:33–01:30:37; 01:31:08–01:32:15.**
+- [x] Permitir consultar, na própria rotina de etiquetagem (em um popup), quais números ou faixas já estão ocupados. **Referência: 01:31:42–01:32:15.**
 
 ## 7. Frequências, largura de banda e conflitos
 

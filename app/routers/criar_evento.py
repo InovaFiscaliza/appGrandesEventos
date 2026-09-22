@@ -25,6 +25,9 @@ from app.services.postgres import (
     listar_municipios,
     listar_ufs_municipios,
     cidade_pertence_uf,
+    listar_faixas_numeracao_etiqueta,
+    criar_faixa_numeracao_etiqueta,
+    excluir_faixa_numeracao_etiqueta,
 )
 from app.utils.formatters import _img_b64
 from app.config import TITULO_PRINCIPAL
@@ -103,6 +106,9 @@ async def get_criar_evento(request: Request):
             ufs=listar_ufs_municipios(),
             unidades_executantes=listar_unidades_executantes(),
             fiscais=listar_fiscais(int(editar_id) if evento else None),
+            faixas_numeracao=(
+                listar_faixas_numeracao_etiqueta(int(editar_id)) if evento else []
+            ),
             flash_error=request.session.pop("flash_error", None),
         ),
     )
@@ -157,6 +163,49 @@ async def post_excluir_fiscal(request: Request, fiscal_id: int):
 
     excluir_fiscal(fiscal_id)
     return JSONResponse({"ok": True})
+
+
+@router.post("/criar-evento/{evento_id}/faixas-etiqueta")
+async def post_criar_faixa_numeracao(request: Request, evento_id: int):
+    """Cadastra uma faixa de numeração de etiqueta autorizada para o evento."""
+    if not _usuario_e_coordenador(request):
+        return _acesso_negado(request)
+
+    form = await request.form()
+    permissao = str(form.get("permissao", "")).strip()
+    inicio_texto = str(form.get("numero_inicial", "")).strip()
+    fim_texto = str(form.get("numero_final", "")).strip()
+
+    erro = None
+    if permissao not in ("permitido", "todos"):
+        erro = "Selecione o tipo de etiqueta da faixa."
+    elif not inicio_texto.isdigit() or not fim_texto.isdigit():
+        erro = "Informe números válidos para início e fim da faixa."
+    elif int(fim_texto) < int(inicio_texto):
+        erro = "O número final não pode ser menor que o inicial."
+
+    if erro:
+        request.session["flash_error"] = erro
+    else:
+        criar_faixa_numeracao_etiqueta(
+            evento_id=evento_id,
+            permissao=permissao,
+            numero_inicial=int(inicio_texto),
+            numero_final=int(fim_texto),
+        )
+        request.session["flash_success"] = "Faixa de numeração cadastrada."
+    return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
+
+
+@router.post("/criar-evento/{evento_id}/faixas-etiqueta/{faixa_id}/excluir")
+async def post_excluir_faixa_numeracao(request: Request, evento_id: int, faixa_id: int):
+    """Remove uma faixa de numeração de etiqueta do evento."""
+    if not _usuario_e_coordenador(request):
+        return _acesso_negado(request)
+
+    excluir_faixa_numeracao_etiqueta(evento_id=evento_id, faixa_id=faixa_id)
+    request.session["flash_success"] = "Faixa de numeração removida."
+    return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
 
 
 @router.post("/criar-evento")

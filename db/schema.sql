@@ -544,6 +544,18 @@ CREATE TABLE IF NOT EXISTS auditoria_testes_etiquetagem (
 CREATE INDEX IF NOT EXISTS idx_auditoria_teste_etiquetagem_data
     ON auditoria_testes_etiquetagem (teste_etiquetagem_id, modificado_em DESC);
 
+-- Faixas de numeração de etiquetas autorizadas por evento/local e tipo de etiqueta.
+CREATE TABLE IF NOT EXISTS faixas_numeracao_etiqueta (
+    id              BIGSERIAL PRIMARY KEY,
+    evento_id       BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    permissao       TEXT NOT NULL CHECK (permissao IN ('permitido', 'todos')),
+    numero_inicial  INTEGER NOT NULL CHECK (numero_inicial > 0),
+    numero_final    INTEGER NOT NULL CHECK (numero_final >= numero_inicial),
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_faixas_numeracao_evento
+    ON faixas_numeracao_etiqueta (evento_id, permissao);
+
 -- ============================================================
 -- Trigger para atualizar atualizado_em automaticamente
 -- ============================================================

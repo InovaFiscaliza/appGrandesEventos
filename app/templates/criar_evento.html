@@ -159,6 +159,11 @@
                 <option value="nao"{% if evento and not evento.teste_etiquetagem %} selected{% endif %}>Não</option>
             </select>
         </div>
+        {% if evento and evento.teste_etiquetagem %}
+        <div class="form-group">
+            <button type="button" id="abrir-faixas-etiqueta" class="btn" data-sem-confirmacao>Faixas de numeração de etiquetas</button>
+        </div>
+        {% endif %}
         <div class="form-group">
             <label for="observacoes-evento">Observações</label>
             <textarea class="form-control" id="observacoes-evento" name="observacoes" rows="4">{{ evento.observacoes if evento and evento.observacoes else '' }}</textarea>
@@ -168,6 +173,76 @@
         </div>
     </form>
 </div>
+
+{% if evento and evento.teste_etiquetagem %}
+<div id="popup-faixas-etiqueta" class="popup-mapa-estacao" hidden>
+    <div class="popup-mapa-estacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-faixas-etiqueta">
+        <div class="popup-mapa-estacao-cabecalho">
+            <h2 id="titulo-faixas-etiqueta">Faixas de numeração de etiquetas</h2>
+            <button type="button" id="fechar-faixas-etiqueta" class="popup-mapa-estacao-fechar" aria-label="Fechar">×</button>
+        </div>
+        <p class="form-help">Faixas de números disponíveis para etiquetagem neste evento/local, por tipo de etiqueta.</p>
+        {% if faixas_numeracao %}
+        <div class="table-scroll">
+            <table class="ute-table">
+                <thead>
+                    <tr><th>Tipo de etiqueta</th><th>Número inicial</th><th>Número final</th><th class="evento-acao">Ação</th></tr>
+                </thead>
+                <tbody>
+                    {% for faixa in faixas_numeracao %}
+                    <tr>
+                        <td>{{ "Permitido em " ~ (evento.local or "") if faixa.permissao == "permitido" else "Permitido em todos" }}</td>
+                        <td>{{ "%05d"|format(faixa.numero_inicial) }}</td>
+                        <td>{{ "%05d"|format(faixa.numero_final) }}</td>
+                        <td class="evento-acao">
+                            <form method="post" action="/criar-evento/{{ evento.id }}/faixas-etiqueta/{{ faixa.id }}/excluir" data-confirmacao-msg="Excluir esta faixa de numeração?">
+                                <button type="submit" class="btn btn-back">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}<p>Nenhuma faixa cadastrada.</p>{% endif %}
+        <form method="post" action="/criar-evento/{{ evento.id }}/faixas-etiqueta" class="form-cols faixa-numeracao-form">
+            <div class="form-group">
+                <label for="faixa-permissao">Tipo de etiqueta</label>
+                <select class="form-control" id="faixa-permissao" name="permissao" required>
+                    <option value="permitido">Permitido no local</option>
+                    <option value="todos">Permitido em todos</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="faixa-numero-inicial">Número inicial</label>
+                <input class="form-control" id="faixa-numero-inicial" type="number" name="numero_inicial" min="1" step="1" required>
+            </div>
+            <div class="form-group">
+                <label for="faixa-numero-final">Número final</label>
+                <input class="form-control" id="faixa-numero-final" type="number" name="numero_final" min="1" step="1" required>
+            </div>
+            <div class="form-group faixa-numeracao-acao">
+                <button type="submit" class="btn btn-submit font-semi-bold">Adicionar faixa</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    (() => {
+        const abrirBotao = document.getElementById("abrir-faixas-etiqueta");
+        const popup = document.getElementById("popup-faixas-etiqueta");
+        const fecharBotao = document.getElementById("fechar-faixas-etiqueta");
+        if (!abrirBotao || !popup || !fecharBotao) return;
+        abrirBotao.addEventListener("click", () => { popup.hidden = false; });
+        fecharBotao.addEventListener("click", () => { popup.hidden = true; });
+        popup.addEventListener("click", (evento) => { if (evento.target === popup) popup.hidden = true; });
+        document.addEventListener("keydown", (evento) => {
+            if (evento.key === "Escape" && !popup.hidden) popup.hidden = true;
+        });
+    })();
+</script>
+{% endif %}
+
 
 <div id="popup-mapa-evento" class="popup-mapa-estacao" hidden>
     <div class="popup-mapa-estacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-mapa-evento">

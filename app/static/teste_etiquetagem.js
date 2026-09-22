@@ -21,12 +21,12 @@
   const cpfCnpj = document.querySelector('#cpfcnpj');
   const cpfCnpjAjuda = document.querySelector('#cpfcnpj-ajuda');
   const etiqueta = document.querySelector('#numero-etiqueta');
-  const etiquetaPrefixo = document.querySelector('#etiqueta-prefixo');
   const etiquetaInicio = document.querySelector('#etiqueta-inicio');
   const etiquetaFinal = document.querySelector('#etiqueta-final');
-  const etiquetaSufixo = document.querySelector('#etiqueta-sufixo');
   const numeroEquipamentos = document.querySelector('#numero-equipamentos');
   const perfis = [...document.querySelectorAll('input[name="perfil"]')];
+  const permissaoRadios = [...document.querySelectorAll('input[name="permissao"]')];
+  const grupoNumeroEtiqueta = document.querySelector('#grupo-numero-etiqueta');
   const form = document.querySelector('.teq-form');
   const adicionar = document.querySelector('#adicionar-frequencia');
   const remover = document.querySelector('#remover-frequencia');
@@ -34,7 +34,7 @@
   const confirmarAdicionar = document.querySelector('#confirmar-adicionar-frequencia');
   const fecharPopupFrequencia = document.querySelector('#fechar-popup-frequencia');
 
-  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaPrefixo || !etiquetaInicio || !etiquetaFinal || !etiquetaSufixo || !numeroEquipamentos || !form || !adicionar || !remover || !popupFrequencia || !confirmarAdicionar || !fecharPopupFrequencia) return;
+  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaInicio || !etiquetaFinal || !numeroEquipamentos || !form || !adicionar || !remover || !popupFrequencia || !confirmarAdicionar || !fecharPopupFrequencia) return;
 
   function abrirPopupFrequencia() {
     frequencia.value = '';
@@ -278,6 +278,8 @@
   });
   document.querySelector('#local')?.addEventListener('input', (event) => {
     limparErroSePreenchido('local', event.target.value.trim().length > 0);
+    const permissaoLocalTexto = document.querySelector('#permissao-local-texto');
+    if (permissaoLocalTexto) permissaoLocalTexto.textContent = event.target.value;
   });
   frequencia.addEventListener('input', () => {
     const numero = Number(frequencia.value.trim().replace(',', '.'));
@@ -297,32 +299,81 @@
   document.querySelector('#tipo-equipamento')?.addEventListener('change', (event) => {
     limparErroSePreenchido('tipo_equipamento', event.target.value.trim().length > 0);
   });
+  const DIGITOS_ETIQUETA = 5;
+
   function atualizarNumeroEtiqueta() {
     const inicioTexto = etiquetaInicio.value.trim();
     const inicio = Number(inicioTexto);
     const quantidade = Number(numeroEquipamentos.value);
-    if (/^\d+$/.test(inicioTexto) && Number.isSafeInteger(inicio) && Number.isSafeInteger(quantidade) && quantidade >= 1) {
-      etiquetaFinal.value = String(inicio + quantidade - 1).padStart(inicioTexto.length, '0');
+    const valido = /^\d+$/.test(inicioTexto) && Number.isSafeInteger(inicio) && Number.isSafeInteger(quantidade) && quantidade >= 1;
+    if (valido) {
+      etiquetaFinal.value = String(inicio + quantidade - 1).padStart(DIGITOS_ETIQUETA, '0');
+      etiqueta.value = inicioTexto.padStart(DIGITOS_ETIQUETA, '0');
     } else {
       etiquetaFinal.value = '';
+      etiqueta.value = '';
     }
-    etiqueta.value = [
-      etiquetaPrefixo.value,
-      etiquetaInicio.value,
-      etiquetaFinal.value,
-      etiquetaSufixo.value,
-    ].map((valor) => valor.trim()).join('');
     limparErroSePreenchido('numero_etiqueta', etiqueta.value.length > 0);
   }
 
-  [etiquetaPrefixo, etiquetaInicio, etiquetaSufixo, numeroEquipamentos].forEach((campo) => {
+  [etiquetaInicio, numeroEquipamentos].forEach((campo) => {
     campo.addEventListener('input', atualizarNumeroEtiqueta);
   });
   numeroEquipamentos.addEventListener('change', atualizarNumeroEtiqueta);
+  etiquetaInicio.addEventListener('input', () => { numeroEtiquetaAutomatico = false; });
+  etiquetaInicio.addEventListener('change', () => {
+    // Mostra o número já com zeros à esquerda assim que o fiscal sai do campo.
+    if (/^\d+$/.test(etiquetaInicio.value.trim())) {
+      etiquetaInicio.value = etiquetaInicio.value.trim().padStart(DIGITOS_ETIQUETA, '0');
+      atualizarNumeroEtiqueta();
+    }
+  });
 
   const etiquetaOriginal = etiqueta.value.trim();
   if (etiquetaOriginal && !etiquetaInicio.value) etiquetaInicio.value = etiquetaOriginal;
   atualizarNumeroEtiqueta();
+
+  // Sugere o próximo número livre ao trocar o tipo de etiqueta, enquanto o fiscal não digitar um número manualmente.
+  let numeroEtiquetaAutomatico = !form.querySelector('input[name="registro_id"]');
+
+  async function sugerirProximoNumeroEtiqueta(permissao) {
+    if (!numeroEtiquetaAutomatico || (permissao !== 'permitido' && permissao !== 'todos')) return;
+    try {
+      const registroId = form.querySelector('input[name="registro_id"]')?.value || '';
+      const parametros = new URLSearchParams({ permissao });
+      if (registroId) parametros.set('excluir_id', registroId);
+      const resposta = await fetch(`/api/teste-etiquetagem/proximo-numero-etiqueta?${parametros}`);
+      if (!resposta.ok) return;
+      const dados = await resposta.json();
+      if (dados.numero && numeroEtiquetaAutomatico) {
+        etiquetaInicio.value = dados.numero;
+        atualizarNumeroEtiqueta();
+      }
+    } catch {
+      // Falha silenciosa: o fiscal pode digitar o número manualmente.
+    }
+  }
+
+  // Uma etiqueta "Não permitido" não tem número: a numeração só faz sentido para tipos permitidos.
+  function atualizarVisibilidadeNumeroEtiqueta() {
+    const naoPermitido = permissaoRadios.find((radio) => radio.checked)?.value === 'nao';
+    if (grupoNumeroEtiqueta) grupoNumeroEtiqueta.hidden = naoPermitido;
+    etiquetaInicio.required = !naoPermitido;
+    etiqueta.required = !naoPermitido;
+    if (naoPermitido) {
+      etiquetaInicio.value = '';
+      etiquetaFinal.value = '';
+      etiqueta.value = '';
+    }
+  }
+
+  permissaoRadios.forEach((radio) => {
+    radio.addEventListener('change', () => {
+      atualizarVisibilidadeNumeroEtiqueta();
+      sugerirProximoNumeroEtiqueta(radio.value);
+    });
+  });
+  atualizarVisibilidadeNumeroEtiqueta();
 
   adicionar.addEventListener('click', () => abrirPopupFrequencia());
   fecharPopupFrequencia.addEventListener('click', () => fecharPopupFrequenciaFn());
@@ -332,6 +383,62 @@
   document.addEventListener('keydown', (evento) => {
     if (evento.key === 'Escape' && !popupFrequencia.hidden) fecharPopupFrequenciaFn();
   });
+
+  const abrirNumerosEtiqueta = document.querySelector('#abrir-numeros-etiqueta');
+  const popupNumerosEtiqueta = document.querySelector('#popup-numeros-etiqueta');
+  const fecharNumerosEtiqueta = document.querySelector('#fechar-numeros-etiqueta');
+  const numerosEtiquetaConteudo = document.querySelector('#numeros-etiqueta-conteudo');
+
+  if (abrirNumerosEtiqueta && popupNumerosEtiqueta && fecharNumerosEtiqueta && numerosEtiquetaConteudo) {
+    const escaparHtml = (texto) => String(texto ?? '').replace(/[&<>"']/g, (caractere) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[caractere]
+    ));
+    const rotuloPermissao = (permissao) => (
+      permissao === 'permitido' ? 'Permitido no local' : 'Permitido em todos'
+    );
+    const numeroFormatado = (numero) => String(numero).padStart(DIGITOS_ETIQUETA, '0');
+
+    function tabelaFaixas(faixas) {
+      if (!faixas.length) return '<p>Nenhuma faixa cadastrada para este evento.</p>';
+      const linhas = faixas.map((item) => `<tr><td>${rotuloPermissao(item.permissao)}</td><td>${numeroFormatado(item.numero_inicial)}</td><td>${numeroFormatado(item.numero_final)}</td></tr>`).join('');
+      return `<div class="table-scroll"><table class="ute-table"><thead><tr><th>Tipo</th><th>Início</th><th>Fim</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    }
+
+    function tabelaOcupados(ocupados) {
+      if (!ocupados.length) return '<p>Nenhum número ocupado até o momento.</p>';
+      const linhas = ocupados.map((item) => `<tr><td>${rotuloPermissao(item.permissao)}</td><td>${numeroFormatado(item.numero_inicial)}</td><td>${numeroFormatado(item.numero_final)}</td><td>${escaparHtml(item.entidade)}</td><td>${escaparHtml(item.evento)}</td></tr>`).join('');
+      return `<div class="table-scroll"><table class="ute-table"><thead><tr><th>Tipo</th><th>Início</th><th>Fim</th><th>Entidade</th><th>Evento</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+    }
+
+    async function carregarNumerosEtiqueta() {
+      numerosEtiquetaConteudo.innerHTML = '<p class="form-help">Carregando...</p>';
+      try {
+        const resposta = await fetch('/api/teste-etiquetagem/numeros-etiqueta');
+        if (!resposta.ok) throw new Error('Falha na consulta.');
+        const dados = await resposta.json();
+        numerosEtiquetaConteudo.innerHTML = `
+          <h3 class="teq-title">Faixas cadastradas</h3>
+          ${tabelaFaixas(dados.faixas || [])}
+          <h3 class="teq-title">Números já ocupados</h3>
+          ${tabelaOcupados(dados.ocupados || [])}
+        `;
+      } catch {
+        numerosEtiquetaConteudo.innerHTML = '<p class="form-help">Não foi possível consultar os números agora.</p>';
+      }
+    }
+
+    abrirNumerosEtiqueta.addEventListener('click', () => {
+      popupNumerosEtiqueta.hidden = false;
+      carregarNumerosEtiqueta();
+    });
+    fecharNumerosEtiqueta.addEventListener('click', () => { popupNumerosEtiqueta.hidden = true; });
+    popupNumerosEtiqueta.addEventListener('click', (evento) => {
+      if (evento.target === popupNumerosEtiqueta) popupNumerosEtiqueta.hidden = true;
+    });
+    document.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Escape' && !popupNumerosEtiqueta.hidden) popupNumerosEtiqueta.hidden = true;
+    });
+  }
 
   confirmarAdicionar.addEventListener('click', async () => {
     const valor = formatarFrequencia(frequencia.value);

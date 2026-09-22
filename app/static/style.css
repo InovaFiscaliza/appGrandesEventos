@@ -183,6 +183,8 @@ button.btn { font-family: inherit; }
 .confirmacao-cancelar { background: #5f6368; border-color: #45484c; }
 .evento-form-titulo { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .evento-form-titulo .teq-title { margin-bottom: 0; }
+.faixa-numeracao-form { margin-top: .75rem; }
+.faixa-numeracao-acao { display: flex; align-items: flex-end; }
 .fiscais-acoes-evento { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin: .5rem 0 .75rem; }
 .fiscais-checkboxes { max-height: 14rem; }
 .fiscal-evento-item { padding: .25rem 0 .45rem; border-bottom: 1px solid #e1e6ed; }

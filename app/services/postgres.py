@@ -2197,13 +2197,234 @@ def carregar_opcoes_identificacao(_client=None, evento_id=None) -> list:
 # =========================================================================
 
 
+def listar_faixas_numeracao_etiqueta(_client=None, evento_id=None) -> list[dict]:
+    """Lista as faixas de numeração de etiqueta cadastradas para o evento."""
+    try:
+        with get_engine().connect() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                        SELECT id, permissao, numero_inicial, numero_final
+                        FROM faixas_numeracao_etiqueta
+                        WHERE evento_id = :evento_id
+                        ORDER BY permissao, numero_inicial
+                    """),
+                    {"evento_id": evento_id},
+                )
+                .mappings()
+                .all()
+            )
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"Erro listar_faixas_numeracao_etiqueta: {e}", exc_info=True)
+        return []
+
+
+def listar_numeros_etiqueta_ocupados(_client=None, evento_id=None) -> list[dict]:
+    """Lista os intervalos de número de etiqueta já utilizados, para consulta
+    rápida na rotina de etiquetagem. Etiquetas "permitido" só aparecem do
+    próprio evento; etiquetas "permitido em todos" aparecem de qualquer evento.
+    """
+    try:
+        with get_engine().connect() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                        SELECT t.permissao, t.numero_etiqueta, t.numero_equipamentos,
+                               t.entidade, e.nome AS evento
+                        FROM testes_etiquetagem t
+                        JOIN eventos e ON e.id = t.evento_id
+                        WHERE t.numero_etiqueta ~ '^[0-9]+$'
+                          AND (
+                              (t.permissao = 'permitido' AND t.evento_id = :evento_id)
+                              OR t.permissao = 'todos'
+                          )
+                        ORDER BY t.permissao, t.numero_etiqueta
+                    """),
+                    {"evento_id": evento_id},
+                )
+                .mappings()
+                .all()
+            )
+    except Exception as e:
+        logger.error(f"Erro listar_numeros_etiqueta_ocupados: {e}", exc_info=True)
+        return []
+
+    ocupados = []
+    for row in rows:
+        inicio = int(row["numero_etiqueta"])
+        quantidade = max(int(row["numero_equipamentos"] or 1), 1)
+        ocupados.append(
+            {
+                "permissao": row["permissao"],
+                "numero_inicial": inicio,
+                "numero_final": inicio + quantidade - 1,
+                "entidade": row["entidade"],
+                "evento": row["evento"],
+            }
+        )
+    return ocupados
+
+
+def faixa_numeracao_disponivel(
+    _client=None, evento_id=None, permissao=None, numero_inicial=None, numero_final=None
+) -> bool:
+    """Confere se o intervalo [numero_inicial, numero_final] está contido em
+    alguma faixa autorizada para o evento e o tipo de etiqueta informados.
+    Se o evento não tiver nenhuma faixa cadastrada para o tipo, não restringe.
+    """
+    try:
+        with get_engine().connect() as conn:
+            total_faixas = conn.execute(
+                text("""
+                    SELECT count(*) FROM faixas_numeracao_etiqueta
+                    WHERE evento_id = :evento_id AND permissao = :permissao
+                """),
+                {"evento_id": evento_id, "permissao": permissao},
+            ).scalar()
+            if not total_faixas:
+                return True
+            contido = conn.execute(
+                text("""
+                    SELECT 1 FROM faixas_numeracao_etiqueta
+                    WHERE evento_id = :evento_id AND permissao = :permissao
+                      AND numero_inicial <= :inicio AND numero_final >= :fim
+                    LIMIT 1
+                """),
+                {
+                    "evento_id": evento_id,
+                    "permissao": permissao,
+                    "inicio": numero_inicial,
+                    "fim": numero_final,
+                },
+            ).first()
+        return contido is not None
+    except Exception as e:
+        logger.error(f"Erro faixa_numeracao_disponivel: {e}", exc_info=True)
+        return True
+
+
+def proximo_numero_etiqueta_disponivel(
+    _client=None, evento_id=None, permissao=None, excluir_id=None
+) -> Optional[int]:
+    """Sugere o próximo número livre dentro das faixas cadastradas para o
+    evento e o tipo de etiqueta, pulando números já usados por outros
+    registros (considerando o intervalo de cada lote de equipamentos).
+    """
+    if permissao not in ("permitido", "todos"):
+        return None
+    try:
+        with get_engine().connect() as conn:
+            faixas = conn.execute(
+                text("""
+                    SELECT numero_inicial, numero_final
+                    FROM faixas_numeracao_etiqueta
+                    WHERE evento_id = :evento_id AND permissao = :permissao
+                    ORDER BY numero_inicial
+                """),
+                {"evento_id": evento_id, "permissao": permissao},
+            ).all()
+            if not faixas:
+                return None
+            escopo_local = permissao == "permitido"
+            usados = conn.execute(
+                text("""
+                    SELECT numero_etiqueta, numero_equipamentos
+                    FROM testes_etiquetagem
+                    WHERE permissao = :permissao
+                      AND numero_etiqueta ~ '^[0-9]+$'
+                      AND (NOT :escopo_local OR evento_id = CAST(:evento_id AS BIGINT))
+                      AND (
+                          CAST(:excluir_id AS BIGINT) IS NULL
+                          OR id <> CAST(:excluir_id AS BIGINT)
+                      )
+                """),
+                {
+                    "permissao": permissao,
+                    "escopo_local": escopo_local,
+                    "evento_id": evento_id,
+                    "excluir_id": excluir_id,
+                },
+            ).all()
+    except Exception as e:
+        logger.error(f"Erro proximo_numero_etiqueta_disponivel: {e}", exc_info=True)
+        return None
+
+    intervalos_usados = []
+    for numero_etiqueta, quantidade in usados:
+        try:
+            inicio = int(numero_etiqueta)
+        except (TypeError, ValueError):
+            continue
+        intervalos_usados.append((inicio, inicio + max(int(quantidade or 1), 1) - 1))
+
+    def numero_ocupado(numero: int) -> bool:
+        return any(inicio <= numero <= fim for inicio, fim in intervalos_usados)
+
+    for inicio_faixa, fim_faixa in faixas:
+        numero = inicio_faixa
+        while numero <= fim_faixa:
+            if not numero_ocupado(numero):
+                return numero
+            numero += 1
+    return None
+
+
+def criar_faixa_numeracao_etiqueta(
+    _client=None, evento_id=None, permissao=None, numero_inicial=None, numero_final=None
+) -> int:
+    """Cadastra uma faixa de numeração de etiqueta autorizada para o evento."""
+    with get_engine().begin() as conn:
+        row = conn.execute(
+            text("""
+                INSERT INTO faixas_numeracao_etiqueta
+                    (evento_id, permissao, numero_inicial, numero_final)
+                VALUES (:evento_id, :permissao, :numero_inicial, :numero_final)
+                RETURNING id
+            """),
+            {
+                "evento_id": evento_id,
+                "permissao": permissao,
+                "numero_inicial": numero_inicial,
+                "numero_final": numero_final,
+            },
+        ).first()
+        return row[0]
+
+
+def excluir_faixa_numeracao_etiqueta(
+    _client=None, evento_id=None, faixa_id=None
+) -> None:
+    """Remove uma faixa de numeração de etiqueta do evento."""
+    with get_engine().begin() as conn:
+        conn.execute(
+            text("""
+                DELETE FROM faixas_numeracao_etiqueta
+                WHERE id = :faixa_id AND evento_id = :evento_id
+            """),
+            {"faixa_id": faixa_id, "evento_id": evento_id},
+        )
+
+
 def verificar_etiqueta_existente(
-    _client=None, numero_etiqueta=None, excluir_id=None
+    _client=None,
+    numero_etiqueta=None,
+    excluir_id=None,
+    permissao=None,
+    evento_id=None,
 ) -> Optional[dict]:
-    """Retorna evento e data do primeiro cadastro da etiqueta, se houver."""
+    """Retorna evento e data do primeiro cadastro da etiqueta, se houver.
+
+    A checagem de duplicidade respeita o tipo da etiqueta: uma etiqueta
+    "permitido" (válida só no evento/local) só conflita com outra etiqueta
+    de mesmo número dentro do mesmo evento; já uma etiqueta "permitido em
+    todos os estádios" conflita com qualquer outra etiqueta de mesmo número
+    em qualquer evento, pois vale para todas as sedes.
+    """
     numero = str(numero_etiqueta or "").strip()
     if not numero:
         return None
+    escopo_local = str(permissao or "").strip() == "permitido"
     try:
         with get_engine().connect() as conn:
             row = (
@@ -2220,10 +2441,19 @@ def verificar_etiqueta_existente(
                                                         CAST(:excluir_id AS BIGINT) IS NULL
                                                         OR t.id <> CAST(:excluir_id AS BIGINT)
                                                     )
+                                            AND (
+                                                        NOT :escopo_local
+                                                        OR t.evento_id = CAST(:evento_id AS BIGINT)
+                                                    )
                     ORDER BY t.criado_em, t.id
                     LIMIT 1
                 """),
-                    {"numero": numero, "excluir_id": excluir_id},
+                    {
+                        "numero": numero,
+                        "excluir_id": excluir_id,
+                        "escopo_local": escopo_local,
+                        "evento_id": evento_id,
+                    },
                 )
                 .mappings()
                 .first()
