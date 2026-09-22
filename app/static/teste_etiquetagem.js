@@ -30,8 +30,26 @@
   const form = document.querySelector('.teq-form');
   const adicionar = document.querySelector('#adicionar-frequencia');
   const remover = document.querySelector('#remover-frequencia');
+  const popupFrequencia = document.querySelector('#popup-frequencia');
+  const confirmarAdicionar = document.querySelector('#confirmar-adicionar-frequencia');
+  const fecharPopupFrequencia = document.querySelector('#fechar-popup-frequencia');
 
-  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaPrefixo || !etiquetaInicio || !etiquetaFinal || !etiquetaSufixo || !numeroEquipamentos || !form || !adicionar || !remover) return;
+  if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaPrefixo || !etiquetaInicio || !etiquetaFinal || !etiquetaSufixo || !numeroEquipamentos || !form || !adicionar || !remover || !popupFrequencia || !confirmarAdicionar || !fecharPopupFrequencia) return;
+
+  function abrirPopupFrequencia() {
+    frequencia.value = '';
+    passo.value = '';
+    faixa.value = '';
+    frequenciaConsulta.replaceChildren();
+    frequenciaConsulta.classList.remove('teq-frequency-check-warning');
+    frequencia.classList.remove('teq-invalid');
+    popupFrequencia.hidden = false;
+    frequencia.focus();
+  }
+
+  function fecharPopupFrequenciaFn() {
+    popupFrequencia.hidden = true;
+  }
 
   const invalidosServidor = new Set(
     JSON.parse(form.dataset.invalidFields || '[]')
@@ -306,7 +324,16 @@
   if (etiquetaOriginal && !etiquetaInicio.value) etiquetaInicio.value = etiquetaOriginal;
   atualizarNumeroEtiqueta();
 
-  adicionar.addEventListener('click', async () => {
+  adicionar.addEventListener('click', () => abrirPopupFrequencia());
+  fecharPopupFrequencia.addEventListener('click', () => fecharPopupFrequenciaFn());
+  popupFrequencia.addEventListener('click', (evento) => {
+    if (evento.target === popupFrequencia) fecharPopupFrequenciaFn();
+  });
+  document.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape' && !popupFrequencia.hidden) fecharPopupFrequenciaFn();
+  });
+
+  confirmarAdicionar.addEventListener('click', async () => {
     const valor = formatarFrequencia(frequencia.value);
     if (!valor) {
       frequencia.setCustomValidity('Informe uma frequência válida.');
@@ -347,6 +374,7 @@
       manterUmaSelecao();
       atualizarFrequenciasEnviadas();
       consultarFrequencia(valor);
+      fecharPopupFrequenciaFn();
       return;
     }
 
@@ -356,8 +384,7 @@
     manterUmaSelecao();
     atualizarFrequenciasEnviadas();
     limparErroSePreenchido('frequencias_selecionadas', lista.options.length > 0);
-    frequencia.value = '';
-    frequencia.focus();
+    fecharPopupFrequenciaFn();
   });
 
   remover.addEventListener('click', () => {

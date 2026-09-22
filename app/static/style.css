@@ -1438,6 +1438,13 @@ body {
     margin-bottom: 0.65rem;
     border-bottom: 1px solid #e6e6e6;
 }
+.teq-required-note {
+    margin: 0 0 .55rem;
+    color: #607389;
+    font-size: .78rem;
+    font-weight: 600;
+    text-align: right;
+}
 .teq-record-actions {
     display: flex;
     align-items: center;
@@ -1657,6 +1664,8 @@ body {
     gap: 0.5rem;
     align-items: end;
 }
+.popup-frequencia-conteudo { width: min(420px, calc(100vw - 1rem)); height: auto; }
+.popup-frequencia-acoes { display: flex; justify-content: flex-end; margin-top: 0.75rem; }
 .teq-list-header {
     display: flex;
     align-items: center;
@@ -1726,6 +1735,57 @@ body {
 }
 .teq-number-box {
     width: 62%;
+}
+.teq-label-panel {
+    min-width: 0;
+    margin: 0;
+    padding: .75rem;
+    border: 1px solid #9eabb7;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, .48);
+}
+.teq-label-panel legend {
+    padding: 0 .35rem;
+    color: #30485b;
+    font-size: .92rem;
+    font-weight: 700;
+}
+.teq-label-panel-status {
+    display: grid;
+    grid-template-columns: minmax(11rem, .7fr) minmax(22rem, 1.3fr);
+    gap: .75rem;
+    align-items: stretch;
+}
+.teq-label-panel .teq-checkbox-line {
+    min-height: 4.2rem;
+    margin: 0;
+    padding: .55rem .65rem;
+    border-right: 1px solid #d3dbe2;
+}
+.teq-label-panel .teq-subpanel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: .35rem;
+    padding: .35rem .5rem;
+    border: 0;
+    background: transparent;
+}
+.teq-label-panel-caption {
+    margin: 0;
+}
+.teq-label-panel-numbers {
+    display: grid;
+    grid-template-columns: minmax(12rem, .65fr) minmax(28rem, 1.35fr);
+    gap: .75rem;
+    align-items: end;
+    margin-top: .7rem;
+    padding-top: .7rem;
+    border-top: 1px solid #d3dbe2;
+}
+.teq-label-panel .teq-number-box {
+    width: 100%;
+    margin: 0;
 }
 .teq-textarea {
     min-height: 4.7rem;
@@ -1833,6 +1893,13 @@ select[multiple] { min-height: 100px; }
     .form-group textarea,
     .teq-control { min-height: 2.7rem; font-size: 1rem; }
     .teq-label-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .teq-label-panel-status,
+    .teq-label-panel-numbers { grid-template-columns: 1fr; }
+    .teq-label-panel .teq-checkbox-line {
+        min-height: 0;
+        border-right: 0;
+        border-bottom: 1px solid #d3dbe2;
+    }
     .teq-listbox { min-height: 8rem; }
     .teq-number-box,
     .teq-inline { width: 100%; }

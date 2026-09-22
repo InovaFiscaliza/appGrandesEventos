@@ -104,6 +104,7 @@
     <form class="teq-form rf-entry-form" method="post" action="/teste_etiquetagem" enctype="multipart/form-data" autocomplete="off" data-invalid-fields='{{ values.invalid_fields | default([]) | tojson }}'>
         {% if modo_consulta %}<input type="hidden" name="modo_consulta" value="1">{% endif %}
         {% if values.registro_id %}<input type="hidden" name="registro_id" value="{{ values.registro_id }}">{% endif %}
+        <p class="teq-required-note"><span class="required" aria-hidden="true">*</span> Campos obrigatórios</p>
         <div class="teq-grid">
             <div class="teq-col">
                 <div class="teq-panel teq-order-6">
@@ -116,7 +117,7 @@
                 </div>
 
                 <div class="form-group teq-order-3">
-                    <label class="teq-label teq-checkbox-title{% if 'entidade' in values.invalid_fields %} teq-label-invalid{% endif %}" for="entidade">Entidade</label>
+                    <label class="teq-label teq-checkbox-title{% if 'entidade' in values.invalid_fields %} teq-label-invalid{% endif %}" for="entidade">Entidade <span class="required" aria-hidden="true">*</span><span class="sr-only"> (obrigatório)</span></label>
                     <input id="entidade" name="entidade" class="form-control teq-control{% if 'entidade' in values.invalid_fields %} teq-invalid{% endif %}" type="text" value="{{ values.entidade }}" required>
                 </div>
 
@@ -137,21 +138,8 @@
                 </div>
 
                 <div class="form-group teq-order-5">
-                    <label class="teq-label teq-checkbox-title" for="local">Local do evento</label>
+                    <label class="teq-label teq-checkbox-title" for="local">Local do evento <span class="required" aria-hidden="true">*</span><span class="sr-only"> (obrigatório)</span></label>
                     <input id="local" name="local" class="form-control teq-control" type="text" value="{{ values.local }}" readonly aria-readonly="true" required>
-                </div>
-
-                <div class="teq-checkbox-line teq-order-7">
-                    <span class="teq-checkbox-title">Tipo de etiqueta</span>
-                    <label class="teq-checkbox"><input name="equipamento_homologado" type="checkbox" {% if values.equipamento_homologado %}checked{% endif %}> </label>
-                </div>
-
-                <div class="teq-subpanel teq-order-8">
-                    <div class="teq-radio-row">
-                        <label class="teq-radio-item"><input type="radio" name="permissao" value="permitido" {% if values.permissao == "permitido" %}checked{% endif %}>Permitido</label>
-                        <label class="teq-radio-item"><input type="radio" name="permissao" value="todos" {% if values.permissao == "todos" %}checked{% endif %}>Permitido em todos</label>
-                        <label class="teq-radio-item"><input type="radio" name="permissao" value="nao" {% if values.permissao == "nao" %}checked{% endif %}>Não permitido</label>
-                    </div>
                 </div>
 
                 <div class="teq-panel teq-profile-panel teq-order-1">
@@ -164,38 +152,9 @@
             </div>
 
             <div class="teq-col">
-                <div class="teq-frequency-row teq-order-9">
-                    <div class="form-group">
-                        <label class="teq-label teq-checkbox-title{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
-                        <input id="frequencia" name="frequencia_mhz" class="form-control teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="number" step="any" min="0" value="{{ values.frequencia_mhz }}">
-                    </div>
-                    <div class="form-group">
-                        <label class="teq-label teq-checkbox-title{% if 'passo' in values.invalid_fields %} teq-label-invalid{% endif %}" for="passo">Banda</label>
-                        <div class="select-shell">
-                        <select id="passo" name="passo" class="form-control teq-control{% if 'passo' in values.invalid_fields %} teq-invalid{% endif %}">
-                            <option value="" {% if not values.passo %}selected{% endif %}></option>
-                            {% for banda in banda_opcoes %}
-                            <option value="{{ banda }}" {% if values.passo == banda %}selected{% endif %}>{{ banda }}</option>
-                            {% endfor %}
-                        </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="teq-label teq-checkbox-title{% if 'faixa' in values.invalid_fields %} teq-label-invalid{% endif %}" for="faixa">Faixa</label>
-                        <div class="select-shell">
-                        <select id="faixa" name="faixa" class="form-control teq-control{% if 'faixa' in values.invalid_fields %} teq-invalid{% endif %}">
-                            <option value="" {% if not values.faixa %}selected{% endif %}></option>
-                            {% for faixa in faixa_opcoes %}
-                            <option value="{{ faixa }}" {% if values.faixa == faixa %}selected{% endif %}>{{ faixa }}</option>
-                            {% endfor %}
-                        </select>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="form-group teq-frequency-list-group teq-order-10">
                     <div class="teq-list-header">
-                        <label class="teq-label teq-checkbox-title" for="frequencias">Frequências</label>
+                        <label class="teq-label teq-checkbox-title" for="frequencias">Frequências <span class="required" aria-hidden="true">*</span><span class="sr-only"> (obrigatório)</span></label>
                         <div class="teq-list-actions" aria-label="Gerenciar frequências">
                             <button id="adicionar-frequencia" class="teq-list-btn" type="button" aria-label="Adicionar frequência" title="Adicionar frequência">+</button>
                             <button id="remover-frequencia" class="teq-list-btn" type="button" disabled aria-label="Remover frequência selecionada" title="Remover frequência selecionada">−</button>
@@ -211,7 +170,6 @@
                         <input type="hidden" name="frequencias_selecionadas" value="{{ freq }}">
                         {% endfor %}
                     </div>
-                    <div id="frequencia-consulta" class="teq-frequency-check" role="status" aria-live="polite"></div>
                 </div>
 
                 <div class="form-group teq-order-2">
@@ -221,7 +179,7 @@
                 </div>
 
                 <div class="form-group teq-order-11">
-                    <label class="teq-label teq-checkbox-title{% if 'tipo_equipamento' in values.invalid_fields %} teq-label-invalid{% endif %}" for="tipo-equipamento">Tipo do equipamento</label>
+                    <label class="teq-label teq-checkbox-title{% if 'tipo_equipamento' in values.invalid_fields %} teq-label-invalid{% endif %}" for="tipo-equipamento">Tipo do equipamento <span class="required" aria-hidden="true">*</span><span class="sr-only"> (obrigatório)</span></label>
                     <div class="select-shell">
                     <select id="tipo-equipamento" name="tipo_equipamento" class="form-control teq-control{% if 'tipo_equipamento' in values.invalid_fields %} teq-invalid{% endif %}" required>
                         <option value="" {% if not values.tipo_equipamento %}selected{% endif %}></option>
@@ -232,21 +190,39 @@
                     </div>
                 </div>
 
-                <div class="form-group teq-number-box teq-order-12">
-                    <label class="teq-label teq-checkbox-title{% if 'numero_equipamentos' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-equipamentos">Número de equipamentos iguais sendo etiquetados</label>
-                    <input id="numero-equipamentos" name="numero_equipamentos" class="form-control teq-control{% if 'numero_equipamentos' in values.invalid_fields %} teq-invalid{% endif %}" type="number" min="1" step="1" value="{{ values.numero_equipamentos or 1 }}" required>
-                </div>
-
-                <div class="form-group teq-number-box teq-order-13 teq-label-group">
-                    <label class="teq-label teq-checkbox-title{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="etiqueta-prefixo">Número da etiqueta</label>
-                    <div class="teq-label-fields" role="group" aria-label="Composição do número da etiqueta">
-                        <input id="etiqueta-prefixo" class="form-control teq-control" type="text" value="" placeholder="Prefixo" aria-label="Prefixo">
-                        <input id="etiqueta-inicio" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número inicial" aria-label="Número inicial" required>
-                        <input id="etiqueta-final" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número final" aria-label="Número final" readonly>
-                        <input id="etiqueta-sufixo" class="form-control teq-control" type="text" value="" placeholder="Sufixo" aria-label="Sufixo">
+                <fieldset class="teq-label-panel teq-order-12">
+                    <legend>Dados da etiqueta</legend>
+                    <div class="teq-label-panel-status">
+                        <div class="teq-checkbox-line">
+                            <span class="teq-checkbox-title">Tipo de etiqueta</span>
+                            <label class="teq-checkbox"><input name="equipamento_homologado" type="checkbox" {% if values.equipamento_homologado %}checked{% endif %}> </label>
+                        </div>
+                        <div class="teq-subpanel">
+                            <span class="teq-label teq-label-panel-caption">Status da etiqueta</span>
+                            <div class="teq-radio-row">
+                                <label class="teq-radio-item"><input type="radio" name="permissao" value="permitido" {% if values.permissao == "permitido" %}checked{% endif %}>Permitido</label>
+                                <label class="teq-radio-item"><input type="radio" name="permissao" value="todos" {% if values.permissao == "todos" %}checked{% endif %}>Permitido em todos</label>
+                                <label class="teq-radio-item"><input type="radio" name="permissao" value="nao" {% if values.permissao == "nao" %}checked{% endif %}>Não permitido</label>
+                            </div>
+                        </div>
                     </div>
-                    <input id="numero-etiqueta" name="numero_etiqueta" type="hidden" value="{{ values.numero_etiqueta }}" required>
-                </div>
+                    <div class="teq-label-panel-numbers">
+                        <div class="form-group teq-number-box">
+                            <label class="teq-label teq-checkbox-title{% if 'numero_equipamentos' in values.invalid_fields %} teq-label-invalid{% endif %}" for="numero-equipamentos">Número de equipamentos iguais sendo etiquetados <span class="required" aria-hidden="true">*</span><span class="sr-only"> (obrigatório)</span></label>
+                            <input id="numero-equipamentos" name="numero_equipamentos" class="form-control teq-control{% if 'numero_equipamentos' in values.invalid_fields %} teq-invalid{% endif %}" type="number" min="1" step="1" value="{{ values.numero_equipamentos or 1 }}" required>
+                        </div>
+                        <div class="form-group teq-number-box teq-label-group">
+                            <label class="teq-label teq-checkbox-title{% if 'numero_etiqueta' in values.invalid_fields %} teq-label-invalid{% endif %}" for="etiqueta-prefixo">Número da etiqueta <span class="required" aria-hidden="true">*</span><span class="sr-only"> (obrigatório)</span></label>
+                            <div class="teq-label-fields" role="group" aria-label="Composição do número da etiqueta">
+                                <input id="etiqueta-prefixo" class="form-control teq-control" type="text" value="" placeholder="Prefixo" aria-label="Prefixo">
+                                <input id="etiqueta-inicio" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número inicial" aria-label="Número inicial" required>
+                                <input id="etiqueta-final" class="form-control teq-control" type="text" inputmode="numeric" value="" placeholder="Número final" aria-label="Número final" readonly>
+                                <input id="etiqueta-sufixo" class="form-control teq-control" type="text" value="" placeholder="Sufixo" aria-label="Sufixo">
+                            </div>
+                            <input id="numero-etiqueta" name="numero_etiqueta" type="hidden" value="{{ values.numero_etiqueta }}" required>
+                        </div>
+                    </div>
+                </fieldset>
             </div>
         </div>
 
@@ -280,6 +256,46 @@
     </form>
     {% endif %}
 </div>
-<script src="/static/teste_etiquetagem.js?v=12"></script>
+<div id="popup-frequencia" class="popup-mapa-estacao popup-frequencia" hidden>
+    <div class="popup-mapa-estacao-conteudo popup-frequencia-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-popup-frequencia">
+        <div class="popup-mapa-estacao-cabecalho">
+            <h2 id="titulo-popup-frequencia">Adicionar frequência</h2>
+            <button type="button" id="fechar-popup-frequencia" class="popup-mapa-estacao-fechar" aria-label="Fechar">×</button>
+        </div>
+        <div class="teq-frequency-row">
+            <div class="form-group">
+                <label class="teq-label teq-checkbox-title{% if 'frequencia_mhz' in values.invalid_fields %} teq-label-invalid{% endif %}" for="frequencia">Frequência (MHz)</label>
+                <input id="frequencia" name="frequencia_mhz" class="form-control teq-control{% if 'frequencia_mhz' in values.invalid_fields %} teq-invalid{% endif %}" type="number" step="any" min="0" value="{{ values.frequencia_mhz }}">
+            </div>
+            <div class="form-group">
+                <label class="teq-label teq-checkbox-title{% if 'passo' in values.invalid_fields %} teq-label-invalid{% endif %}" for="passo">Banda</label>
+                <div class="select-shell">
+                <select id="passo" name="passo" class="form-control teq-control{% if 'passo' in values.invalid_fields %} teq-invalid{% endif %}">
+                    <option value="" {% if not values.passo %}selected{% endif %}></option>
+                    {% for banda in banda_opcoes %}
+                    <option value="{{ banda }}" {% if values.passo == banda %}selected{% endif %}>{{ banda }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="teq-label teq-checkbox-title{% if 'faixa' in values.invalid_fields %} teq-label-invalid{% endif %}" for="faixa">Faixa</label>
+                <div class="select-shell">
+                <select id="faixa" name="faixa" class="form-control teq-control{% if 'faixa' in values.invalid_fields %} teq-invalid{% endif %}">
+                    <option value="" {% if not values.faixa %}selected{% endif %}></option>
+                    {% for faixa in faixa_opcoes %}
+                    <option value="{{ faixa }}" {% if values.faixa == faixa %}selected{% endif %}>{{ faixa }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+            </div>
+        </div>
+        <div id="frequencia-consulta" class="teq-frequency-check" role="status" aria-live="polite"></div>
+        <div class="popup-frequencia-acoes">
+            <button type="button" id="confirmar-adicionar-frequencia" class="btn teq-btn">Adicionar</button>
+        </div>
+    </div>
+</div>
+<script src="/static/teste_etiquetagem.js?v=13"></script>
 <script src="/static/upload-imagens.js?v=4"></script>
 {% endblock %}

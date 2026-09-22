@@ -303,9 +303,9 @@ Relatório organizado por assunto a partir da transcrição automática da grava
 - [x] Preencher automaticamente o local a partir do evento selecionado pelo usuário e deixá-lo somente para leitura. O local deve representar o evento/sede ao qual a etiqueta se aplica, evitando preenchimento livre e interpretações diferentes entre os fiscais. **Referência: 00:42:28–00:46:48.**
 - [x] Separar os dados de contato em campos próprios, especialmente **telefone** e **e-mail**, permitindo informar os meios disponíveis. O telefone foi destacado pela utilidade na comunicação em campo, inclusive por WhatsApp e com números internacionais. **Referência: 00:49:27–00:50:33.**
 - [x] Incluir o **nome do responsável/pessoa de contato**, separado da entidade, do telefone e do e-mail, para que o fiscal saiba quem procurar. **Referência: 00:50:30–00:51:06.**
-- [ ] Agrupar os campos relacionados à etiqueta na mesma região do formulário, aproximando o tipo/status da etiqueta de sua numeração. Corrigir o afastamento entre rótulos, opções e campos que estava provocando interpretações equivocadas. **Referência: 00:51:52–00:55:55; 00:59:19–01:00:18.**
-- [ ] Identificar visualmente os campos obrigatórios antes da tentativa de salvar, por exemplo com asterisco vermelho, em vez de informar a obrigatoriedade apenas após o erro de validação. **Referência: 01:32:15–01:33:33.**
-- [ ] Simplificar a disposição dos campos auxiliares de inclusão de frequências. **Sugestão discutida:** abrir esses campos em uma janela/modal ao adicionar uma frequência e recolhê-los depois, reduzindo a quantidade de controles permanentes na tela. **Referência: 01:33:33–01:34:12.**
+- [x] Agrupar os campos relacionados à etiqueta na mesma região do formulário, aproximando o tipo/status da etiqueta de sua numeração. Corrigir o afastamento entre rótulos, opções e campos que estava provocando interpretações equivocadas. **Referência: 00:51:52–00:55:55; 00:59:19–01:00:18.**
+- [x] Identificar visualmente os campos obrigatórios antes da tentativa de salvar, por exemplo com asterisco vermelho, em vez de informar a obrigatoriedade apenas após o erro de validação. **Referência: 01:32:15–01:33:33.**
+- [x] Simplificar a disposição dos campos auxiliares de inclusão de frequências. **Sugestão discutida:** abrir esses campos em uma janela/modal ao adicionar uma frequência e recolhê-los depois, reduzindo a quantidade de controles permanentes na tela. **Referência: 01:33:33–01:34:12.**
 
 ## 6. Tipos, numeração e disponibilidade das etiquetas
 
