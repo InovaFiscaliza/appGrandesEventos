@@ -8,7 +8,10 @@
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 
 <section class="form-card font-semi-bold eventos-lista">
-    <h5 class="teq-title">Eventos existentes</h5>
+    <div class="section-heading">
+        <h5 class="teq-title">Eventos existentes</h5>
+        <a href="/criar-evento?novo=1" class="btn">Cadastrar novo evento</a>
+    </div>
     {% if eventos %}
     <div class="table-scroll">
         <table class="ute-table">
@@ -45,6 +48,7 @@
     <div class="evento-form-titulo">
         <h5 class="teq-title">Gerenciar Eventos</h5>
     </div>
+    {% if mostrar_form %}
     <form method="post" action="{{ "/criar-evento/" ~ evento.id ~ "/editar" if evento else "/criar-evento" }}" class="rf-entry-form">
         <div class="form-group">
             <label for="nome-evento">Nome do evento <span class="required">*</span></label>
@@ -172,6 +176,9 @@
             <button type="submit" class="btn btn-submit font-semi-bold">{{ "Salvar alterações" if evento else "Criar Evento" }}</button>
         </div>
     </form>
+    {% else %}
+    <p class="form-help">Clique em "Cadastrar novo evento" ou em "Editar" na lista acima para exibir o formulário.</p>
+    {% endif %}
 </div>
 
 {% if evento and evento.teste_etiquetagem %}
@@ -182,6 +189,8 @@
             <button type="button" id="fechar-faixas-etiqueta" class="popup-mapa-estacao-fechar" aria-label="Fechar">×</button>
         </div>
         <p class="form-help">Faixas de números disponíveis para etiquetagem neste evento/local, por tipo de etiqueta.</p>
+        {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+        {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
         {% if faixas_numeracao %}
         <div class="table-scroll">
             <table class="ute-table">
@@ -196,7 +205,7 @@
                         <td>{{ "%05d"|format(faixa.numero_final) }}</td>
                         <td class="evento-acao">
                             <form method="post" action="/criar-evento/{{ evento.id }}/faixas-etiqueta/{{ faixa.id }}/excluir" data-confirmacao-msg="Excluir esta faixa de numeração?">
-                                <button type="submit" class="btn btn-back">Excluir</button>
+                                <button type="submit" class="teq-list-btn" aria-label="Excluir faixa" title="Excluir faixa">🗑️</button>
                             </form>
                         </td>
                     </tr>
@@ -239,6 +248,13 @@
         document.addEventListener("keydown", (evento) => {
             if (evento.key === "Escape" && !popup.hidden) popup.hidden = true;
         });
+        // Reabre o popup automaticamente após cadastrar/excluir uma faixa (o POST recarrega a página).
+        if (new URLSearchParams(window.location.search).get("faixas") === "1") {
+            popup.hidden = false;
+            const url = new URL(window.location.href);
+            url.searchParams.delete("faixas");
+            window.history.replaceState({}, "", url);
+        }
     })();
 </script>
 {% endif %}

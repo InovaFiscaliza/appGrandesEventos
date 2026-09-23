@@ -129,7 +129,7 @@
     const linhas = [];
     if (mensagemLocal) linhas.push(mensagemLocal);
     data.equipamentos.forEach((equipamento) => {
-      linhas.push(`Equipamento com essa frequência já cadastrado: ${equipamento.entidade || 'Nome não informado'} | CPF/CNPJ: ${equipamento.cpf_cnpj || 'não informado'} | Tipo: ${equipamento.tipo_equipamento || 'não informado'} | Etiqueta: ${equipamento.numero_etiqueta || 'não informada'} | Local: ${equipamento.local || 'não informado'}`);
+      linhas.push(`Equipamento com essa frequência já cadastrado: ${equipamento.entidade || 'Nome não informado'} | CPF/CNPJ: ${equipamento.cpf_cnpj || 'não informado'} | Tipo: ${equipamento.tipo_equipamento || 'não informado'} | Responsável: ${equipamento.responsavel || 'não informado'} | Etiqueta: ${equipamento.numero_etiqueta || 'não informada'} | Local: ${equipamento.local || 'não informado'}`);
     });
     data.referencias.forEach((referencia) => {
       linhas.push(`Referência no banco: ${referencia.origem} | ${referencia.detalhe}`);

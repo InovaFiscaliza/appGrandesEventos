@@ -1889,7 +1889,8 @@ def consultar_conflitos_frequencia(
                     SELECT o.id, o.frequencia_mhz, COALESCE(o.largura_khz, 0) AS largura_khz,
                            COALESCE(NULLIF(o.local_regiao, ''), NULLIF(e.local, ''), '') AS local,
                            COALESCE(e.nome, 'Ocorrência') AS equipamento,
-                           o.identificacao AS etiqueta
+                           o.identificacao AS etiqueta,
+                           o.fiscal AS responsavel
                     FROM ocorrencias o
                     LEFT JOIN estacoes e ON e.id = o.estacao_id
                     WHERE o.evento_id = :ev
@@ -1922,6 +1923,7 @@ def consultar_conflitos_frequencia(
                             "local": registro["local"] or "Local não informado",
                             "equipamento": registro["equipamento"],
                             "etiqueta": registro["etiqueta"] or "Não informada",
+                            "responsavel": registro["responsavel"] or "Não informado",
                         }
                     )
 
@@ -1929,7 +1931,7 @@ def consultar_conflitos_frequencia(
                 conn.execute(
                     text("""
                     SELECT t.id, t.entidade, t.cpf_cnpj, t.local, t.tipo_equipamento,
-                           t.numero_etiqueta, selecionada AS frequencia_texto
+                           t.numero_etiqueta, t.responsavel_contato, selecionada AS frequencia_texto
                     FROM testes_etiquetagem t
                     CROSS JOIN LATERAL unnest(t.frequencias_selecionadas) AS selecionada
                     WHERE t.evento_id = :ev
@@ -1972,6 +1974,8 @@ def consultar_conflitos_frequencia(
                             "tipo_equipamento": registro["tipo_equipamento"]
                             or "Não informado",
                             "cpf_cnpj": registro["cpf_cnpj"] or "Não informado",
+                            "responsavel": registro["responsavel_contato"]
+                            or "Não informado",
                         }
                     )
     except Exception as e:
@@ -2514,6 +2518,7 @@ def consultar_equipamentos_frequencia(
             "origem": c["origem"],
             "detalhe": (
                 f"{c['equipamento']} | etiqueta: {c['etiqueta']} | "
+                f"responsável: {c.get('responsavel', 'Não informado')} | "
                 f"local: {c['local']} | {c['frequencia']:.3f} MHz / {c['largura_khz']:.3f} kHz"
             ),
         }

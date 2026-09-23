@@ -320,7 +320,7 @@ Relatório organizado por assunto a partir da transcrição automática da grava
 
 ## 7. Frequências, largura de banda e conflitos
 
-- [ ] Concluir a consulta de frequências já registradas em outros equipamentos e nas emissões cadastradas pelos fiscais, apresentando alertas que ajudem a identificar possíveis conflitos/interferências. Quando houver outro registro, informar os dados disponíveis para identificá-lo, como entidade, equipamento e responsável pelo cadastro. **Referência: 01:02:26–01:06:26.**
+- [x] Concluir a consulta de frequências já registradas em outros equipamentos e nas emissões cadastradas pelos fiscais, apresentando alertas que ajudem a identificar possíveis conflitos/interferências. Quando houver outro registro, informar os dados disponíveis para identificá-lo, como entidade, equipamento e responsável pelo cadastro. **Referência: 01:02:26–01:06:26.**
 - [ ] Corrigir a validação para detectar a **sobreposição das faixas ocupadas**, considerando frequência central e largura de banda, em vez de comparar somente frequências centrais idênticas. Calcular os limites inferior e superior com metade da largura de banda para cada lado da frequência central. **Referência: 01:05:55–01:10:11.**
 - [ ] Tratar a sobreposição como aviso, permitindo prosseguir quando ela fizer sentido na programação dos canais; a existência de sobreposição não deve, por si só, impedir o cadastro. **Referência: 01:08:25–01:09:33.**
 - [ ] Ordenar automaticamente a lista de frequências pela frequência central a cada inclusão, facilitando a leitura e a identificação dos canais. **Referência: 01:10:11–01:10:47.**

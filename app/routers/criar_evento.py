@@ -81,6 +81,7 @@ async def get_criar_evento(request: Request):
         return _acesso_negado(request)
 
     editar_id = request.query_params.get("editar")
+    mostrar_form = request.query_params.get("novo") == "1"
     evento = None
     estacoes = []
     if editar_id and editar_id.isdigit():
@@ -93,6 +94,7 @@ async def get_criar_evento(request: Request):
     if editar_id and evento is None:
         request.session["flash_error"] = "Evento não encontrado."
         return RedirectResponse("/criar-evento", status_code=303)
+    mostrar_form = mostrar_form or evento is not None
 
     return templates.TemplateResponse(
         request,
@@ -100,6 +102,7 @@ async def get_criar_evento(request: Request):
         _ctx(
             request,
             evento=evento,
+            mostrar_form=mostrar_form,
             estacoes=estacoes,
             eventos=listar_eventos_detalhes(),
             municipios=listar_municipios(),
@@ -183,6 +186,13 @@ async def post_criar_faixa_numeracao(request: Request, evento_id: int):
         erro = "Informe números válidos para início e fim da faixa."
     elif int(fim_texto) < int(inicio_texto):
         erro = "O número final não pode ser menor que o inicial."
+    elif any(
+        faixa["permissao"] == permissao
+        and faixa["numero_inicial"] == int(inicio_texto)
+        and faixa["numero_final"] == int(fim_texto)
+        for faixa in listar_faixas_numeracao_etiqueta(evento_id)
+    ):
+        erro = "Esta faixa já está cadastrada para este evento e tipo de etiqueta."
 
     if erro:
         request.session["flash_error"] = erro
@@ -194,7 +204,9 @@ async def post_criar_faixa_numeracao(request: Request, evento_id: int):
             numero_final=int(fim_texto),
         )
         request.session["flash_success"] = "Faixa de numeração cadastrada."
-    return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
+    return RedirectResponse(
+        f"/criar-evento?editar={evento_id}&faixas=1", status_code=303
+    )
 
 
 @router.post("/criar-evento/{evento_id}/faixas-etiqueta/{faixa_id}/excluir")
@@ -205,7 +217,9 @@ async def post_excluir_faixa_numeracao(request: Request, evento_id: int, faixa_i
 
     excluir_faixa_numeracao_etiqueta(evento_id=evento_id, faixa_id=faixa_id)
     request.session["flash_success"] = "Faixa de numeração removida."
-    return RedirectResponse(f"/criar-evento?editar={evento_id}", status_code=303)
+    return RedirectResponse(
+        f"/criar-evento?editar={evento_id}&faixas=1", status_code=303
+    )
 
 
 @router.post("/criar-evento")
@@ -233,10 +247,10 @@ async def post_criar_evento(request: Request):
     longitude_texto = str(form.get("longitude", "")).strip()
     if not nome:
         request.session["flash_error"] = "Informe o nome do evento."
-        return RedirectResponse("/criar-evento", status_code=303)
+        return RedirectResponse("/criar-evento?novo=1", status_code=303)
     if cidade and uf and not cidade_pertence_uf(cidade, uf):
         request.session["flash_error"] = "Selecione uma cidade e UF válidas."
-        return RedirectResponse("/criar-evento", status_code=303)
+        return RedirectResponse("/criar-evento?novo=1", status_code=303)
 
     try:
         latitude = float(latitude_texto) if latitude_texto else None
@@ -270,10 +284,10 @@ async def post_criar_evento(request: Request):
         request.session["flash_error"] = (
             "Informe um período válido (o fim não pode ser anterior ao início)."
         )
-        return RedirectResponse("/criar-evento", status_code=303)
+        return RedirectResponse("/criar-evento?novo=1", status_code=303)
     except IntegrityError:
         request.session["flash_error"] = "Já existe um evento com esse nome."
-        return RedirectResponse("/criar-evento", status_code=303)
+        return RedirectResponse("/criar-evento?novo=1", status_code=303)
 
     request.session["evento_nome"] = nome
     request.session["spreadsheet_id"] = str(evento_id)
