@@ -43,21 +43,9 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 1. Acesso, usuários e perfis
 
-- [X] Restringir a seleção de eventos: cada usuário deve visualizar somente os eventos nos quais está cadastrado. Coordenadores e superusuários devem seguir permissões próprias. **Referência: 00:00:16–00:01:18.**
-- [X] Controlar a visibilidade dos módulos conforme o perfil do usuário e a configuração do evento. Exemplos discutidos: esconder **Gerenciar Eventos**, **Auditoria** e **Teste de etiquetagem** quando não forem aplicáveis. **Referência: 00:01:20–00:02:18.**
-- [x] Permitir que o criador/coordenador do evento escolha quais módulos estarão disponíveis naquele evento. **Referência: 00:01:20–00:02:15.**
-- [x] Criar uma base local com usuários fictícios para testar os perfis e, posteriormente, integrar com a base institucional de fiscais. **Referência: 00:24:48–00:25:11.**
-- [X] Preservar a possibilidade de um fiscal possuir mais de um papel no mesmo evento, como abordagem, monitoração e coordenação. **Referência: 00:02:53–00:03:45.**
-- [X] Preservar a possibilidade de múltiplos coordenadores responsáveis pelo mesmo evento. **Referência: 00:03:58–00:04:28.**
 
 ## 2. Gerenciamento de eventos
 
-- [X] Adicionar ao evento uma opção para ativar ou desativar o **Teste de etiquetagem**. **Referência: 00:04:38–00:05:02.**
-- [x] Permitir configurar no evento a regra de formação/abrangência das etiquetas, incluindo autorização local e autorização válida para todos os locais aplicáveis. **Referência: 00:04:51–00:05:11.**
-- [X] Substituir o campo livre **Local** do evento por dois campos controlados: **UF** e **Cidade/Município**. A cidade deverá ser escolhida em uma lista, evitando grafias diferentes para o mesmo município. **Referência: 00:09:34–00:12:50.**
-- [X] Manter o termo **Local** para a posição física de uma estação, como estádio, tribuna de imprensa, centro de monitoração ou área externa. **Referência: 00:09:52–00:12:40.**
-- [X] Manter os dados históricos existentes ao alterar os campos de localização do evento. **Referência: 00:12:52–00:13:04.**
-- [X] Recolher/ocultar os formulários detalhados de inclusão e edição. Os campos devem abrir somente quando o usuário clicar em **Novo**, **Editar** ou **Detalhes**. **Referência: 00:13:04–00:14:57.**
 - [ ] Adicionar filtros à listagem de eventos, pelo menos por ano e nome/evento. **Referência: 00:15:02–00:15:37.**
 - [ ] Implementar paginação na listagem de eventos para suportar o crescimento do histórico ao longo dos anos. **Referência: 00:15:17–00:15:43.**
 - [ ] Cadastrar a escala de trabalho dos fiscais por evento, com dias e/ou períodos de atuação. **Referência: 01:01:25–01:02:18.**
@@ -65,43 +53,17 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 3. Estações de monitoração
 
-- [X] Separar claramente **Nome da estação** e **Local da estação**. O nome deve conter identificações como `RFeye 1`, `RFeye 2` ou `ETM`; o local deve descrever onde ela está instalada. **Referência: 00:23:07–00:23:52 e 00:25:15–00:26:54.**
-- [x] Mostrar uma coluna **Local** na listagem das estações vinculadas ao evento. **Referência: 00:06:03–00:06:52.**
-- [X] Manter o local da estação como texto livre, permitindo descrições específicas como “Tribuna de imprensa” ou “Área externa do Maracanã”. **Referência: 00:26:19–00:27:59.**
-- [X] Manter latitude e longitude como campos independentes do texto de local. Não preencher automaticamente o local com endereço obtido das coordenadas. **Referência: 00:26:00–00:28:32.**
 - [ ] Utilizar as coordenadas futuramente para mostrar as estações em um mapa do evento e para integrações externas. **Referência: 00:27:15–00:28:32.**
-- [x] Aplicar ao cadastro/edição de estações o mesmo padrão recolhido usado nas demais telas: abrir detalhes somente quando necessário. **Referência: 00:28:46–00:29:08.**
 
 ## 4. Inserção de emissões
 
-- [X] Remover o preenchimento livre do fiscal. Preencher automaticamente com o usuário autenticado. **Referência: 00:30:05–00:30:35.**
-- [X] Permitir adicionar outro fiscal participante, pois as atividades normalmente podem ser realizadas em dupla. **Referência: 00:30:30–00:30:58.**
-- [X] Vincular obrigatoriamente cada emissão ao evento atualmente selecionado e preencher automaticamente cidade e demais dados do evento. **Referência: 00:31:40–00:33:40.**
-- [x] Manter o **Local da emissão** como texto livre, pois a captura pode ocorrer em camarote, box, área de mídia, rua ou outro ponto específico. **Referência: 00:31:57–00:32:39.**
-- [x] Tornar obrigatório o campo que identifica o equipamento/estação que realizou a captura. **Referência: 00:38:48–00:39:05.**
-- [x] Preencher a lista de origem da captura com todas as estações cadastradas no evento e com as opções genéricas **Analisador de espectro — campo** e **ETM — campo**. **Referência: 00:37:37–00:39:05.**
-- [X] Não bloquear a origem da captura com base no perfil do fiscal, pois um fiscal pode eventualmente operar uma estação diferente. **Referência: 00:36:26–00:38:48.**
-- [x] Manter a inserção manual em tempo real rápida e com poucos passos. **Referência: 00:35:47–00:36:26.**
-- [x] Restringir o campo de frequência a valores numéricos e acrescentar máscara/orientação visual de formato, incluindo unidade em MHz e exemplo do separador decimal esperado. **Referência: 00:39:20–00:41:05.**
-- [x] Padronizar a largura de banda por uma lista de valores usuais, começando em torno de 12,5 e incluindo valores como 25, 50, 75 e 100 MHz, evitando entradas livres inconsistentes e permitindo consultas posteriores por sobreposição. A lista completa ainda precisa ser validada. **Referência: 00:41:05–00:43:42.**
-- [x] Adicionar **SARC** e **Outros** às opções de serviço/faixa relacionada. **Referência: 00:43:34–00:44:55.**
 
 ## 5. Interferência, UTE e entidade responsável
 
-- [x] Exigir para todas as emissões a classificação de interferência: **Sim**, **Não** ou **Indefinido**. A escolha deve estar disponível independentemente da identificação da emissão. **Referência: 00:48:25–00:50:39.**
-- [x] Impedir a conclusão de uma emissão enquanto a interferência estiver como **Indefinido** ou enquanto existirem informações obrigatórias não resolvidas. **Referência: 00:50:34–00:51:12.**
-- [x] Padronizar o campo **UTE** como escolha **Sim/Não**. **Referência: 00:51:43–00:52:16.**
-- [X] Quando UTE for **Sim**, exibir os campos **Processo SEI** e **Ato UTE** e exigir o preenchimento de pelo menos um deles. Quando UTE for **Não**, esses campos devem ficar ocultos ou desabilitados. **Referência: 00:52:16–00:52:55.**
 - [ ] Estruturar a entidade responsável em campos separados, evitando um único texto livre: **Entidade**, indicação de **Estrangeiro**, **CNPJ**, **Contato** e **Observações**. **Referência: 00:55:21–00:57:14.**
 
 ## 6. Pendências e tela do coordenador
 
-- [x] Criar o fluxo de ticket/pendência para que emissões e ocorrências que necessitem tratamento cheguem primeiro à tela do coordenador. **Referência: 00:19:27–00:19:41 e 00:51:12–00:51:36.**
-- [x] Fazer o coordenador visualizar todas as pendências do evento, realizar a triagem e decidir quais serão enviadas para campo. **Referência: 00:57:27–00:59:14.**
-- [x] Permitir que o coordenador atribua cada pendência a um fiscal disponível na escala. **Referência: 00:58:20–01:02:18.**
-- [x] Fazer o fiscal visualizar somente as pendências que lhe foram atribuídas; o coordenador deve visualizar todas. **Referência: 00:59:19–01:01:30.**
-- [x] Manter o botão/tela **Tratar emissões pendentes**, alterando quantidade e conteúdo conforme o perfil do usuário. **Referência: 00:59:14–00:59:49.**
-- [x] Criar telas ou modos distintos para a triagem do coordenador e para o tratamento executado pelo fiscal. **Referência: 01:05:54–01:07:33.**
 - [ ] Dar prioridade visual máxima às ocorrências interferentes, utilizando alerta, triângulo vermelho ou ícone de exclamação. **Referência: 00:51:23–00:51:36 e 00:57:51–00:58:20.**
 - [ ] Manter na tela de trabalho apenas itens abertos. Itens concluídos devem sair da fila, mas permanecer disponíveis no histórico. **Referência: 01:08:48–01:09:41.**
 - [ ] Disponibilizar a ação **Salvar e próxima**, gravando o tratamento atual e avançando diretamente para a próxima pendência aberta. **Referência: 01:08:40–01:09:03.**
@@ -110,26 +72,15 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 7. Ocorrências especiais
 
-- [X] Renomear o módulo **BSR/Jammer e ERB Fake** para **Ocorrências especiais**. **Referência: 01:10:34–01:12:26.**
-- [X] Tornar o módulo genérico para fatos excepcionais, não apenas interferências: Jammer, ERB Fake, reclamações externas, falhas de Wi‑Fi, incêndios que afetem equipamentos e outras situações relevantes. **Referência: 01:10:49–01:12:19.**
-- [X] Encaminhar ocorrências especiais que exijam ação para o fluxo de tickets do coordenador. **Referência: 00:19:27–00:19:41.**
-- [x] Para Jammer de faixa larga, permitir o registro da faixa percebida e evidências nas observações/fotos, sem obrigar uma frequência única. **Referência: 00:18:39–00:19:27.**
 
 ## 8. Teste de etiquetagem
 
-- [x] Manter os tipos de pessoa **Física**, **Jurídica** e **Estrangeira**, exibindo CPF somente para pessoa física, CNPJ somente para pessoa jurídica e nenhum dos dois para estrangeiro. **Referência: 01:13:21–01:13:43.**
-- [x] Reduzir digitação repetitiva oferecendo consulta, autocomplete ou seleção de dados cadastrados anteriormente, especialmente entidade, contato e outros dados recorrentes. **Referência: 01:14:01–01:15:09.**
-- [x] Preencher automaticamente o evento/local de etiquetagem conforme o evento e a escala/atribuição do fiscal, evitando que o mesmo local seja digitado dezenas de vezes. **Referência: 01:15:09–01:18:30.**
-- [x] Quando o fiscal puder atuar em mais de um local no mesmo dia, oferecer seleção do local atual ou avaliar uso de localização do dispositivo. Essa forma final ficou pendente de definição. **Referência: 01:17:27–01:18:30.**
 - [ ] Restringir o fiscal aos testes de etiquetagem dos eventos/locais para os quais foi escalado. **Referência: 01:16:44–01:18:04.**
 - [ ] Tratar etiquetas locais e globais de forma diferente: uma etiqueta local vale apenas para o evento/local correspondente; uma etiqueta “permitida em todos os estádios” deve ser cadastrada uma única vez e aparecer na consulta de todos os eventos. **Referência: 01:18:38–01:20:08.**
-- [x] Corrigir o nome do campo **Equipamento homologado** para **Tipo de etiqueta**, pois o campo representa a etiqueta atribuída e não a homologação do equipamento. **Referência: 01:20:14–01:20:25.**
-- [x] Manter os tipos de etiqueta **Permitido**, **Permitido em todos os estádios** e **Não permitido**. **Referência: 01:20:09–01:20:36.**
 - [ ] Exibir e exigir o campo **Número da etiqueta** quando qualquer tipo de etiqueta for selecionado. **Referência: 01:20:36–01:21:03.**
 - [ ] Ao digitar a frequência no teste de etiquetagem, consultar automaticamente as emissões já cadastradas, inclusive as inseridas pelos fiscais de campo. **Referência: 00:55:53–00:57:21 e 01:21:03–01:22:11.** (apenas alertar)
 - [ ] Detectar conflito por intervalo, considerando frequência central e largura de banda, e alertar também quando houver sobreposição parcial entre emissões. **Referência: 00:41:59–00:42:24 e 01:21:03–01:22:11.**
 - [ ] Corrigir a validação de conflito para que ela avise o usuário já durante a inclusão. O sistema não deve apenas impedir a gravação silenciosamente nem deixar o aviso restrito à edição. **Referência: 01:22:15–01:23:14.**
-- [x] Priorizar agilidade na tela de etiquetagem, com o menor número possível de campos e operações, pois haverá filas e grande volume de registros. **Referência: 01:17:15–01:17:24.**
 
 ## 9. Integrações e relatórios futuros
 
@@ -174,41 +125,21 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 1. Reprovação, reiteração e histórico do ticket
 
-- [x] Ao reprovar/devolver um ticket, exigir e armazenar a justificativa do coordenador com o motivo da reprovação. A justificativa deve acompanhar o ticket quando ele voltar ao fiscal. **Referência: 00:00:28–00:01:05.**
-- [x] Registrar e exibir qual coordenador realizou a reprovação/devolução. A fala inicial menciona a pessoa que aprovou, mas a confirmação posterior especifica o coordenador que reprovou. **Referência: 00:00:42–00:01:09.**
-- [x] Diferenciar o ticket devolvido de uma pendência comum: usar um estado de reiteração — sugerido como **Pendência reiterada** ou **Pendente — reiteração** — e aplicar um indicativo visual na lista do fiscal para mostrar que o ticket já foi reprovado e retornou. **Referência: 00:00:51–00:01:29.**
 
 ## 2. Incidentes: nomenclatura, envio e tratamento pela coordenação
 
-- [x] Renomear o módulo **Ocorrências especiais** para **Incidentes**, atualizando cartão do menu, breadcrumb, títulos, formulário, listagens e área da coordenação. O nome “Incidentes” foi aceito pelos participantes. **Referência: 00:15:58–00:17:06.**
-- [x] Encaminhar todo incidente registrado para a coordenação. No estado demonstrado, o registro era salvo no banco, mas não aparecia para ninguém tratar. **Referência: 00:04:15–00:05:21.**
-- [x] Dar destaque e prioridade aos incidentes na tela do coordenador, acima das emissões rotineiras, pois podem representar bloqueador de sinal, interferência prejudicial, falha de sensor/RFI, incêndio, queda de energia ou outro fato urgente. **Referência: 00:05:22–00:06:30 e 00:11:27–00:12:10.**
-- [x] Criar uma área própria de **Incidentes** na coordenação — aba, bloco ou lista separada — com identificadores próprios, deixando evidente que um incidente é diferente de uma emissão. **Referência: 00:10:47–00:11:48 e 00:13:03–00:14:43.**
-- [x] Permitir ao coordenador transformar um incidente em ticket e encaminhá-lo a um ou mais fiscais para tratamento. **Referência: 00:05:30–00:06:45 e 00:12:18–00:12:58.**
-- [x] Exibir, entre parênteses no nome das abas **Tickets** e **Incidentes**, a quantidade de itens pendentes, inclusive zero, para chamar a atenção do coordenador quando houver trabalho. **Referência: 00:14:44–00:15:53.**
-- [x] Gravar automaticamente, a partir do login, o fiscal que registrou o incidente e mostrar essa informação em uma coluna da listagem da coordenação. O objetivo é permitir contato para esclarecimentos e eventual devolução da demanda. **Referência: 00:24:05–00:24:47.**
 
 ## 3. Tipos de incidente
 
-- [x] Trocar **Jammer** por uma descrição compreensível ao fiscal: **Bloqueador de sinal (BSR)**. **Referência: 00:18:01–00:18:35.**
-- [x] Trocar **Reclamação externa** por **Reclamação de interferência**. **Referência: 00:02:52–00:03:03 e 00:17:18–00:17:28.**
-- [x] Trocar **Falha de Wi‑Fi** por **Falha de rede**, com exemplos entre parênteses, como Wi‑Fi, SMP e outros. **Referência: 00:02:34–00:02:40 e 00:17:27–00:17:35.**
-- [x] Substituir o rótulo específico **Incêndio que afeta equipamentos** por **Incidente crítico**, abrangendo, por exemplo, incêndio e queda de energia. **Referência: 00:02:08–00:03:28.**
-- [x] Incluir **Problemas com equipamentos da agência** para casos como sensor ou RFI inoperante que exijam verificação física. **Referência: 00:03:32–00:04:05 e 00:17:37–00:17:47.**
 
 ## 4. Formulário do incidente e seleção de local
 
-- [x] Tornar **Observações** obrigatório no registro de incidente, assim como **Local**, evitando demandas sem explicação suficiente para tratamento. **Referência: 00:18:42–00:18:51 e 00:23:18–00:24:01.**
-- [x] Tornar o comando de seleção no mapa compreensível em dispositivos sem hover. O botão atual, representado por “+”, deve receber texto curto visível — como **Escolher no mapa** ou **Selecionar local no mapa** — ou um ícone inequívoco de mapa/globo, preservando o layout responsivo de celular e tablet. **Referência: 00:19:05–00:19:30 e 00:21:38–00:22:44.**
 
 ## 5. Auditoria
 
-- [x] Concluir e depurar o log de auditoria das alterações. O log foi descrito como ainda não totalmente implementado; depois de concluído, o registro básico das alterações foi considerado suficiente para a rastreabilidade desta etapa. **Referência: 00:31:19–00:32:18.**
 
 ## 6. Layout e validação das alterações
 
-- [x] Nos cartões de **Módulos do sistema**, centralizar/alinhar verticalmente o ícone em relação ao conjunto de título e descrição. **Referência: 00:32:45–00:32:52.**
-- [x] Fazer uma revisão de regressão dos fluxos já funcionais depois das mudanças. Foi relatado que correções recentes estavam alterando ou desfazendo funcionalidades que antes funcionavam. **Referência: 00:32:58–00:34:50.**
 
 ## 7. Evolução explicitamente futura
 
@@ -216,19 +147,9 @@ Modificações solicitadas — AppGrandesEventos
 
 ## 8. Comportamentos confirmados — não alterar agora
 
-- [X] Manter o mapa inicialmente centralizado nas coordenadas do evento, e não no GPS do aparelho. O usuário escolhe o ponto e o sistema faz a geocodificação reversa; o comportamento foi demonstrado e aprovado. **Referência: 00:19:31–00:21:41.**
-- [X] Manter a possibilidade de o coordenador atribuir ou reatribuir um ticket a um ou mais fiscais participantes do evento. O recurso já existe na edição do ticket; os nomes vêm dos participantes cadastrados no evento, não da escala, que ainda não estava implementada. **Referência: 00:25:32–00:29:24.**
-- [X] Manter a visualização do mesmo ticket por todos os fiscais aos quais ele foi atribuído. **Referência: 00:29:24–00:29:39.**
-- [X] Não implementar agora bloqueio de edição simultânea nem restauração automática quando dois fiscais alterarem o mesmo ticket. O último salvamento pode sobrescrever o anterior; a orientação operacional é que apenas uma pessoa da equipe faça o preenchimento. **Referência: 00:29:47–00:32:23.**
-- [X] Manter **Outra situação relevante** como opção coringa para casos não contemplados pelos demais tipos. **Referência: 00:17:11–00:17:18 e 00:17:47–00:17:57.**
 
 ## 9. Definições ainda necessárias
 
-- [x] Definir o texto final do estado de reiteração: **Pendência reiterada**, **Pendente — reiteração** ou outro rótulo equivalente. **Referência: 00:00:51–00:01:14.**
-- [x] Confirmar a lista final e a ordem dos tipos. **Incidente crítico** foi aprovado para incêndio/queda de energia, e **Problemas com equipamentos da agência** também foi aprovado; porém, na recapitulação final da lista, o primeiro não foi repetido. **Referência: 00:02:08–00:04:05 e 00:17:18–00:17:57.**
-- [x] Confirmar se todo incidente deve gerar ticket automaticamente ou se deve primeiro aparecer como alerta/lista para o coordenador, que decide se o converte em ticket. A formulação predominante foi “opção de virar um ticket”. **Referência: 00:04:49–00:06:45.**
-- [x] Fechar a solução visual do seletor de mapa: texto compacto, ícone de mapa/globo ou combinação dos dois. O requisito funcional é que o controle seja reconhecível sem passar o mouse. **Referência: 00:19:05–00:19:30 e 00:21:38–00:22:44.**
-- [x] Confirmar o acrônimo que acompanhará os exemplos de **Falha de rede**; o áudio aparenta indicar **SMP**. **Referência: 00:02:34–00:02:40 e 00:17:27–00:17:35.**
 
 ## 10. Observações do levantamento
 
@@ -271,13 +192,9 @@ Relatório organizado por assunto a partir da transcrição automática da grava
 ## 1. Acesso, usuários e perfis
 
 - [ ] Rever o fluxo inicial para permitir que o coordenador acesse o sistema e crie um evento sem precisar selecionar previamente outro evento. A escolha do evento de trabalho deve ocorrer em uma etapa compatível com esse fluxo; foi sugerido disponibilizar o cadastro de evento na entrada do sistema. **Referência: 00:03:45–00:06:50.**
-- [x] Vincular as funções do fiscal ao evento, e não ao cadastro geral da pessoa. O mesmo fiscal deve poder atuar como coordenador em um evento e ter funções diferentes em outros. **Referência: 00:08:32–00:12:31.**
-- [x] Iniciar a composição da equipe de um novo evento sem herdar automaticamente os fiscais e as funções de outro evento. Selecionar os participantes e atribuir seus papéis para o evento que está sendo cadastrado. **Referência: 00:11:24–00:13:37.**
-- [x] Rever a habilitação dos menus e das funcionalidades conforme o perfil. **Ponto a confirmar:** houve divergência sobre o coordenador ter acesso automático a todas as operações ou precisar receber também os perfis operacionais; a discussão prosseguiu sem fechar essa regra de maneira inequívoca. **Referência: 00:38:57–00:41:39.**
 
 ## 2. Cadastro, localidades e encerramento dos eventos
 
-- [x] Incluir no cadastro/gerenciamento de eventos a seleção de localização pelo mapa para obter latitude e longitude, evitando que o usuário tenha que descobrir e digitar as coordenadas manualmente. **Referência: 00:06:01–00:08:23.**
 - [ ] Atender eventos realizados em várias sedes, preservando a operação própria de cada local: coordenador, equipe, escala e etiquetagem. Foram citados os estádios de diferentes cidades e o IBC como locais com dinâmicas distintas. **Referência: 00:14:24–00:20:47.**
 - [ ] Permitir consultas tanto por sede/local quanto abrangendo o conjunto de um grande evento, como a Copa do Mundo. As etiquetas válidas para várias sedes precisam poder ser localizadas pelas equipes dessas sedes. **Referência: 00:16:26–00:23:18.**
 - [ ] Disponibilizar filtros na consulta para selecionar os locais/eventos abrangidos e, quando pertinente, o tipo de etiqueta. **Solução técnica em aberto:** discutiram-se agrupamento de eventos e agregação na consulta; não ficou estabelecida a necessidade de duplicar registros entre sedes. **Referência: 00:19:19–00:23:18.**
@@ -287,7 +204,6 @@ Relatório organizado por assunto a partir da transcrição automática da grava
 ## 3. Escalas e jornadas dos fiscais
 
 - [ ] Alertar quando uma jornada for cadastrada fora do período do evento, solicitando confirmação em vez de bloquear a operação. Foi lembrado que a fiscalização pode envolver montagem ou retirada de equipamentos antes ou depois do evento. **Referência: 00:25:57–00:27:35.**
-- [x] Melhorar a visualização da escala para representar a jornada de cada fiscal como um bloco contínuo, evitando repetir o nome e as mesmas informações a cada hora. A agenda do Teams foi citada como referência visual. **Referência: 00:27:35–00:29:48.**
 - [ ] Preservar e exibir horários com minutos, sem limitar ou arredondar as jornadas às divisões de hora da grade. Manter a indicação do horário exato quando a representação visual não for suficiente. **Referência: 00:29:10–00:30:16.**
 - [ ] Exibir o total de horas atribuídas a cada fiscal, permitindo ao coordenador acompanhar a distribuição da carga de trabalho; a soma semanal foi citada como exemplo. **Referência: 00:30:16–00:30:45.**
 - [ ] Disponibilizar a consulta da escala também aos fiscais, para que possam verificar os dias e horários em que trabalharão. **Referência: 00:30:45–00:31:15.**
@@ -296,31 +212,15 @@ Relatório organizado por assunto a partir da transcrição automática da grava
 
 ## 4. Cadastro de estações
 
-- [ ] Acrescentar uma busca por endereço ou nome do local no mapa do cadastro de estações, como alternativa à localização manual por navegação e clique. **Referência: 00:35:43–00:36:22.**
 
 ## 5. Formulário de teste e etiquetagem
 
-- [x] Preencher automaticamente o local a partir do evento selecionado pelo usuário e deixá-lo somente para leitura. O local deve representar o evento/sede ao qual a etiqueta se aplica, evitando preenchimento livre e interpretações diferentes entre os fiscais. **Referência: 00:42:28–00:46:48.**
-- [x] Separar os dados de contato em campos próprios, especialmente **telefone** e **e-mail**, permitindo informar os meios disponíveis. O telefone foi destacado pela utilidade na comunicação em campo, inclusive por WhatsApp e com números internacionais. **Referência: 00:49:27–00:50:33.**
-- [x] Incluir o **nome do responsável/pessoa de contato**, separado da entidade, do telefone e do e-mail, para que o fiscal saiba quem procurar. **Referência: 00:50:30–00:51:06.**
-- [x] Agrupar os campos relacionados à etiqueta na mesma região do formulário, aproximando o tipo/status da etiqueta de sua numeração. Corrigir o afastamento entre rótulos, opções e campos que estava provocando interpretações equivocadas. **Referência: 00:51:52–00:55:55; 00:59:19–01:00:18.**
-- [x] Identificar visualmente os campos obrigatórios antes da tentativa de salvar, por exemplo com asterisco vermelho, em vez de informar a obrigatoriedade apenas após o erro de validação. **Referência: 01:32:15–01:33:33.**
-- [x] Simplificar a disposição dos campos auxiliares de inclusão de frequências. **Sugestão discutida:** abrir esses campos em uma janela/modal ao adicionar uma frequência e recolhê-los depois, reduzindo a quantidade de controles permanentes na tela. **Referência: 01:33:33–01:34:12.**
 
 ## 6. Tipos, numeração e disponibilidade das etiquetas
 
-- [x] Identificar a opção de etiqueta **Permitido** com o local/evento correspondente, preenchido automaticamente, para ficar claro a que sede a autorização se refere. As opções de alcance mais amplo devem manter sua distinção. **Referência: 00:53:30–00:55:55.**
-- [x] Associar corretamente o tipo de etiqueta à sua numeração, inclusive quando o registro abranger vários equipamentos iguais. A sequência informada deve corresponder ao tipo selecionado. **Referência: 00:55:55–01:00:18.**
-- [x] Remover os campos de prefixo e sufixo da numeração das etiquetas; foi esclarecido que o identificador usado será numérico. **Referência: 00:56:25–00:57:53; 01:00:18–01:01:24.**
-- [x] Aplicar a apresentação numérica com zeros à esquerda, de acordo com o padrão final da etiqueta (definido em 5 dígitos, ex.: 00150). **Referência: 01:00:50–01:02:24.**
-- [x] Cadastrar as faixas de numeração disponíveis para o evento/local na tela "Gerenciar Eventos" quando houver etiquetagem, respeitando a associação com o tipo de etiqueta. **Referência: 00:57:23–01:00:18; 01:30:07–01:31:42.**
-- [x] Validar os números informados contra as faixas cadastradas, impedindo o uso de números fora do intervalo autorizado e de números já utilizados. **Referência: 00:57:23–00:59:17; 01:30:07–01:32:15.**
-- [x] Atualizar a disponibilidade à medida que as etiquetas forem utilizadas e sugerir o próximo número disponível ao continuar o cadastro de equipamentos. **Referência: 01:29:33–01:30:37; 01:31:08–01:32:15.**
-- [x] Permitir consultar, na própria rotina de etiquetagem (em um popup), quais números ou faixas já estão ocupados. **Referência: 01:31:42–01:32:15.**
 
 ## 7. Frequências, largura de banda e conflitos
 
-- [x] Concluir a consulta de frequências já registradas em outros equipamentos e nas emissões cadastradas pelos fiscais, apresentando alertas que ajudem a identificar possíveis conflitos/interferências. Quando houver outro registro, informar os dados disponíveis para identificá-lo, como entidade, equipamento e responsável pelo cadastro. **Referência: 01:02:26–01:06:26.**
 - [ ] Corrigir a validação para detectar a **sobreposição das faixas ocupadas**, considerando frequência central e largura de banda, em vez de comparar somente frequências centrais idênticas. Calcular os limites inferior e superior com metade da largura de banda para cada lado da frequência central. **Referência: 01:05:55–01:10:11.**
 - [ ] Tratar a sobreposição como aviso, permitindo prosseguir quando ela fizer sentido na programação dos canais; a existência de sobreposição não deve, por si só, impedir o cadastro. **Referência: 01:08:25–01:09:33.**
 - [ ] Ordenar automaticamente a lista de frequências pela frequência central a cada inclusão, facilitando a leitura e a identificação dos canais. **Referência: 01:10:11–01:10:47.**
@@ -329,9 +229,9 @@ Relatório organizado por assunto a partir da transcrição automática da grava
 
 ## 8. Tipos de equipamento e uso em campo
 
-- [ ] Substituir a classificação genérica **portátil/base/repetidor** por tipos que identifiquem o equipamento, como **rádio**, **microfone sem fio** e **câmera/transmissor de vídeo**. As características complementares podem ser registradas em observações. **Referência: 01:13:43–01:14:53.**
-- [ ] Usar uma lista padronizada de tipos de equipamento, evitando variações de escrita. Incluir a opção **Outros**, com detalhamento em observações. **Dependência:** definir a lista de tipos com a equipe. **Referência: 01:14:53–01:16:14.**
-- [ ] Verificar e ajustar o funcionamento em celular/tablet das telas usadas em campo, especialmente teste e etiquetagem, abordagem e consultas. A adaptação da tela de coordenação ao celular não foi apontada como prioridade. **Referência: 01:15:23–01:17:13.**
+- [x] Substituir a classificação genérica **portátil/base/repetidor** por tipos que identifiquem o equipamento, como **rádio**, **microfone sem fio** e **câmera/transmissor de vídeo**. As características complementares podem ser registradas em observações. **Referência: 01:13:43–01:14:53.**
+- [x] Usar uma lista padronizada de tipos de equipamento, evitando variações de escrita. Incluir a opção **Outros**, com detalhamento em observações. **Dependência:** definir a lista de tipos com a equipe. **Referência: 01:14:53–01:16:14.**
+- [x] Verificar e ajustar o funcionamento em celular/tablet das telas usadas em campo, especialmente teste e etiquetagem, abordagem e consultas. A adaptação da tela de coordenação ao celular não foi apontada como prioridade. **Referência: 01:15:23–01:17:13.**
 
 ## 9. Reaproveitamento de cadastros e integração com UTE
 

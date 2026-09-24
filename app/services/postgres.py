@@ -2413,20 +2413,29 @@ def excluir_faixa_numeracao_etiqueta(
 def verificar_etiqueta_existente(
     _client=None,
     numero_etiqueta=None,
+    numero_final=None,
     excluir_id=None,
     permissao=None,
     evento_id=None,
 ) -> Optional[dict]:
-    """Retorna evento e data do primeiro cadastro da etiqueta, se houver.
+    """Retorna o primeiro cadastro que sobrepõe a faixa de etiquetas informada.
 
     A checagem de duplicidade respeita o tipo da etiqueta: uma etiqueta
     "permitido" (válida só no evento/local) só conflita com outra etiqueta
-    de mesmo número dentro do mesmo evento; já uma etiqueta "permitido em
-    todos os estádios" conflita com qualquer outra etiqueta de mesmo número
-    em qualquer evento, pois vale para todas as sedes.
+    dentro do mesmo evento; já uma etiqueta "permitido em todos os estádios"
+    conflita com qualquer outra etiqueta em qualquer evento, pois vale para
+    todas as sedes. A quantidade de equipamentos transforma cada cadastro em
+    um intervalo contínuo de números.
     """
     numero = str(numero_etiqueta or "").strip()
     if not numero:
+        return None
+    try:
+        inicio = int(numero)
+        fim = int(numero_final) if numero_final is not None else inicio
+    except (TypeError, ValueError):
+        return None
+    if fim < inicio:
         return None
     escopo_local = str(permissao or "").strip() == "permitido"
     try:
@@ -2437,23 +2446,33 @@ def verificar_etiqueta_existente(
                           SELECT e.nome AS evento,
                               to_char(t.criado_em, 'DD/MM/YYYY') AS data,
                               t.entidade,
-                              t.cpf_cnpj
+                              t.cpf_cnpj,
+                              CAST(t.numero_etiqueta AS BIGINT) AS numero_inicial,
+                              CAST(t.numero_etiqueta AS BIGINT)
+                                  + GREATEST(COALESCE(t.numero_equipamentos, 1), 1)
+                                  - 1 AS numero_final
                     FROM testes_etiquetagem t
                     JOIN eventos e ON e.id = t.evento_id
-                    WHERE trim(t.numero_etiqueta) = trim(:numero)
-                                            AND (
-                                                        CAST(:excluir_id AS BIGINT) IS NULL
-                                                        OR t.id <> CAST(:excluir_id AS BIGINT)
-                                                    )
-                                            AND (
-                                                        NOT :escopo_local
-                                                        OR t.evento_id = CAST(:evento_id AS BIGINT)
-                                                    )
+                    WHERE t.numero_etiqueta ~ '^[0-9]+$'
+                      AND CAST(t.numero_etiqueta AS BIGINT) <= :fim
+                      AND CAST(t.numero_etiqueta AS BIGINT)
+                          + GREATEST(COALESCE(t.numero_equipamentos, 1), 1)
+                          - 1 >= :inicio
+                      AND (
+                          CAST(:excluir_id AS BIGINT) IS NULL
+                          OR t.id <> CAST(:excluir_id AS BIGINT)
+                      )
+                      AND (
+                          NOT :escopo_local
+                          OR t.permissao = 'todos'
+                          OR t.evento_id = CAST(:evento_id AS BIGINT)
+                      )
                     ORDER BY t.criado_em, t.id
                     LIMIT 1
                 """),
                     {
-                        "numero": numero,
+                        "inicio": inicio,
+                        "fim": fim,
                         "excluir_id": excluir_id,
                         "escopo_local": escopo_local,
                         "evento_id": evento_id,

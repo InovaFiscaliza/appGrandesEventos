@@ -33,6 +33,25 @@
   const popupFrequencia = document.querySelector('#popup-frequencia');
   const confirmarAdicionar = document.querySelector('#confirmar-adicionar-frequencia');
   const fecharPopupFrequencia = document.querySelector('#fechar-popup-frequencia');
+  const popupErro = document.querySelector('#popup-erro-teste-etiquetagem');
+  const fecharPopupErro = document.querySelector('#fechar-popup-erro-teste-etiquetagem');
+  const confirmarPopupErro = document.querySelector('#confirmar-popup-erro-teste-etiquetagem');
+
+  function fecharPopupErroFn() {
+    if (popupErro) popupErro.hidden = true;
+  }
+
+  if (popupErro && fecharPopupErro && confirmarPopupErro) {
+    fecharPopupErro.addEventListener('click', fecharPopupErroFn);
+    confirmarPopupErro.addEventListener('click', fecharPopupErroFn);
+    popupErro.addEventListener('click', (evento) => {
+      if (evento.target === popupErro) fecharPopupErroFn();
+    });
+    document.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Escape' && !popupErro.hidden) fecharPopupErroFn();
+    });
+    fecharPopupErro.focus();
+  }
 
   if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaInicio || !etiquetaFinal || !numeroEquipamentos || !form || !adicionar || !remover || !popupFrequencia || !confirmarAdicionar || !fecharPopupFrequencia) return;
 

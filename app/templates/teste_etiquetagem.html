@@ -6,7 +6,20 @@
     <h5 class="teq-title">{% if modo_consulta %}Consultar registros de teste e etiquetagem{% else %}Teste e etiquetagem{% endif %}</h5>
 
     {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-    {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+    {% if flash_error %}
+    <div id="popup-erro-teste-etiquetagem" class="popup-mapa-estacao popup-frequencia" role="alertdialog" aria-modal="true" aria-labelledby="titulo-popup-erro-teste-etiquetagem">
+        <div class="popup-mapa-estacao-conteudo popup-frequencia-conteudo">
+            <div class="popup-mapa-estacao-cabecalho">
+                <h2 id="titulo-popup-erro-teste-etiquetagem">Não foi possível salvar</h2>
+                <button type="button" id="fechar-popup-erro-teste-etiquetagem" class="popup-mapa-estacao-fechar" aria-label="Fechar">×</button>
+            </div>
+            <div class="flash flash-error" role="alert">{{ flash_error }}</div>
+            <div class="popup-frequencia-acoes">
+                <button type="button" id="confirmar-popup-erro-teste-etiquetagem" class="btn teq-btn">Fechar</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     {% if modo_consulta %}
     {% set registros = registros | default([]) %}
@@ -183,11 +196,16 @@
                     <div class="select-shell">
                     <select id="tipo-equipamento" name="tipo_equipamento" class="form-control teq-control{% if 'tipo_equipamento' in values.invalid_fields %} teq-invalid{% endif %}" required>
                         <option value="" {% if not values.tipo_equipamento %}selected{% endif %}></option>
-                        <option {% if values.tipo_equipamento == "Repetidora" %}selected{% endif %}>Repetidora</option>
-                        <option {% if values.tipo_equipamento == "Portátil" %}selected{% endif %}>Portátil</option>
-                        <option {% if values.tipo_equipamento == "Base" %}selected{% endif %}>Base</option>
+                        <option {% if values.tipo_equipamento == "Rádio" %}selected{% endif %}>Rádio</option>
+                        <option {% if values.tipo_equipamento == "Microfone sem fio" %}selected{% endif %}>Microfone sem fio</option>
+                        <option {% if values.tipo_equipamento == "Câmera/transmissor de vídeo" %}selected{% endif %}>Câmera/transmissor de vídeo</option>
+                        <option {% if values.tipo_equipamento == "Outro" %}selected{% endif %}>Outro</option>
+                        {% if values.tipo_equipamento and values.tipo_equipamento not in ["Rádio", "Microfone sem fio", "Câmera/transmissor de vídeo", "Outro", "Repetidora", "Portátil", "Base"] %}
+                        <option selected>{{ values.tipo_equipamento }}</option>
+                        {% endif %}
                     </select>
                     </div>
+                    <small>Características complementares podem ser descritas em Observações.</small>
                 </div>
 
                 <fieldset class="teq-label-panel teq-order-12">

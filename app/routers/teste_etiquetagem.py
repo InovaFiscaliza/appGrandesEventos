@@ -438,6 +438,9 @@ async def post_teste_etiquetagem(request: Request):
     values["modo_consulta"] = bool(form.get("modo_consulta"))
     registro_id = form.get("registro_id")
 
+    if erros_imagens:
+        return _render_form(request, values, " ".join(erros_imagens), ["imagens"])
+
     frequencia = _frequencia_da_etiqueta(values["frequencia_mhz"])
     passo_khz = _largura_da_etiqueta(values["passo"])
 
@@ -468,6 +471,11 @@ async def post_teste_etiquetagem(request: Request):
     etiqueta_existente = (
         verificar_etiqueta_existente(
             numero_etiqueta=values["numero_etiqueta"],
+            numero_final=(
+                numero_final
+                if values["permissao"] != "nao" and values["numero_etiqueta"].isdigit()
+                else None
+            ),
             excluir_id=registro_id,
             permissao=values["permissao"],
             evento_id=evento_id,
@@ -479,9 +487,10 @@ async def post_teste_etiquetagem(request: Request):
         return _render_form(
             request,
             values,
-            "Etiqueta já cadastrada no evento "
+            "Faixa de etiquetas já utilizada no evento "
             f"{etiqueta_existente['evento']} em {etiqueta_existente['data']}. "
-            "Utilizada por: "
+            f"Intervalo ocupado: {etiqueta_existente['numero_inicial']} a "
+            f"{etiqueta_existente['numero_final']}. Utilizada por: "
             f"{etiqueta_existente['entidade'] or 'Nome não informado'} "
             f"(CPF/CNPJ: {etiqueta_existente['cpf_cnpj'] or 'não informado'}).",
             ["numero_etiqueta"],
