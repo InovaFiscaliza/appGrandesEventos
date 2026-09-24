@@ -110,7 +110,7 @@ async def get_criar_evento(request: Request):
             unidades_executantes=listar_unidades_executantes(),
             fiscais=listar_fiscais(int(editar_id) if evento else None),
             faixas_numeracao=(
-                listar_faixas_numeracao_etiqueta(int(editar_id)) if evento else []
+                listar_faixas_numeracao_etiqueta(evento_id=int(editar_id)) if evento else []
             ),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -190,7 +190,7 @@ async def post_criar_faixa_numeracao(request: Request, evento_id: int):
         faixa["permissao"] == permissao
         and faixa["numero_inicial"] == int(inicio_texto)
         and faixa["numero_final"] == int(fim_texto)
-        for faixa in listar_faixas_numeracao_etiqueta(evento_id)
+        for faixa in listar_faixas_numeracao_etiqueta(evento_id=evento_id)
     ):
         erro = "Esta faixa já está cadastrada para este evento e tipo de etiqueta."
 

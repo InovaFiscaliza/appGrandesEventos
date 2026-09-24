@@ -2,6 +2,9 @@
 
 Sistema de monitoração de espectro eletromagnético para grandes eventos (Carnaval, Moto GP, etc.).
 
+Para instalar a aplicação e uma cópia do banco em outro computador Windows
+com Podman Desktop, consulte a [automação de implantação](local_server/README.md).
+
 ## Stack
 
 - **Backend**: Python 3.13+, FastAPI + Jinja2

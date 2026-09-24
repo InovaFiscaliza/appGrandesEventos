@@ -103,6 +103,17 @@ requisitos/                # Documentação de requisitos
 - `sys.path.insert(0, ".")` necessário para executar scripts da raiz
 - Execução via `uv run scripts/<script>.py` ou `python <script>.py`
 
+### Implantação e migrações do banco
+
+- A automação de implantação fica em `local_server/`, na raiz do projeto.
+- Cada envio deve gerar uma cópia atual do banco local e dos fontes salvos.
+- Na primeira instalação em banco vazio, a cópia local fornece os dados iniciais.
+- Nas atualizações, preservar os registros do servidor: nunca substituir seus dados pelos do desenvolvimento.
+- Toda mudança de estrutura deve incluir uma nova migração SQL versionada em `local_server/migrations/`. Não editar migrações já publicadas.
+- Preservar dados e colunas existentes; não usar remoção de tabelas, colunas ou registros para ajustar o esquema.
+- Não executar o `db/schema.sql` legado na implantação: ele contém operações de remoção. Usar o migrador transacional da automação.
+- Validar migrações com dados existentes e manter recuperação da versão anterior em caso de falha.
+
 ## Regras de Estilo para Frontend
 
 - No FastAPI, botões e links seguem design consistente via `base.html`

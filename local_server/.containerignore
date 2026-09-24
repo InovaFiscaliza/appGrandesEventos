@@ -1,0 +1,14 @@
+**
+!Containerfile
+!pyproject.toml
+!uv.lock
+!main.py
+!anatel.png
+!app/
+!app/**
+!deployment/
+!deployment/**
+**/__pycache__/**
+**/*.pyc
+**/.env*
+**/secrets.toml

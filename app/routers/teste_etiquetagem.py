@@ -383,8 +383,8 @@ async def numeros_etiqueta_teste(request: Request):
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
     return JSONResponse(
         {
-            "faixas": listar_faixas_numeracao_etiqueta(int(evento_id)),
-            "ocupados": listar_numeros_etiqueta_ocupados(int(evento_id)),
+            "faixas": listar_faixas_numeracao_etiqueta(evento_id=int(evento_id)),
+            "ocupados": listar_numeros_etiqueta_ocupados(evento_id=int(evento_id)),
         }
     )
 
