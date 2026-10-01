@@ -2,7 +2,7 @@
 {% block content %}
 {% include "partials/header.html" %}
 
-<h5 class="consultar-orientacao">Consulte as emissões pendentes de identificação e histórico de modificações.</h5>
+<h5 class="consultar-orientacao">Consulte as emissões do evento e o histórico de modificações.</h5>
 
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
@@ -14,7 +14,7 @@
 <div id="bloco-select" class="pendencias-panel" style="display:none">
     <div class="pendencias-toolbar">
         <span id="progresso-pendencias" class="pendencias-count"></span>
-        <nav id="paginacao-pendencias" class="pendencias-pagination" aria-label="Paginação das emissões pendentes"></nav>
+        <nav id="paginacao-pendencias" class="pendencias-pagination" aria-label="Paginação das emissões do evento"></nav>
     </div>
     <div class="pendencias-table-wrap">
         <table class="pendencias-table">
@@ -38,8 +38,8 @@
     </div>
 </div>
 
-<div id="bloco-form" class="font-semi-bold" data-somente-leitura="{{ 'true' if eh_coordenador else 'false' }}" style="display:none">
-<h5 style="margin:0.75rem 0 0.5rem">{{ 'Consultar emissão' if eh_coordenador else 'Editar ocorrência' }}</h5>
+<div id="bloco-form" class="font-semi-bold" data-somente-leitura="false" style="display:none">
+<h5 style="margin:0.75rem 0 0.5rem">Editar emissão</h5>
 <div class="form-card rf-entry-card font-semi-bold">
     <form method="post" action="/consultar/salvar" id="form-consultar" class="rf-entry-form" enctype="multipart/form-data">
         <input type="hidden" name="row_key" id="f-row_key">
@@ -155,16 +155,14 @@
         <div class="btn-col consultar-acoes">
             <a href="/consultar" id="btn-consultar-historico" class="btn consultar-historico" aria-label="Consultar histórico de modificações">Consultar histórico de modificações</a>
             {% if not eh_coordenador %}<button type="button" id="btn-submeter-ticket" class="btn btn-submeter-ticket">📋 Submeter ao Coordenador</button>{% endif %}
-            {% if not eh_coordenador %}
             <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
             <button type="submit" class="btn" name="acao" value="salvar_proxima">Salvar e próxima</button>
-            {% endif %}
         </div>
     </form>
 </div>
 </div>
 
-<div id="msg-vazio" class="flash flash-success" style="display:none">✔️ Nenhuma pendência encontrada.</div>
+<div id="msg-vazio" class="flash flash-success" style="display:none">✔️ Nenhuma emissão encontrada.</div>
 
 <div id="consultar-voltar" class="consultar-voltar">
 </div>
@@ -172,7 +170,7 @@
 {% if offline_salvo %}
 <script type="application/json" id="offline-edicao-data">{{ offline_dados|tojson }}</script>
 {% endif %}
-<script src="/static/consultar.js?v=22"></script>
+<script src="/static/consultar.js?v=23"></script>
 <script src="/static/upload-imagens.js?v=4"></script>
 {% endblock %}
 

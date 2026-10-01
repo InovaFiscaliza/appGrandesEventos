@@ -87,6 +87,7 @@
                         <th>Local</th>
                         <th>Status</th>
                         <th>Concluída por</th>
+                        <th>Ação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -111,10 +112,11 @@
                         <td>{{ emissao.local_regiao or 'Não informado' }}</td>
                         <td>{{ emissao.situacao or '-' }}</td>
                         <td>{{ emissao.concluida_por or '-' }}</td>
+                        <td class="ticket-acoes"><a class="btn-ticket-mini" href="/consultar?emissao_id={{ emissao.id }}">Editar</a></td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="10">Nenhuma emissão aguardando inspeção da coordenação.</td>
+                        <td colspan="11">Nenhuma emissão aguardando inspeção da coordenação.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -157,7 +159,12 @@
                                 <button type="button" class="emissao-id-btn" data-emissao-id="{{ ocorrencia_id.strip() }}">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
                                 {% else %}-
                                 {% endfor %}
-                                {% if item.incidente_ids %}<br>Incidentes: {{ item.incidente_ids }}{% endif %}
+                                {% if item.incidente_ids %}
+                                <br>Incidentes:
+                                {% for incidente_id in item.incidente_ids.split(',') if incidente_id.strip() %}
+                                <a class="emissao-id-btn" href="/bsr-erb?editar={{ incidente_id.strip() }}&ticket_id={{ item.id }}" title="Editar incidente pelo ticket #{{ item.id }}">{{ incidente_id.strip() }}</a>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                                {% endif %}
                             </div>
                         </td>
                         <td>{{ item.local_regiao or 'Não informado' }}</td>
@@ -219,7 +226,12 @@
                                 <button type="button" class="emissao-id-btn" data-emissao-id="{{ ocorrencia_id.strip() }}">{{ ocorrencia_id.strip() }}</button>{% if not loop.last %}, {% endif %}
                                 {% else %}-
                                 {% endfor %}
-                                {% if item.incidente_ids %}<br>Incidentes: {{ item.incidente_ids }}{% endif %}
+                                {% if item.incidente_ids %}
+                                <br>Incidentes:
+                                {% for incidente_id in item.incidente_ids.split(',') if incidente_id.strip() %}
+                                <a class="emissao-id-btn" href="/bsr-erb?editar={{ incidente_id.strip() }}&ticket_id={{ item.id }}" title="Editar incidente pelo ticket #{{ item.id }}">{{ incidente_id.strip() }}</a>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                                {% endif %}
                             </div>
                         </td>
                         <td>{{ item.local_regiao or 'Não informado' }}</td>

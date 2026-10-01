@@ -12,10 +12,13 @@ from app.services.postgres import (
     listar_bsr_erb,
     listar_fiscais,
     listar_fiscais_evento,
+    listar_tickets_evento,
     obter_evento,
 )
 from app.utils.formatters import _img_b64, _normalize_coord, _valid_coord
 from app.config import (
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
+    STATUS_TICKET_PENDENTE,
     SITUACAO_CONCLUIDA_FISCAL,
     SITUACAO_PENDENTE,
     TITULO_PRINCIPAL,
@@ -58,7 +61,32 @@ def _fiscal_logado_id(request: Request) -> int | None:
 def _listar_registros_visiveis(request: Request, evento_id: int) -> list[dict]:
     if _eh_coordenador(request):
         return listar_bsr_erb(evento_id, fiscal_id=_fiscal_logado_id(request) or -1)
-    return listar_bsr_erb(evento_id, fiscal_id=_fiscal_logado_id(request) or -1)
+    return listar_bsr_erb(evento_id)
+
+
+def _ticket_autoriza_edicao_incidente(
+    request: Request, evento_id: int, incidente_id: int, ticket_id: int | None
+) -> bool:
+    fiscal_id = _fiscal_logado_id(request)
+    if ticket_id is None or fiscal_id is None:
+        return False
+    for ticket in listar_tickets_evento(evento_id):
+        incidentes = {
+            parte.strip()
+            for parte in str(ticket.get("incidente_ids") or "").split(",")
+            if parte.strip()
+        }
+        if int(ticket["id"]) != ticket_id or str(incidente_id) not in incidentes:
+            continue
+        if _eh_coordenador(request):
+            return ticket.get("status") in {
+                STATUS_TICKET_PENDENTE,
+                STATUS_TICKET_CONCLUIDO_FISCAIS,
+            }
+        return ticket.get(
+            "status"
+        ) == STATUS_TICKET_PENDENTE and fiscal_id in ticket.get("fiscal_ids", [])
+    return False
 
 
 async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
@@ -128,6 +156,8 @@ async def get_bsr_erb(request: Request):
     )
     evento = obter_evento(int(request.session["spreadsheet_id"]))
     editar_id = request.query_params.get("editar")
+    ticket_id_param = request.query_params.get("ticket_id", "")
+    ticket_id = int(ticket_id_param) if ticket_id_param.isdigit() else None
     novo = request.query_params.get("novo") == "1"
     registro_edicao = None
     if editar_id and editar_id.isdigit():
@@ -136,9 +166,16 @@ async def get_bsr_erb(request: Request):
                 registro
                 for registro in registros
                 if registro["id"] == int(editar_id)
-                and not _eh_coordenador(request)
-                and registro.get("criado_por_fiscal_id") == _fiscal_logado_id(request)
-                and registro.get("submetido_coordenador_em") is None
+                and (
+                    (
+                        registro.get("criado_por_fiscal_id")
+                        == _fiscal_logado_id(request)
+                        and registro.get("submetido_coordenador_em") is None
+                    )
+                    or _ticket_autoriza_edicao_incidente(
+                        request, evento_id, int(editar_id), ticket_id
+                    )
+                )
             ),
             None,
         )
@@ -172,6 +209,7 @@ async def get_bsr_erb(request: Request):
             ),
             registros=registros,
             registro_edicao=registro_edicao,
+            ticket_id=ticket_id,
             evento=evento,
             mostrar_form=bool(registro_edicao or novo),
             eh_coordenador=_eh_coordenador(request),
@@ -296,13 +334,29 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
     if not sp_id:
         return RedirectResponse("/", status_code=302)
     fiscal_id = _fiscal_logado_id(request)
-    if fiscal_id is None or _eh_coordenador(request):
+    if fiscal_id is None:
         request.session["flash_error"] = (
-            "A coordenação não pode editar incidentes existentes."
+            "Usuário autenticado não identificado para a edição."
         )
         return RedirectResponse("/bsr-erb", status_code=303)
 
     form = await request.form()
+    ticket_id_value = str(form.get("ticket_id", "")).strip()
+    ticket_id = int(ticket_id_value) if ticket_id_value.isdigit() else None
+    rascunho_proprio = any(
+        registro["id"] == registro_id
+        and registro.get("criado_por_fiscal_id") == fiscal_id
+        and registro.get("submetido_coordenador_em") is None
+        for registro in _listar_registros_visiveis(request, int(sp_id))
+    )
+    if not rascunho_proprio and not _ticket_autoriza_edicao_incidente(
+        request, int(sp_id), registro_id, ticket_id
+    ):
+        request.session["flash_error"] = (
+            "Incidentes submetidos só podem ser editados pelo ticket atribuído."
+        )
+        return RedirectResponse("/bsr-erb", status_code=303)
+
     imagens, erros_imagens = await _ler_imagens(form)
     tipo = form.get("tipo", "Bloqueador de sinal (BSR)")
     regiao = form.get("regiao", "").strip()
@@ -338,8 +392,15 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
                 registro
                 for registro in _listar_registros_visiveis(request, int(sp_id))
                 if registro["id"] == registro_id
-                and registro.get("criado_por_fiscal_id") == fiscal_id
-                and registro.get("submetido_coordenador_em") is None
+                and (
+                    (
+                        registro.get("criado_por_fiscal_id") == fiscal_id
+                        and registro.get("submetido_coordenador_em") is None
+                    )
+                    or _ticket_autoriza_edicao_incidente(
+                        request, int(sp_id), registro_id, ticket_id
+                    )
+                )
             ),
             None,
         )
@@ -357,6 +418,7 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
                 situacao_opcoes=[SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL],
                 registros=_listar_registros_visiveis(request, int(sp_id)),
                 registro_edicao=registro_edicao,
+                ticket_id=ticket_id,
                 mostrar_form=True,
                 tipo_opcoes=TIPOS_OCORRENCIA,
                 evento=obter_evento(int(sp_id)),
@@ -376,6 +438,10 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
         observacoes=observacoes,
         situacao=situacao,
         criado_por_fiscal_id=fiscal_id,
+        eh_coordenador=_eh_coordenador(request),
+        ticket_id=ticket_id,
+        fiscal_id=fiscal_id,
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
         fiscal_ids=fiscais_participantes_ids,
         imagens=imagens,
     )
@@ -383,7 +449,12 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
         request.session["flash_error"] = res
     else:
         request.session["flash_success"] = res
-    return RedirectResponse("/bsr-erb", status_code=303)
+    destino = (
+        f"/bsr-erb?editar={registro_id}&ticket_id={ticket_id}"
+        if ticket_id is not None
+        else "/bsr-erb"
+    )
+    return RedirectResponse(destino, status_code=303)
 
 
 @router.post("/bsr-erb/{registro_id}/submeter")
@@ -439,9 +510,9 @@ async def post_excluir_imagem_bsr_erb(
     if not evento_id:
         return RedirectResponse("/", status_code=302)
     fiscal_id = _fiscal_logado_id(request)
-    if fiscal_id is None or _eh_coordenador(request):
+    if fiscal_id is None:
         request.session["flash_error"] = (
-            "A coordenação não pode remover fotos de incidentes existentes."
+            "Usuário autenticado não identificado para a edição."
         )
         return RedirectResponse("/bsr-erb", status_code=303)
     res = excluir_imagem_bsr_erb(
@@ -450,9 +521,20 @@ async def post_excluir_imagem_bsr_erb(
         evento_id=int(evento_id),
         usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
         criado_por_fiscal_id=fiscal_id,
+        eh_coordenador=_eh_coordenador(request),
+        ticket_id=(
+            int(request.query_params["ticket_id"])
+            if request.query_params.get("ticket_id", "").isdigit()
+            else None
+        ),
+        fiscal_id=fiscal_id,
     )
     request.session["flash_error" if res.startswith("ERRO") else "flash_success"] = res
-    return RedirectResponse(f"/bsr-erb?editar={registro_id}", status_code=303)
+    ticket_id = request.query_params.get("ticket_id", "")
+    destino = f"/bsr-erb?editar={registro_id}"
+    if ticket_id.isdigit():
+        destino += f"&ticket_id={ticket_id}"
+    return RedirectResponse(destino, status_code=303)
 
 
 @router.post("/api/bsr-erb")

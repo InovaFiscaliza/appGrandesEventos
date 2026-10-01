@@ -14,6 +14,7 @@
       ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
     </div>
     <form method="post" action="{{ '/bsr-erb/' ~ registro_edicao.id ~ '/editar' if registro_edicao else '/bsr-erb' }}" id="form-bsr-erb" class="rf-entry-form" enctype="multipart/form-data">
+        {% if ticket_id %}<input type="hidden" name="ticket_id" value="{{ ticket_id }}">{% endif %}
         <div class="form-group">
             <label for="tipo-ocorrencia">Tipo <span class="required">*</span></label>
             <div class="select-shell">
@@ -84,7 +85,7 @@
                 {% for imagem in registro_edicao.imagens %}
                 <li class="imagem-preview-item">
                     <img src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
-                    <button type="button" class="imagem-preview-excluir" data-imagem-bsr-excluir="/bsr-erb/{{ registro_edicao.id }}/imagem/{{ imagem.id }}/excluir" aria-label="Excluir {{ imagem.nome_arquivo }}" title="Excluir imagem">🗑️</button>
+                    <button type="button" class="imagem-preview-excluir" data-imagem-bsr-excluir="/bsr-erb/{{ registro_edicao.id }}/imagem/{{ imagem.id }}/excluir{% if ticket_id %}?ticket_id={{ ticket_id }}{% endif %}" aria-label="Excluir {{ imagem.nome_arquivo }}" title="Excluir imagem">🗑️</button>
                 </li>
                 {% endfor %}
             </ul>
@@ -107,8 +108,15 @@
             <h2 id="titulo-mapa-ocorrencia">Selecionar posição do incidente</h2>
             <button type="button" id="fechar-mapa-ocorrencia" class="popup-mapa-estacao-fechar" aria-label="Fechar mapa">×</button>
         </div>
+        <div class="mapa-estacao-busca">
+            <label for="busca-lugar-ocorrencia">Procurar lugar (país, cidade, rua, avenida)</label>
+            <div class="mapa-estacao-busca-controles">
+                <input class="form-control" id="busca-lugar-ocorrencia" type="search" placeholder="Cidade, endereço ou local" autocomplete="off">
+            </div>
+            <small id="mensagem-busca-lugar-ocorrencia" class="form-help" role="status"></small>
+        </div>
         <div id="mapa-ocorrencia" class="mapa-estacao" data-latitude="{{ evento.latitude }}" data-longitude="{{ evento.longitude }}"></div>
-        <small class="form-help mapa-estacao-ajuda">Clique no mapa para preencher local, latitude e longitude.</small>
+        <small class="form-help mapa-estacao-ajuda">Pesquise um endereço ou clique no mapa para preencher local, latitude e longitude.</small>
     </div>
 </div>
 <script>
@@ -120,7 +128,9 @@
         const localInput = document.getElementById("local-ocorrencia");
         const latitudeInput = document.querySelector('input[name="lat"]');
         const longitudeInput = document.querySelector('input[name="lon"]');
-        if (!mapaElement || !abrirBotao || !popup || !fecharBotao || !localInput || !latitudeInput || !longitudeInput || typeof L === "undefined") return;
+        const buscaLugarInput = document.getElementById("busca-lugar-ocorrencia");
+        const mensagemBuscaLugar = document.getElementById("mensagem-busca-lugar-ocorrencia");
+        if (!mapaElement || !abrirBotao || !popup || !fecharBotao || !localInput || !latitudeInput || !longitudeInput || !buscaLugarInput || !mensagemBuscaLugar || typeof L === "undefined") return;
 
         const mapa = L.map(mapaElement).setView([
             Number(mapaElement.dataset.latitude),
@@ -130,33 +140,111 @@
             attribution: "&copy; OpenStreetMap contributors",
             maxZoom: 19,
         }).addTo(mapa);
+        let marcadorBusca = null;
+        let temporizadorBusca;
+        let requisicaoBusca;
+        const definirPosicao = (latitude, longitude, descricao = "") => {
+            const posicao = [Number(latitude), Number(longitude)];
+            latitudeInput.value = posicao[0].toFixed(6);
+            longitudeInput.value = posicao[1].toFixed(6);
+            if (marcadorBusca) marcadorBusca.setLatLng(posicao);
+            else marcadorBusca = L.marker(posicao, {
+                icon: L.divIcon({
+                    className: "mapa-evento-gota",
+                    html: "<span></span>",
+                    iconSize: [26, 36],
+                    iconAnchor: [13, 36],
+                }),
+            }).addTo(mapa);
+            if (descricao) localInput.value = descricao;
+        };
         const fecharPopup = () => { popup.hidden = true; };
         abrirBotao.addEventListener("click", () => {
             popup.hidden = false;
-            setTimeout(() => mapa.invalidateSize(), 100);
+            setTimeout(() => {
+                mapa.invalidateSize({ pan: false });
+                const latitude = Number(latitudeInput.value);
+                const longitude = Number(longitudeInput.value);
+                const coordenadasPreenchidas = latitudeInput.value !== ""
+                    && longitudeInput.value !== ""
+                    && Number.isFinite(latitude)
+                    && Number.isFinite(longitude)
+                    && latitude >= -90 && latitude <= 90
+                    && longitude >= -180 && longitude <= 180;
+                mapa.setView(
+                    coordenadasPreenchidas ? [latitude, longitude] : [
+                        Number(mapaElement.dataset.latitude),
+                        Number(mapaElement.dataset.longitude),
+                    ],
+                    coordenadasPreenchidas ? 15 : 13,
+                    { animate: false }
+                );
+            }, 100);
         });
         fecharBotao.addEventListener("click", fecharPopup);
         popup.addEventListener("click", (evento) => {
             if (evento.target === popup) fecharPopup();
         });
 
-        let marcador;
-        mapa.on("click", (evento) => {
+        const buscarEndereco = async (latitude, longitude) => {
+            const resposta = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=${latitude}&lon=${longitude}`, {
+                headers: { Accept: "application/json", "Accept-Language": "pt-BR" },
+            });
+            if (!resposta.ok) throw new Error("Falha na localização");
+            return resposta.json();
+        };
+        const buscarLugar = async (termo) => {
+            mensagemBuscaLugar.textContent = "Procurando...";
+            requisicaoBusca?.abort();
+            requisicaoBusca = new AbortController();
+            try {
+                const resposta = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&q=${encodeURIComponent(termo)}`, {
+                    headers: { Accept: "application/json", "Accept-Language": "pt-BR" },
+                    signal: requisicaoBusca.signal,
+                });
+                if (!resposta.ok) throw new Error("Falha na pesquisa");
+                const resultados = await resposta.json();
+                if (!resultados.length) {
+                    mensagemBuscaLugar.textContent = "Lugar não encontrado.";
+                    return;
+                }
+                const resultado = resultados[0];
+                definirPosicao(resultado.lat, resultado.lon, resultado.display_name || termo);
+                mapa.setView([Number(resultado.lat), Number(resultado.lon)], 15);
+                mensagemBuscaLugar.textContent = resultado.display_name || "Lugar localizado.";
+            } catch (erro) {
+                if (erro.name !== "AbortError") {
+                    mensagemBuscaLugar.textContent = "Não foi possível pesquisar o lugar agora.";
+                }
+            }
+        };
+        buscaLugarInput.addEventListener("input", () => {
+            clearTimeout(temporizadorBusca);
+            const termo = buscaLugarInput.value.trim();
+            if (termo.length < 3) {
+                mensagemBuscaLugar.textContent = termo ? "Digite pelo menos 3 caracteres." : "";
+                requisicaoBusca?.abort();
+                return;
+            }
+            temporizadorBusca = setTimeout(() => buscarLugar(termo), 600);
+        });
+        mapa.on("click", async (evento) => {
             const latitude = evento.latlng.lat.toFixed(6);
             const longitude = evento.latlng.lng.toFixed(6);
-            latitudeInput.value = latitude;
-            longitudeInput.value = longitude;
-            if (marcador) marcador.setLatLng(evento.latlng);
-            else marcador = L.marker(evento.latlng).addTo(mapa);
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
-                headers: { Accept: "application/json" },
-            })
-                .then((resposta) => resposta.ok ? resposta.json() : null)
-                .then((dados) => {
-                    if (dados && dados.display_name) localInput.value = dados.display_name;
-                })
-                .catch(() => {});
+            definirPosicao(latitude, longitude);
+            mensagemBuscaLugar.textContent = "Identificando endereço...";
             fecharPopup();
+            try {
+                const resultado = await buscarEndereco(latitude, longitude);
+                const descricao = resultado.display_name || "";
+                if (descricao) {
+                    localInput.value = descricao;
+                    buscaLugarInput.value = descricao;
+                }
+                mensagemBuscaLugar.textContent = descricao || "Coordenadas preenchidas.";
+            } catch (erro) {
+                mensagemBuscaLugar.textContent = "Coordenadas preenchidas; endereço não identificado.";
+            }
         });
     })();
 </script>
@@ -196,15 +284,17 @@
                     </td>
                     <td>{{ registro.criado_em.strftime('%d/%m/%Y %H:%M') if registro.criado_em else "-" }}</td>
                     <td class="ticket-acoes">
-                        {% if not eh_coordenador and registro.criado_por_fiscal_id|int == request.session.get('fiscal_id', -1)|int and not registro.submetido_coordenador_em %}
+                        {% if registro.criado_por_fiscal_id|int == request.session.get('fiscal_id', -1)|int and not registro.submetido_coordenador_em %}
                         <a href="/bsr-erb?editar={{ registro.id }}" class="btn-ticket-mini">Editar</a>
                         {% endif %}
                         {% if registro.submetido_coordenador_em or registro.ja_possui_ticket %}
                         <span class="font-size-s text-neutral-6">Submetido ao coordenador</span>
-                        {% else %}
+                        {% elif registro.criado_por_fiscal_id|int == request.session.get('fiscal_id', -1)|int %}
                         <form method="post" action="/bsr-erb/{{ registro.id }}/submeter" class="ticket-acao-inline" data-confirmacao-msg="Confirma a submissão deste incidente ao coordenador?">
                             <button type="submit" class="btn-ticket-mini">Submeter ao coordenador</button>
                         </form>
+                        {% else %}
+                        <span class="font-size-s text-neutral-6">Em elaboração</span>
                         {% endif %}
                     </td>
                 </tr>

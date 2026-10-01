@@ -107,8 +107,8 @@ def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
     dfs = [
         d
         for d in [
-            carregar_pendencias_painel_mapeadas(evento_id=sp_id),
-            carregar_pendencias_todas_estacoes(evento_id=sp_id),
+            carregar_pendencias_painel_mapeadas(evento_id=sp_id, incluir_todas=True),
+            carregar_pendencias_todas_estacoes(evento_id=sp_id, incluir_todas=True),
         ]
         if d is not None and not d.empty
     ]
@@ -122,38 +122,27 @@ def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
         pendencias_visiveis = pendencias[
             pendencias["SubmetidaCoordenadorEm"].notna()
         ].copy()
-        pendencias_visiveis["PodeEditar"] = False
+        pendencias_visiveis["PodeEditar"] = True
         return pendencias_visiveis
 
     fiscal_id = request.session.get("fiscal_id")
-    if (
-        not fiscal_id
-        or not str(fiscal_id).isdigit()
-        or "CriadorFiscalID" not in pendencias.columns
-    ):
-        return pd.DataFrame(columns=pendencias.columns)
+    pode_identificar_fiscal = bool(fiscal_id and str(fiscal_id).isdigit())
+    if pode_identificar_fiscal and "CriadorFiscalID" in pendencias.columns:
+        criada_pelo_fiscal = pd.to_numeric(
+            pendencias["CriadorFiscalID"], errors="coerce"
+        ).eq(int(fiscal_id))
+    else:
+        criada_pelo_fiscal = pd.Series(False, index=pendencias.index)
 
-    ocorrencias_em_tickets_atribuidos = set()
-    if fiscal_id and str(fiscal_id).isdigit():
-        for ticket in listar_tickets_evento(int(sp_id)):
-            if int(fiscal_id) not in ticket.get("fiscal_ids", []):
-                continue
-            ocorrencias_em_tickets_atribuidos.update(
-                item.strip()
-                for item in str(ticket.get("ocorrencia_ids") or "").split(",")
-                if item.strip()
-            )
-
-    criada_pelo_fiscal = pd.to_numeric(
-        pendencias["CriadorFiscalID"], errors="coerce"
-    ).eq(int(fiscal_id))
-    atribuida_ao_fiscal = (
-        pendencias["ID"].astype(str).isin(ocorrencias_em_tickets_atribuidos)
-    )
     submetida = pendencias["SubmetidaCoordenadorEm"].notna()
-    visivel = criada_pelo_fiscal | atribuida_ao_fiscal | submetida
-    pendencias_visiveis = pendencias[visivel].copy()
-    pendencias_visiveis["PodeEditar"] = (criada_pelo_fiscal & ~submetida)[visivel]
+    situacao_pendente = (
+        pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
+        == "pendente"
+    )
+    pendencias_visiveis = pendencias.copy()
+    pendencias_visiveis["PodeEditar"] = (
+        criada_pelo_fiscal & ~submetida & situacao_pendente
+    )
     return pendencias_visiveis
 
 
@@ -173,7 +162,7 @@ def _make_label(row: pd.Series) -> str:
 
 
 @router.get("/consultar", response_class=HTMLResponse)
-async def get_consultar(request: Request, key: str = ""):
+async def get_consultar(request: Request, key: str = "", emissao_id: int | None = None):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
@@ -183,12 +172,16 @@ async def get_consultar(request: Request, key: str = ""):
 
     pendencias = []
     selected_row = None
+    selected_key = key
 
     if not df.empty:
         for _, row in df.iterrows():
             rk = _make_row_key(row)
             pendencias.append({"row_key": rk, "label": _make_label(row)})
-            if key and rk == key:
+            if (key and rk == key) or (
+                emissao_id is not None and str(row["ID"]) == str(emissao_id)
+            ):
+                selected_key = rk
                 selected_row = row.to_dict()
 
     return templates.TemplateResponse(
@@ -197,7 +190,7 @@ async def get_consultar(request: Request, key: str = ""):
         _ctx(
             request,
             pendencias=pendencias,
-            selected_key=key,
+            selected_key=selected_key,
             selected_row=selected_row,
             estacoes=estacoes,
             origens_campo=ORIGENS_CAMPO,
@@ -271,9 +264,6 @@ async def post_consultar_salvar(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
-    if _usuario_e_coordenador(request, int(sp_id)):
-        request.session["flash_error"] = "A coordenação não edita emissões nesta tela."
-        return RedirectResponse("/consultar", status_code=303)
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
@@ -460,7 +450,7 @@ async def api_ocorrencia_imagens(request: Request, id: int):
         if not pendencias.empty
         else pd.DataFrame()
     )
-    if ocorrencia.empty or not bool(ocorrencia.iloc[0].get("PodeEditar", False)):
+    if ocorrencia.empty:
         return JSONResponse({"erro": "Acesso não autorizado"}, status_code=403)
     return JSONResponse(carregar_imagens_ocorrencia(evento_id, id))
 
@@ -471,10 +461,6 @@ async def api_consultar_salvar(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
-    if _usuario_e_coordenador(request, int(sp_id)):
-        return JSONResponse(
-            {"erro": "A coordenação não edita emissões nesta tela."}, status_code=403
-        )
     try:
         dados = await request.json()
     except Exception:
@@ -488,7 +474,7 @@ async def api_consultar_salvar(request: Request):
         if not pendencias.empty
         else pd.DataFrame()
     )
-    if ocorrencia.empty:
+    if ocorrencia.empty or not bool(ocorrencia.iloc[0].get("PodeEditar", False)):
         return JSONResponse({"erro": "Acesso não autorizado"}, status_code=403)
     ute = str(dados.get("UTE?", "")).strip()
     if ute not in {"Sim", "Não"}:

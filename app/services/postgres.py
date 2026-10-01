@@ -1966,9 +1966,11 @@ def consultar_conflitos_frequencia(
                            COALESCE(NULLIF(o.local_regiao, ''), NULLIF(e.local, ''), '') AS local,
                            COALESCE(e.nome, 'Ocorrência') AS equipamento,
                            o.identificacao AS etiqueta,
-                           o.fiscal AS responsavel
+                              o.criado_por_fiscal_id AS criador_fiscal_id,
+                              COALESCE(NULLIF(trim(criador.nome), ''), NULLIF(trim(o.fiscal), ''), 'Não informado') AS responsavel
                     FROM ocorrencias o
                     LEFT JOIN estacoes e ON e.id = o.estacao_id
+                          LEFT JOIN fiscais criador ON criador.id = o.criado_por_fiscal_id
                     WHERE o.evento_id = :ev
                       AND (:local = '' OR lower(trim(COALESCE(o.local_regiao, e.local, ''))) = :local)
                       AND (CAST(:excluir_id AS BIGINT) IS NULL OR o.id <> CAST(:excluir_id AS BIGINT))
@@ -2000,6 +2002,7 @@ def consultar_conflitos_frequencia(
                             "equipamento": registro["equipamento"],
                             "etiqueta": registro["etiqueta"] or "Não informada",
                             "responsavel": registro["responsavel"] or "Não informado",
+                            "criador_fiscal_id": registro["criador_fiscal_id"],
                         }
                     )
 
@@ -2102,7 +2105,9 @@ def verificar_equipamento_frequencia(
 # =========================================================================
 
 
-def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.DataFrame:
+def carregar_pendencias_painel_mapeadas(
+    _client=None, evento_id=None, incluir_todas: bool = False
+) -> pd.DataFrame:
     """Retorna pendências de todas as ocorrências (equivalente ao PAINEL)."""
     if evento_id is None:
         return pd.DataFrame()
@@ -2145,18 +2150,27 @@ def carregar_pendencias_painel_mapeadas(_client=None, evento_id=None) -> pd.Data
             WHERE o.evento_id = :ev
                             AND COALESCE(NULLIF(upper(trim(o.fonte)), ''), 'PAINEL') = 'PAINEL'
               AND (
+                  :incluir_todas
+                  OR (
                   lower(trim(o.situacao)) = 'pendente'
                   OR o.submetida_coordenador_em IS NOT NULL
+                  )
               )
             ORDER BY "Local", "Data"
         """)
-        return pd.read_sql(sql, get_engine(), params={"ev": int(evento_id)})
+        return pd.read_sql(
+            sql,
+            get_engine(),
+            params={"ev": int(evento_id), "incluir_todas": incluir_todas},
+        )
     except Exception as e:
         logger.error(f"Erro carregar_pendencias_painel_mapeadas: {e}", exc_info=True)
         return pd.DataFrame()
 
 
-def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataFrame:
+def carregar_pendencias_todas_estacoes(
+    _client=None, evento_id=None, incluir_todas: bool = False
+) -> pd.DataFrame:
     """Retorna pendências de todas as estações (fonte = 'ESTACAO')."""
     if evento_id is None:
         return pd.DataFrame()
@@ -2199,12 +2213,19 @@ def carregar_pendencias_todas_estacoes(_client=None, evento_id=None) -> pd.DataF
             WHERE o.evento_id = :ev
                             AND o.fonte = 'ESTACAO'
               AND (
+                  :incluir_todas
+                  OR (
                   lower(trim(o.situacao)) = 'pendente'
                   OR o.submetida_coordenador_em IS NOT NULL
+                  )
               )
             ORDER BY "Local", "Data"
         """)
-        return pd.read_sql(sql, get_engine(), params={"ev": int(evento_id)})
+        return pd.read_sql(
+            sql,
+            get_engine(),
+            params={"ev": int(evento_id), "incluir_todas": incluir_todas},
+        )
     except Exception as e:
         logger.error(f"Erro carregar_pendencias_todas_estacoes: {e}", exc_info=True)
         return pd.DataFrame()
@@ -3409,6 +3430,10 @@ def atualizar_bsr_erb(
     observacoes="",
     situacao=SITUACAO_PENDENTE,
     criado_por_fiscal_id=None,
+    eh_coordenador: bool = False,
+    usuario_fiscal: str = USR_FISCAL_ANATEL,
+    ticket_id: int | None = None,
+    fiscal_id: int | None = None,
     fiscal_ids=None,
     imagens=None,
 ) -> str:
@@ -3428,15 +3453,50 @@ def atualizar_bsr_erb(
                           SELECT tipo, regiao, latitude, longitude, observacoes,
                               situacao, concluida_por
                     FROM bsr_erb
-                                        WHERE id = :id AND evento_id = :evento_id AND excluido_em IS NULL
-                                            AND criado_por_fiscal_id = :criador_fiscal_id
-                                            AND submetido_coordenador_em IS NULL
+                    WHERE id = :id AND evento_id = :evento_id AND excluido_em IS NULL
+                      AND (
+                          (
+                              criado_por_fiscal_id = :criador_fiscal_id
+                              AND submetido_coordenador_em IS NULL
+                          )
+                          OR (
+                              CAST(:ticket_id AS BIGINT) IS NOT NULL
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM ticket_incidentes ti
+                                  JOIN tickets t ON t.id = ti.ticket_id
+                                  LEFT JOIN ticket_fiscais tf ON tf.ticket_id = t.id
+                                  WHERE ti.incidente_id = bsr_erb.id
+                                    AND ti.ticket_id = CAST(:ticket_id AS BIGINT)
+                                    AND t.evento_id = :evento_id
+                                    AND (
+                                        (
+                                            :eh_coordenador
+                                            AND t.status IN (
+                                                :status_ticket_pendente,
+                                                :status_ticket_concluido_fiscais
+                                            )
+                                        )
+                                        OR (
+                                            NOT :eh_coordenador
+                                            AND t.status = :status_ticket_pendente
+                                            AND tf.fiscal_id = :fiscal_id
+                                        )
+                                    )
+                              )
+                          )
+                      )
                     FOR UPDATE
                 """),
                     {
                         "id": int(registro_id),
                         "evento_id": int(evento_id),
                         "criador_fiscal_id": int(criado_por_fiscal_id or -1),
+                        "eh_coordenador": eh_coordenador,
+                        "ticket_id": int(ticket_id) if ticket_id is not None else None,
+                        "fiscal_id": int(fiscal_id) if fiscal_id is not None else None,
+                        "status_ticket_pendente": STATUS_TICKET_PENDENTE,
+                        "status_ticket_concluido_fiscais": STATUS_TICKET_CONCLUIDO_FISCAIS,
                     },
                 )
                 .mappings()
@@ -3499,7 +3559,7 @@ def atualizar_bsr_erb(
                     {
                         "registro_id": int(registro_id),
                         "evento_id": int(evento_id),
-                        "usuario": USR_FISCAL_ANATEL,
+                        "usuario": usuario_fiscal,
                         "anterior": ", ".join(map(str, fiscais_anteriores)),
                         "novo": ", ".join(map(str, fiscais_novos)),
                     },
@@ -3511,14 +3571,49 @@ def atualizar_bsr_erb(
                         longitude = :lon, observacoes = :observacoes,
                         situacao = :situacao,
                         concluida_por = :concluida_por
-                                        WHERE id = :id AND evento_id = :evento_id
-                                            AND criado_por_fiscal_id = :criador_fiscal_id
-                                            AND submetido_coordenador_em IS NULL
+                    WHERE id = :id AND evento_id = :evento_id
+                      AND (
+                          (
+                              criado_por_fiscal_id = :criador_fiscal_id
+                              AND submetido_coordenador_em IS NULL
+                          )
+                          OR (
+                              CAST(:ticket_id AS BIGINT) IS NOT NULL
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM ticket_incidentes ti
+                                  JOIN tickets t ON t.id = ti.ticket_id
+                                  LEFT JOIN ticket_fiscais tf ON tf.ticket_id = t.id
+                                  WHERE ti.incidente_id = bsr_erb.id
+                                    AND ti.ticket_id = CAST(:ticket_id AS BIGINT)
+                                    AND t.evento_id = :evento_id
+                                    AND (
+                                        (
+                                            :eh_coordenador
+                                            AND t.status IN (
+                                                :status_ticket_pendente,
+                                                :status_ticket_concluido_fiscais
+                                            )
+                                        )
+                                        OR (
+                                            NOT :eh_coordenador
+                                            AND t.status = :status_ticket_pendente
+                                            AND tf.fiscal_id = :fiscal_id
+                                        )
+                                    )
+                              )
+                          )
+                      )
                 """),
                 {
                     "id": int(registro_id),
                     "evento_id": int(evento_id),
                     "criador_fiscal_id": int(criado_por_fiscal_id or -1),
+                    "eh_coordenador": eh_coordenador,
+                    "ticket_id": int(ticket_id) if ticket_id is not None else None,
+                    "fiscal_id": int(fiscal_id) if fiscal_id is not None else None,
+                    "status_ticket_pendente": STATUS_TICKET_PENDENTE,
+                    "status_ticket_concluido_fiscais": STATUS_TICKET_CONCLUIDO_FISCAIS,
                     "tipo": tipo,
                     "regiao": regiao or "",
                     "lat": lat_v,
@@ -3561,7 +3656,7 @@ def atualizar_bsr_erb(
                         {
                             "registro_id": int(registro_id),
                             "evento_id": int(evento_id),
-                            "usuario": USR_FISCAL_ANATEL,
+                            "usuario": usuario_fiscal,
                             "campo": campo,
                             "valor_anterior": str(valor_anterior),
                             "valor_novo": str(valor_novo),
@@ -3616,7 +3711,7 @@ def atualizar_bsr_erb(
                     {
                         "registro_id": int(registro_id),
                         "evento_id": int(evento_id),
-                        "usuario": USR_FISCAL_ANATEL,
+                        "usuario": usuario_fiscal,
                         "valor": nome_arquivo,
                     },
                 )
@@ -3677,6 +3772,9 @@ def excluir_imagem_bsr_erb(
     evento_id,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
     criado_por_fiscal_id=None,
+    eh_coordenador: bool = False,
+    ticket_id: int | None = None,
+    fiscal_id: int | None = None,
 ) -> str:
     """Exclui uma foto de BSR/ERB e registra a ação na auditoria."""
     try:
@@ -3689,14 +3787,49 @@ def excluir_imagem_bsr_erb(
                     JOIN bsr_erb b ON b.id = i.bsr_erb_id
                     WHERE i.id = :imagem_id AND i.bsr_erb_id = :registro_id
                       AND b.evento_id = :evento_id AND b.excluido_em IS NULL
-                      AND b.criado_por_fiscal_id = :criador_fiscal_id
-                      AND b.submetido_coordenador_em IS NULL
+                      AND (
+                          (
+                              b.criado_por_fiscal_id = :criador_fiscal_id
+                              AND b.submetido_coordenador_em IS NULL
+                          )
+                          OR (
+                              CAST(:ticket_id AS BIGINT) IS NOT NULL
+                              AND EXISTS (
+                                  SELECT 1
+                                  FROM ticket_incidentes ti
+                                  JOIN tickets t ON t.id = ti.ticket_id
+                                  LEFT JOIN ticket_fiscais tf ON tf.ticket_id = t.id
+                                  WHERE ti.incidente_id = b.id
+                                    AND ti.ticket_id = CAST(:ticket_id AS BIGINT)
+                                    AND t.evento_id = :evento_id
+                                    AND (
+                                        (
+                                            :eh_coordenador
+                                            AND t.status IN (
+                                                :status_ticket_pendente,
+                                                :status_ticket_concluido_fiscais
+                                            )
+                                        )
+                                        OR (
+                                            NOT :eh_coordenador
+                                            AND t.status = :status_ticket_pendente
+                                            AND tf.fiscal_id = :fiscal_id
+                                        )
+                                    )
+                              )
+                          )
+                      )
                     """),
                     {
                         "imagem_id": int(imagem_id),
                         "registro_id": int(registro_id),
                         "evento_id": int(evento_id),
                         "criador_fiscal_id": int(criado_por_fiscal_id or -1),
+                        "eh_coordenador": eh_coordenador,
+                        "ticket_id": int(ticket_id) if ticket_id is not None else None,
+                        "fiscal_id": int(fiscal_id) if fiscal_id is not None else None,
+                        "status_ticket_pendente": STATUS_TICKET_PENDENTE,
+                        "status_ticket_concluido_fiscais": STATUS_TICKET_CONCLUIDO_FISCAIS,
                     },
                 )
                 .mappings()
@@ -4534,20 +4667,7 @@ def _buscar_por_texto_livre(
                       CAST(:fiscal_id AS BIGINT) IS NULL
                       AND (:somente_submetidas = false OR o.submetida_coordenador_em IS NOT NULL)
                   )
-                  OR (
-                      CAST(:fiscal_id AS BIGINT) IS NOT NULL
-                      AND (
-                          o.criado_por_fiscal_id = :fiscal_id
-                          OR o.submetida_coordenador_em IS NOT NULL
-                          OR EXISTS (
-                              SELECT 1
-                              FROM ticket_ocorrencias toco
-                              JOIN ticket_fiscais tf ON tf.ticket_id = toco.ticket_id
-                              WHERE toco.ocorrencia_id = o.id
-                                AND tf.fiscal_id = :fiscal_id
-                          )
-                      )
-                  )
+                  OR CAST(:fiscal_id AS BIGINT) IS NOT NULL
               )
               AND (
                                     (:listar_tratadas)
@@ -4624,20 +4744,7 @@ def sugerir_busca_emissoes(
                                       OR o.submetida_coordenador_em IS NOT NULL
                                   )
                               )
-                              OR (
-                                  CAST(:fiscal_id AS BIGINT) IS NOT NULL
-                                  AND (
-                                      o.criado_por_fiscal_id = :fiscal_id
-                                      OR o.submetida_coordenador_em IS NOT NULL
-                                      OR EXISTS (
-                                          SELECT 1
-                                          FROM ticket_ocorrencias toco
-                                          JOIN ticket_fiscais tf ON tf.ticket_id = toco.ticket_id
-                                          WHERE toco.ocorrencia_id = o.id
-                                            AND tf.fiscal_id = :fiscal_id
-                                      )
-                                  )
-                              )
+                              OR CAST(:fiscal_id AS BIGINT) IS NOT NULL
                           )
                           AND (
                               o.id::text LIKE :termo

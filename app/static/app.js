@@ -128,8 +128,18 @@ const AppOffline = (() => {
             body:    JSON.stringify(dados),
           });
           if (resp.ok) {
+            const resultado = storeName === 'fila_envio'
+              ? await resp.json().catch(() => null)
+              : null;
             await this.removerDaFila(storeName, item.id);
             console.log(`[sync] item ${item.id} enviado e removido de '${storeName}'.`);
+            if (resultado?.avisos?.length) {
+              const alvo = document.querySelector('.container') || document.body;
+              AppOfflineUI.mostrarSucesso(
+                alvo,
+                `⚠️ Aviso após sincronização: ${resultado.avisos.join(' ')}`
+              );
+            }
           } else {
             console.warn(`[sync] servidor recusou item ${item.id}: ${resp.status}`);
           }

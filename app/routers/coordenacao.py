@@ -116,10 +116,8 @@ async def get_coordenacao(request: Request):
             tickets_concluidos_fiscais=tickets_concluidos_fiscais,
             tickets_concluidos_coordenador=tickets_concluidos_coordenador,
             status_ticket_rotulos=STATUS_TICKET_ROTULOS,
-            emissões=listar_emissoes_evento(int(evento_id), ocultar_vinculadas=True),
-            incidentes=listar_bsr_erb(
-                int(evento_id), ocultar_vinculados=True, somente_submetidos=True
-            ),
+            emissões=listar_emissoes_evento(int(evento_id)),
+            incidentes=listar_bsr_erb(int(evento_id), somente_submetidos=True),
             escalas=listar_escalas_evento(int(evento_id)),
             fiscais=fiscais_evento,
             flash_success=request.session.pop("flash_success", None),

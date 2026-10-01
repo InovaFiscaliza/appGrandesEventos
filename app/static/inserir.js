@@ -77,6 +77,22 @@
   });
 })();
 
+function formatarAvisosFrequencia(data) {
+  const avisos = [];
+  if (data.conflito) {
+    avisos.push(`existe equipamento usando essa frequência: ${data.conflito}`);
+  }
+  for (const emissao of data.emissoes_outros_fiscais || []) {
+    avisos.push(
+      `emissão #${emissao.id} (${emissao.frequencia} MHz, ` +
+      `${emissao.identificacao || "identificação não informada"}, ` +
+      `${emissao.local || "local não informado"}), cadastrada por ` +
+      `${emissao.cadastrado_por || "outro fiscal"}`
+    );
+  }
+  return avisos.length ? `⚠️ AVISO: ${avisos.join("; ")}.` : "";
+}
+
 async function consultarConflitoFrequencia() {
   const val = parseFloat(document.getElementById("freq")?.value || "0");
   const largura = parseFloat(document.getElementById("larg")?.value || "0");
@@ -92,9 +108,9 @@ async function consultarConflitoFrequencia() {
     const parametros = new URLSearchParams({ freq: val, larg: largura, local });
     const resp = await fetch("/check-freq?" + parametros);
     const data = await resp.json();
-    if (data.conflito) {
-      warn.textContent =
-        "⚠️ AVISO: existe equipamento usando essa frequência: " + data.conflito;
+    const mensagem = formatarAvisosFrequencia(data);
+    if (mensagem) {
+      warn.textContent = mensagem;
       warn.style.display = "block";
     } else {
       warn.style.display = "none";
@@ -147,11 +163,11 @@ AppOffline.interceptarSubmit(
         const parametros = new URLSearchParams({ freq: valor, larg: largura, local });
         const resp = await fetch("/check-freq?" + parametros);
         const data = await resp.json();
-        if (!data.conflito) return true;
-        warn.textContent =
-          "⚠️ Aviso: existe equipamento usando essa frequência (" +
-          data.conflito + ").";
-        warn.style.display = "block";
+        const mensagem = formatarAvisosFrequencia(data);
+        if (mensagem) {
+          warn.textContent = mensagem;
+          warn.style.display = "block";
+        }
         return true;
       } catch (e) {
         return true;

@@ -10,6 +10,7 @@ from app.services.postgres import (
     carregar_opcoes_identificacao,
     FrequenciaOcupadaError,
     inserir_emissao_I_W,
+    consultar_conflitos_frequencia,
     listar_fiscais,
     listar_fiscais_evento,
     listar_estacoes_evento,
@@ -114,6 +115,59 @@ def _fiscais_participantes_evento(request: Request, evento_id: int) -> list[dict
         for fiscal in listar_fiscais()
         if int(fiscal["id"]) in fiscais_ids and str(fiscal["id"]) != fiscal_logado_id
     ]
+
+
+def _conflitos_emissoes_outros_fiscais(
+    request: Request,
+    evento_id: int,
+    frequencia: float,
+    largura_khz: float,
+) -> list[dict]:
+    """Lista emissões com faixa sobreposta cadastradas por outros fiscais."""
+    fiscal_id = _fiscal_logado_id(request)
+    fiscal_nome = _fiscal_logado(request).casefold()
+    conflitos = consultar_conflitos_frequencia(
+        evento_id=evento_id,
+        freq_digitada=frequencia,
+        largura_khz=largura_khz,
+        localidade="",
+    )
+    resultado = []
+    for conflito in conflitos:
+        if conflito.get("origem") != "Ocorrência":
+            continue
+        criador_id = conflito.get("criador_fiscal_id")
+        responsavel = str(conflito.get("responsavel") or "").strip()
+        if criador_id is not None and fiscal_id is not None:
+            if int(criador_id) == fiscal_id:
+                continue
+        elif fiscal_nome and responsavel.casefold() == fiscal_nome:
+            continue
+        resultado.append(
+            {
+                "id": conflito["id"],
+                "frequencia": conflito["frequencia"],
+                "largura_khz": conflito["largura_khz"],
+                "local": conflito["local"],
+                "identificacao": conflito["etiqueta"],
+                "cadastrado_por": responsavel or "Não informado",
+            }
+        )
+    return resultado
+
+
+def _mensagem_conflitos_emissoes(conflitos: list[dict]) -> str | None:
+    if not conflitos:
+        return None
+    detalhes = "; ".join(
+        f"#{item['id']} — {item['frequencia']} MHz, "
+        f"{item['identificacao']}, {item['local']}, cadastrado por "
+        f"{item['cadastrado_por']}"
+        for item in conflitos
+    )
+    return (
+        "Já existe emissão de outro fiscal com frequência/faixa sobreposta: " + detalhes
+    )
 
 
 @router.get("/inserir", response_class=HTMLResponse)
@@ -271,6 +325,9 @@ async def post_inserir(request: Request):
     conflito = verificar_equipamento_frequencia(
         evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
     )
+    conflitos_emissoes = _conflitos_emissoes_outros_fiscais(
+        request, int(sp_id), freq, larg
+    )
 
     try:
         dia_obj = datetime.strptime(dia_str, "%Y-%m-%d").date()
@@ -341,11 +398,14 @@ async def post_inserir(request: Request):
         )
     if ok:
         msg = "Emissão submetida ao coordenador com sucesso. Caso queira continuar inserindo emissões desta entidade, basta alterar os dados específicos e clicar em Submeter Emissão ao Coordenador."
+        avisos = []
         if conflito:
-            msg = (
-                f"⚠️ AVISO: existe equipamento usando essa frequência ({conflito}). "
-                + msg
-            )
+            avisos.append(f"existe equipamento usando essa frequência ({conflito})")
+        aviso_emissoes = _mensagem_conflitos_emissoes(conflitos_emissoes)
+        if aviso_emissoes:
+            avisos.append(aviso_emissoes)
+        if avisos:
+            msg = "⚠️ AVISO: " + "; ".join(avisos) + ". " + msg
         request.session["flash_success"] = msg
         return RedirectResponse("/inserir", status_code=303)
 
@@ -489,6 +549,9 @@ async def post_inserir_salvar(request: Request):
     conflito = verificar_equipamento_frequencia(
         evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
     )
+    conflitos_emissoes = _conflitos_emissoes_outros_fiscais(
+        request, int(sp_id), freq, larg
+    )
 
     try:
         dia_obj = datetime.strptime(dia_str, "%Y-%m-%d").date()
@@ -558,11 +621,14 @@ async def post_inserir_salvar(request: Request):
         )
     if ok:
         msg = "Emissão salva com sucesso. Ela permanece como Pendente — você pode editá-la ou submetê-la ao coordenador depois."
+        avisos = []
         if conflito:
-            msg = (
-                f"⚠️ AVISO: existe equipamento usando essa frequência ({conflito}). "
-                + msg
-            )
+            avisos.append(f"existe equipamento usando essa frequência ({conflito})")
+        aviso_emissoes = _mensagem_conflitos_emissoes(conflitos_emissoes)
+        if aviso_emissoes:
+            avisos.append(aviso_emissoes)
+        if avisos:
+            msg = "⚠️ AVISO: " + "; ".join(avisos) + ". " + msg
         request.session["flash_success"] = msg
         return RedirectResponse("/inserir", status_code=303)
 
@@ -607,11 +673,14 @@ async def check_freq(
 ):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id or freq <= 0:
-        return {"conflito": None}
+        return {"conflito": None, "emissoes_outros_fiscais": []}
     conflito = verificar_equipamento_frequencia(
         evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
     )
-    return {"conflito": conflito}
+    conflitos_emissoes = _conflitos_emissoes_outros_fiscais(
+        request, int(sp_id), freq, larg
+    )
+    return {"conflito": conflito, "emissoes_outros_fiscais": conflitos_emissoes}
 
 
 @router.post("/api/inserir")
@@ -684,5 +753,22 @@ async def api_inserir(request: Request):
             {"erro": str(exc), "codigo": "frequencia_ocupada"}, status_code=409
         )
     if ok:
-        return JSONResponse({"ok": True})
+        freq = float(dados.get("Frequência em MHz", 0) or 0)
+        local = str(dados.get("Local/Região", "") or "")
+        conflito = verificar_equipamento_frequencia(
+            evento_id=sp_id,
+            freq_digitada=freq,
+            largura_khz=largura,
+            localidade=local,
+        )
+        conflitos_emissoes = _conflitos_emissoes_outros_fiscais(
+            request, int(sp_id), freq, largura
+        )
+        avisos = []
+        if conflito:
+            avisos.append(f"Existe equipamento usando essa frequência: {conflito}.")
+        aviso_emissoes = _mensagem_conflitos_emissoes(conflitos_emissoes)
+        if aviso_emissoes:
+            avisos.append(aviso_emissoes)
+        return JSONResponse({"ok": True, "avisos": avisos})
     return JSONResponse({"erro": "Falha ao inserir na planilha"}, status_code=500)

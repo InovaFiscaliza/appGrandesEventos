@@ -245,7 +245,8 @@ function selecionarPendencia(row) {
   });
   const progresso = document.getElementById("progresso-pendencias");
   if (progresso) {
-    progresso.textContent = `${pendencias.length} pendência(s) aguardando tratamento.`;
+    const rotulo = pendencias.length === 1 ? "emissão" : "emissões";
+    progresso.textContent = `${pendencias.length} ${rotulo} do evento.`;
   }
   preencherForm(row);
   const historico = document.getElementById("btn-consultar-historico");
@@ -325,16 +326,21 @@ document.getElementById("btn-submeter-ticket")?.addEventListener("click", async 
 });
 
 function popularTabela(lista) {
-  const selectedKey = new URLSearchParams(window.location.search).get("key") || "";
+  const parametros = new URLSearchParams(window.location.search);
+  const selectedKey = parametros.get("key") || "";
+  const emissaoId = parametros.get("emissao_id") || "";
   paginaAtual = 1;
   document.getElementById("bloco-select").style.display = lista.length ? "block" : "none";
   document.getElementById("msg-vazio").style.display = lista.length ? "none" : "block";
   document.getElementById("consultar-voltar").style.display = "block";
   if (!lista.length) return;
-  document.getElementById("progresso-pendencias").textContent = `${lista.length} pendência(s) aguardando tratamento.`;
+  const rotulo = lista.length === 1 ? "emissão" : "emissões";
+  document.getElementById("progresso-pendencias").textContent = `${lista.length} ${rotulo} do evento.`;
   renderizarTabela(lista);
-  if (selectedKey) {
-    const row = lista.find((item) => item.row_key === selectedKey);
+  if (selectedKey || emissaoId) {
+    const row = emissaoId
+      ? lista.find((item) => String(item.id) === emissaoId)
+      : lista.find((item) => item.row_key === selectedKey);
     if (row) selecionarPendencia(row);
   }
 }
