@@ -114,6 +114,7 @@ AppOffline.interceptarSubmit(
   "/inserir",
   "fila_envio",
   (fd) => ({
+    "Submeter ao coordenador": fd.get("acao") !== "salvar",
     "Dia": fd.get("dia") || "",
     "Hora": fd.get("hora") || "",
     "Fiscal": fd.get("fiscal") || "",
@@ -131,7 +132,7 @@ AppOffline.interceptarSubmit(
     "Observações/Detalhes/Contatos": fd.get("obs") || "",
     "Responsável pela emissão": "",
     "Interferente?": fd.get("interferente") || "",
-    "Situação": fd.get("situacao") || "Pendente",
+    "Situação": fd.get("acao") === "salvar" ? "Pendente" : (fd.get("situacao") || "Pendente"),
   }),
   {
     beforeSubmit: async (fd) => {

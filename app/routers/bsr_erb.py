@@ -8,6 +8,7 @@ from app.services.postgres import (
     excluir_imagem_bsr_erb,
     excluir_bsr_erb,
     inserir_bsr_erb,
+    submeter_bsr_erb,
     listar_bsr_erb,
     listar_fiscais,
     listar_fiscais_evento,
@@ -316,6 +317,21 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
         request.session["flash_error"] = res
     else:
         request.session["flash_success"] = res
+    return RedirectResponse("/bsr-erb", status_code=303)
+
+
+@router.post("/bsr-erb/{registro_id}/submeter")
+async def post_submeter_bsr_erb(request: Request, registro_id: int):
+    """Envia o incidente do evento selecionado para inspeção da coordenação."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+    res = submeter_bsr_erb(
+        registro_id=registro_id,
+        evento_id=evento_id,
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
+    )
+    request.session["flash_error" if res.startswith("ERRO") else "flash_success"] = res
     return RedirectResponse("/bsr-erb", status_code=303)
 
 

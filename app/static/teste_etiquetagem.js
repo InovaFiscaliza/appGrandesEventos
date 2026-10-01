@@ -36,6 +36,8 @@
   const popupErro = document.querySelector('#popup-erro-teste-etiquetagem');
   const fecharPopupErro = document.querySelector('#fechar-popup-erro-teste-etiquetagem');
   const confirmarPopupErro = document.querySelector('#confirmar-popup-erro-teste-etiquetagem');
+  const entidade = document.querySelector('#entidade');
+  const entidadeSugestoes = document.querySelector('#entidade-sugestoes');
 
   function fecharPopupErroFn() {
     if (popupErro) popupErro.hidden = true;
@@ -54,6 +56,84 @@
   }
 
   if (!frequencia || !passo || !faixa || !lista || !frequenciasEnviadas || !frequenciaConsulta || !cpfCnpj || !cpfCnpjAjuda || !etiqueta || !etiquetaInicio || !etiquetaFinal || !numeroEquipamentos || !form || !adicionar || !remover || !popupFrequencia || !confirmarAdicionar || !fecharPopupFrequencia) return;
+
+  let requisicaoEntidades;
+  let temporizadorEntidades;
+
+  function fecharSugestoesEntidades() {
+    entidadeSugestoes?.replaceChildren();
+    entidadeSugestoes?.setAttribute('aria-expanded', 'false');
+  }
+
+  function preencherEntidade(item) {
+    entidade.value = item.entidade || '';
+    const perfil = document.querySelector(`input[name="perfil"][value="${CSS.escape(item.perfil || '')}"]`);
+    if (perfil) {
+      perfil.checked = true;
+      perfil.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const preenchimentos = {
+      cpf_cnpj: item.cpf_cnpj,
+      responsavel_contato: item.responsavel_contato,
+      telefone: item.telefone,
+      email: item.email,
+    };
+    Object.entries(preenchimentos).forEach(([campo, valor]) => {
+      const elemento = document.querySelector(`[name="${campo}"]`);
+      if (elemento && valor) elemento.value = valor;
+    });
+    entidade.dispatchEvent(new Event('input', { bubbles: true }));
+    fecharSugestoesEntidades();
+  }
+
+  function exibirSugestoesEntidades(itens) {
+    if (!entidadeSugestoes) return;
+    entidadeSugestoes.replaceChildren();
+    itens.forEach((item) => {
+      const botao = document.createElement('button');
+      botao.type = 'button';
+      botao.className = 'busca-sugestao';
+      botao.setAttribute('role', 'option');
+      botao.innerHTML = `<strong></strong><span></span>`;
+      botao.querySelector('strong').textContent = item.entidade || '';
+      botao.querySelector('span').textContent = [item.cpf_cnpj, item.responsavel_contato].filter(Boolean).join(' | ');
+      botao.addEventListener('click', () => preencherEntidade(item));
+      entidadeSugestoes.appendChild(botao);
+    });
+    entidadeSugestoes.setAttribute('aria-expanded', String(itens.length > 0));
+  }
+
+  entidade?.addEventListener('input', () => {
+    clearTimeout(temporizadorEntidades);
+    requisicaoEntidades?.abort();
+    const termo = entidade.value.trim();
+    if (termo.length < 2) {
+      fecharSugestoesEntidades();
+      return;
+    }
+    temporizadorEntidades = setTimeout(async () => {
+      requisicaoEntidades = new AbortController();
+      try {
+        const resposta = await fetch(
+          `/api/teste-etiquetagem/sugestoes-entidades?termo=${encodeURIComponent(termo)}`,
+          { signal: requisicaoEntidades.signal, cache: 'no-store' }
+        );
+        if (!resposta.ok) throw new Error(`Falha HTTP ${resposta.status}`);
+        exibirSugestoesEntidades(await resposta.json());
+      } catch (erro) {
+        if (erro.name !== 'AbortError') fecharSugestoesEntidades();
+      }
+    }, 250);
+  });
+
+  entidade?.addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape') fecharSugestoesEntidades();
+  });
+  document.addEventListener('click', (evento) => {
+    if (!entidadeSugestoes?.contains(evento.target) && evento.target !== entidade) {
+      fecharSugestoesEntidades();
+    }
+  });
 
   function abrirPopupFrequencia() {
     frequencia.value = '';

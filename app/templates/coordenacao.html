@@ -129,57 +129,8 @@
             </table>
         </div>
         <nav class="pendencias-pagination" aria-label="Paginação das emissões submetidas"></nav>
-
-        <form id="ticket-form" method="post" action="/coordenacao/ticket" data-sem-confirmacao>
-            <button type="button" id="abrir-popup-ticket" class="btn btn-primary" data-sem-confirmacao>Criar novo ticket</button>
-
-            <div id="popup-criar-ticket" class="popup-ticket" hidden>
-                <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-criar-ticket-titulo">
-                    <div class="popup-ticket-cabecalho">
-                        <h2 id="popup-criar-ticket-titulo">Criar novo ticket</h2>
-                        <button type="button" class="popup-ticket-fechar" id="fechar-popup-ticket" aria-label="Fechar criação">×</button>
-                    </div>
-
-                    <div class="ticket-edicao-campos">
-                        <div class="ticket-edicao-item">
-                            <label for="prioridade_ticket">Prioridade</label>
-                            <select id="prioridade_ticket" name="prioridade" class="ticket-status-select" required>
-                                <option value="alta">Alta</option>
-                                <option value="normal" selected>Normal</option>
-                                <option value="baixa">Baixa</option>
-                            </select>
-                        </div>
-
-                        <div class="ticket-edicao-item ticket-edicao-observacoes">
-                            <label for="observacoes_ticket">Observações</label>
-                            <textarea id="observacoes_ticket" name="observacoes" rows="3" class="form-control"></textarea>
-                        </div>
-
-                        <div class="ticket-edicao-item ticket-edicao-fiscais">
-                            <label>Fiscais atribuídos</label>
-                            <div class="ticket-fiscais-grid">
-                                {% for fiscal in fiscais %}
-                                <label>
-                                    <input type="checkbox" name="fiscais" value="{{ fiscal.id }}">
-                                    <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }}</span>
-                                </label>
-                                {% else %}
-                                <span class="fiscais-vazio">Nenhum fiscal do evento cadastrado.</span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="ticket-edicao-acoes">
-                        <button type="submit" class="btn btn-primary">Salvar ticket</button>
-                        <button type="button" class="btn-ticket-mini" id="cancelar-popup-ticket">Cancelar</button>
-                    </div>
-                </div>
-            </div>
-        </form>
     </div>
     </div>
-    
     
     <div class="coordenacao-listas-grupo">
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb;">
@@ -349,7 +300,6 @@
         {% endif %}
     </div>
     </div>
-
         </div>
 
         <div id="tab-escala" class="tab-panel" role="tabpanel" aria-label="Escala de trabalho" hidden>

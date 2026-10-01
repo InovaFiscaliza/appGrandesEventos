@@ -50,6 +50,7 @@ def extrair_dados_inserir(form) -> Dict[str, str]:
     """
     ute = str(form.get("ute", "")).strip()
     return {
+        "Submeter ao coordenador": form.get("acao") != "salvar",
         "Dia": form.get("dia", ""),
         "Hora": form.get("hora", ""),
         "Fiscal": form.get("fiscal", "").strip(),

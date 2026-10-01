@@ -18,6 +18,8 @@ from app.services.postgres import (
     listar_coordenadores_evento,
     listar_estacoes_evento,
     listar_tickets_evento,
+    registrar_auditoria_coordenacao,
+    salvar_ticket_evento,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
@@ -498,3 +500,60 @@ async def api_consultar_salvar(request: Request):
     if res.startswith("ERRO") or res.startswith("Erro"):
         return JSONResponse({"erro": res}, status_code=500)
     return JSONResponse({"ok": True})
+
+
+@router.post("/consultar/submeter-ticket/{ocorrencia_id}")
+async def post_consultar_submeter_ticket(request: Request, ocorrencia_id: int):
+    """Submete uma emissão ao coordenador criando um ticket e atribuindo ao fiscal logado."""
+    evento_id = request.session.get("spreadsheet_id")
+    if not evento_id:
+        return RedirectResponse("/", status_code=302)
+
+    fiscal_id = request.session.get("fiscal_id")
+    fiscal_nome = request.session.get("fiscal_nome", "Usuário não identificado")
+    if not fiscal_id or not str(fiscal_id).isdigit():
+        request.session["flash_error"] = "Fiscal não identificado na sessão."
+        return RedirectResponse("/consultar", status_code=303)
+
+    # Verifica se o fiscal tem acesso à ocorrência
+    pendencias = _load_pendencias(request, evento_id)
+    tem_acesso = False
+    if not pendencias.empty:
+        tem_acesso = str(ocorrencia_id) in pendencias["ID"].astype(str).values
+
+    if not tem_acesso:
+        request.session["flash_error"] = (
+            "Você não tem permissão para submeter esta emissão."
+        )
+        return RedirectResponse("/consultar", status_code=303)
+
+    try:
+        ticket_id = salvar_ticket_evento(
+            evento_id=int(evento_id),
+            ocorrencia_ids=[ocorrencia_id],
+            incidente_ids=None,
+            prioridade="normal",
+            observacoes="Emissão submetida pelo fiscal para inspeção da coordenação.",
+            fiscal_ids=[int(fiscal_id)],
+            usuario_fiscal=fiscal_nome,
+        )
+    except ValueError as exc:
+        request.session["flash_error"] = str(exc)
+        return RedirectResponse("/consultar", status_code=303)
+
+    registrar_auditoria_coordenacao(
+        evento_id=int(evento_id),
+        usuario_fiscal=fiscal_nome,
+        acao="Emissão submetida via consulta",
+        valor_anterior=None,
+        valor_novo=(
+            f"Ticket #{ticket_id} criado para ocorrência #{ocorrencia_id}; "
+            f"fiscal #{fiscal_id} atribuído"
+        ),
+    )
+
+    request.session["flash_success"] = (
+        f"✅ Emissão #{ocorrencia_id} submetida ao coordenador com sucesso "
+        f"(Ticket #{ticket_id})."
+    )
+    return RedirectResponse("/consultar", status_code=303)

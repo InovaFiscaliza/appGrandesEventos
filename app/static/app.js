@@ -167,7 +167,8 @@ const AppOffline = (() => {
     interceptarSubmit(form, url, storeName, extrairDados, opcoes = {}) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const fd = new FormData(form);
+        const fd = new FormData(form, e.submitter);
+        const destino = e.submitter?.getAttribute('formaction') || url;
 
         if (opcoes.beforeSubmit) {
           const permitido = await opcoes.beforeSubmit(fd);
@@ -176,7 +177,7 @@ const AppOffline = (() => {
 
         // Tenta enviar para o servidor primeiro
         try {
-          const resp = await fetch(url, {
+          const resp = await fetch(destino, {
             method: 'POST',
             body: fd,
           });

@@ -25,6 +25,7 @@ from app.config import (
     BANDA_OPCOES,
     FAIXA_OPCOES,
     ORIGENS_CAMPO,
+    SITUACAO_PENDENTE,
     SITUACOES_DISPONIVEIS_AO_FISCAL,
     TITULO_PRINCIPAL,
 )
@@ -264,6 +265,7 @@ async def post_inserir(request: Request):
         hora_obj = datetime.now().time()
 
     dados_submit = {
+        "Submeter ao coordenador": True,
         "Dia": dia_obj,
         "Hora": hora_obj,
         "Fiscal": fiscal,
@@ -364,6 +366,216 @@ async def post_inserir(request: Request):
     )
 
 
+@router.post("/inserir/salvar", response_class=HTMLResponse)
+async def post_inserir_salvar(request: Request):
+    """Salva a emissão como Pendente, sem submeter ao coordenador."""
+    sp_id = request.session.get("spreadsheet_id")
+    if not sp_id:
+        return RedirectResponse("/", status_code=302)
+
+    form = await request.form()
+    imagens, erros_imagens = await _ler_imagens(form)
+    fiscal = _fiscal_logado(request)
+    local = form.get("local", "").strip()
+    dia_str = form.get("dia", "")
+    hora_str = form.get("hora", "")
+    freq_str = str(form.get("freq", "")).strip().replace(",", ".")
+    larg_str = str(form.get("larg", "")).strip()
+    faixa = form.get("faixa", "")
+    ident = form.get("ident", "")
+    estacao_id = form.get("estacao_id", "").strip()
+    interferente = form.get("interferente", "")
+    ute_valor = str(form.get("ute", "")).strip()
+    ute = ute_valor == "Sim"
+    proc = form.get("proc", "").strip()
+    ato_ute = form.get("ato_ute", "").strip()
+    obs = form.get("obs", "").strip()
+    situacao = SITUACAO_PENDENTE  # Força Pendente — não submete ao coordenador
+    fiscais_participantes_ids = list(
+        dict.fromkeys(
+            int(fiscal_id)
+            for fiscal_id in form.getlist("fiscais_participantes")
+            if str(fiscal_id).isdigit()
+        )
+    )
+
+    idents = carregar_opcoes_identificacao(evento_id=sp_id)
+    estacoes = listar_estacoes_evento(evento_id=sp_id)
+    fiscais_participantes = _fiscais_participantes_evento(request, int(sp_id))
+    fiscais_participantes_permitidos = {
+        int(fiscal["id"]) for fiscal in fiscais_participantes
+    }
+    estacoes_ids = {str(estacao["id"]) for estacao in estacoes}
+    origem_campo = ORIGENS_CAMPO.get(estacao_id)
+
+    erros = list(erros_imagens)
+    if not fiscal:
+        erros.append("Fiscal")
+    try:
+        freq = float(freq_str) if freq_str else 0.0
+    except ValueError:
+        freq = 0.0
+    if freq <= 0:
+        erros.append("Frequência")
+    larg = _largura_da_banda(larg_str)
+    if larg is None:
+        erros.append("Largura de banda")
+    if ute_valor not in {"Sim", "Não"}:
+        erros.append("UTE")
+    if ute and not (proc or ato_ute):
+        erros.append("Processo SEI ou Ato UTE")
+    if estacao_id not in estacoes_ids and origem_campo is None:
+        erros.append("Estação da captura")
+    if not set(fiscais_participantes_ids).issubset(fiscais_participantes_permitidos):
+        erros.append("Fiscal participante")
+    erros = list(dict.fromkeys(erros))
+
+    if erros:
+        return templates.TemplateResponse(
+            request,
+            "inserir.html",
+            _ctx(
+                request,
+                ident_opcoes=idents,
+                dia=dia_str,
+                hora=hora_str,
+                fiscal=fiscal,
+                local=local,
+                freq=freq_str,
+                larg=larg_str,
+                faixa=faixa,
+                ident=ident,
+                estacao_id=estacao_id,
+                estacoes=estacoes,
+                origens_campo=ORIGENS_CAMPO,
+                banda_opcoes=BANDA_OPCOES,
+                fiscais_participantes=fiscais_participantes,
+                fiscais_participantes_ids=fiscais_participantes_ids,
+                interferente=interferente,
+                ute=ute_valor,
+                proc=proc,
+                ato_ute=ato_ute,
+                obs=obs,
+                situacao=situacao,
+                flash_error="Preencha os campos obrigatórios: " + ", ".join(erros),
+                flash_success=None,
+            ),
+        )
+
+    conflito = verificar_equipamento_frequencia(
+        evento_id=sp_id, freq_digitada=freq, largura_khz=larg, localidade=local
+    )
+
+    try:
+        dia_obj = datetime.strptime(dia_str, "%Y-%m-%d").date()
+    except Exception:
+        dia_obj = datetime.now().date()
+    try:
+        hora_obj = datetime.strptime(hora_str, "%H:%M").time()
+    except Exception:
+        hora_obj = datetime.now().time()
+
+    dados_submit = {
+        "Dia": dia_obj,
+        "Hora": hora_obj,
+        "Fiscal": fiscal,
+        "Local/Região": local,
+        "Frequência em MHz": freq,
+        "Largura em kHz": larg,
+        "Faixa de Frequência": faixa,
+        "Identificação": ident,
+        "UTE?": ute_valor,
+        "Processo SEI UTE": proc,
+        "Ato UTE": ato_ute,
+        "Observações/Detalhes/Contatos": obs,
+        "Situação": situacao,
+        "Autorizado? (Q)": "Indefinido",
+        "Interferente?": interferente,
+        "Estação ID": int(estacao_id) if estacao_id in estacoes_ids else None,
+        "Origem da captura": origem_campo,
+        "Fiscais participantes": fiscais_participantes_ids,
+    }
+
+    try:
+        ok = inserir_emissao_I_W(
+            evento_id=sp_id, dados_formulario=dados_submit, imagens=imagens
+        )
+    except FrequenciaOcupadaError as exc:
+        return templates.TemplateResponse(
+            request,
+            "inserir.html",
+            _ctx(
+                request,
+                ident_opcoes=idents,
+                dia=dia_str,
+                hora=hora_str,
+                fiscal=fiscal,
+                local=local,
+                freq=freq_str,
+                larg=larg_str,
+                faixa=faixa,
+                ident=ident,
+                estacao_id=estacao_id,
+                estacoes=estacoes,
+                origens_campo=ORIGENS_CAMPO,
+                banda_opcoes=BANDA_OPCOES,
+                fiscais_participantes=fiscais_participantes,
+                fiscais_participantes_ids=fiscais_participantes_ids,
+                interferente=interferente,
+                ute=ute_valor,
+                proc=proc,
+                ato_ute=ato_ute,
+                obs=obs,
+                situacao=situacao,
+                flash_error=str(exc),
+                flash_success=None,
+            ),
+        )
+    if ok:
+        msg = "Emissão salva com sucesso. Ela permanece como Pendente — você pode editá-la ou submetê-la ao coordenador depois."
+        if conflito:
+            msg = (
+                f"⚠️ AVISO: existe equipamento usando essa frequência ({conflito}). "
+                + msg
+            )
+        request.session["flash_success"] = msg
+        return RedirectResponse("/inserir", status_code=303)
+
+    # Falhou (offline ou erro) → salva na fila local via frontend
+    dados_json = extrair_dados_inserir(form)
+    return templates.TemplateResponse(
+        request,
+        "inserir.html",
+        _ctx(
+            request,
+            ident_opcoes=idents,
+            dia=dia_str,
+            hora=hora_str,
+            fiscal=fiscal,
+            local=local,
+            freq=freq_str,
+            larg=larg_str,
+            faixa=faixa,
+            ident=ident,
+            estacao_id=estacao_id,
+            estacoes=estacoes,
+            origens_campo=ORIGENS_CAMPO,
+            banda_opcoes=BANDA_OPCOES,
+            fiscais_participantes=fiscais_participantes,
+            fiscais_participantes_ids=fiscais_participantes_ids,
+            interferente=interferente,
+            ute=ute_valor,
+            proc=proc,
+            ato_ute=ato_ute,
+            obs=obs,
+            situacao=situacao,
+            flash_error=None,
+            flash_success=None,
+            **preparar_offline_ctx(dados_json),
+        ),
+    )
+
+
 @router.get("/check-freq")
 async def check_freq(
     request: Request, freq: float = 0.0, larg: float = 0.0, local: str = ""
@@ -394,6 +606,9 @@ async def api_inserir(request: Request):
             {"erro": "Fiscal da sessão não identificado."}, status_code=401
         )
     dados["Fiscal"] = fiscal
+    dados["Submeter ao coordenador"] = dados.get("Submeter ao coordenador", True) is True
+    if not dados["Submeter ao coordenador"]:
+        dados["Situação"] = SITUACAO_PENDENTE
     situacao = str(dados.get("Situação", "Pendente") or "Pendente").strip()
     if situacao not in SITUACOES_DISPONIVEIS_AO_FISCAL:
         return JSONResponse({"erro": "Status da emissão inválido."}, status_code=400)

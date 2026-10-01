@@ -253,6 +253,7 @@ ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS origem_captura TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS concluida_por TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS id_exibicao TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS ato_ute TEXT;
+ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS submetida_coordenador_em TIMESTAMPTZ;
 UPDATE ocorrencias
 SET id_exibicao = id::text || '-' || upper(substr(md5('emissao:' || criado_em::text || ':' || id::text), 1, 4));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_ocorrencias_id_exibicao
@@ -403,6 +404,7 @@ ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS id_exibicao TEXT;
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT 'Pendente';
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS concluida_por TEXT;
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS cadastrado_por TEXT;
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS submetido_coordenador_em TIMESTAMPTZ;
 UPDATE bsr_erb SET situacao = 'Pendente' WHERE situacao IS NULL OR trim(situacao) = '';
 UPDATE bsr_erb
 SET id_exibicao = id::text || '-' || upper(substr(md5(criado_em::text || ':' || id::text), 1, 4));

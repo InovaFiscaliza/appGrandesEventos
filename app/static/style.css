@@ -113,9 +113,15 @@ button.btn { font-family: inherit; }
     border-color: #1b5e20;
     width: auto;
 }
+.btn-salvar {
+    background: linear-gradient(to bottom, var(--green-dark), var(--green-light));
+    border-color: #1b5e20;
+    width: auto;
+}
 .inserir-acoes { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; }
 .inserir-acoes .btn { margin: 0; width: max-content; }
 .inserir-acoes .btn-submit { background: linear-gradient(to bottom, var(--blue-dark), var(--blue-light)); border: var(--border); }
+.inserir-acoes .btn-salvar { background: linear-gradient(to bottom, var(--green-dark), var(--green-light)); border: var(--border); }
 .btn-back { max-width: 220px; margin: 0.75rem auto 0; }
 .estacoes-voltar { display: flex; justify-content: flex-end; }
 .estacoes-voltar .btn-back { margin: 0.75rem 0 0; }

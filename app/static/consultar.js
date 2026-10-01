@@ -147,6 +147,7 @@ function renderizarTabela(lista) {
       textoSeguro(row.faixa),
       textoSeguro(row.situacao) || "Pendente",
     ];
+    // Coluna: botão expandir
     const acao = document.createElement("td");
     acao.className = "pendencia-action-col";
     const botao = document.createElement("button");
@@ -160,6 +161,7 @@ function renderizarTabela(lista) {
     });
     acao.appendChild(botao);
     tr.appendChild(acao);
+    // Demais colunas
     valores.forEach((valor, indice) => {
       const celula = document.createElement("td");
       celula.textContent = valor;

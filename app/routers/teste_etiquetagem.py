@@ -19,6 +19,7 @@ from app.services.postgres import (
     listar_faixas_numeracao_etiqueta,
     listar_numeros_etiqueta_ocupados,
     proximo_numero_etiqueta_disponivel,
+    sugerir_entidades_teste_etiquetagem,
     verificar_etiqueta_existente,
     verificar_frequencia_etiquetagem,
 )
@@ -387,6 +388,20 @@ async def numeros_etiqueta_teste(request: Request):
             "ocupados": listar_numeros_etiqueta_ocupados(evento_id=int(evento_id)),
         }
     )
+
+
+@router.get("/api/teste-etiquetagem/sugestoes-entidades")
+async def sugestoes_entidades_teste(request: Request, termo: str = ""):
+    """Sugere entidades já cadastradas em qualquer evento."""
+    bloqueio = _bloquear_modulo_se_desativado(request)
+    if bloqueio:
+        return JSONResponse(
+            {"erro": "Teste de etiquetagem não disponível neste evento."},
+            status_code=404,
+        )
+    if not request.session.get("spreadsheet_id"):
+        return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    return JSONResponse(sugerir_entidades_teste_etiquetagem(termo=termo))
 
 
 @router.get("/api/teste-etiquetagem/verificar-frequencia")

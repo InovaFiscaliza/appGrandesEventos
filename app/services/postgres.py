@@ -701,6 +701,7 @@ def listar_emissoes_evento(
                 ) vinculacao ON true
                 WHERE o.evento_id = :evento_id
                                     AND (:ocultar_vinculadas = false OR vinculacao.ticket_id IS NULL)
+                  AND o.submetida_coordenador_em IS NOT NULL
                   AND (
                       lower(trim(o.situacao)) = 'pendente'
                       OR (
@@ -837,6 +838,7 @@ def salvar_ticket_evento(
                     WHERE evento_id = :evento_id
                       AND id = ANY(CAST(:incidente_ids AS BIGINT[]))
                       AND excluido_em IS NULL
+                      AND submetido_coordenador_em IS NOT NULL
                 """),
                     {"evento_id": int(evento_id), "incidente_ids": incidentes},
                 )
@@ -845,7 +847,7 @@ def salvar_ticket_evento(
             )
             if set(incidentes_validos) != set(incidentes):
                 raise ValueError(
-                    "Um ou mais incidentes não pertencem ao evento selecionado."
+                    "Um ou mais incidentes não pertencem ao evento ou ainda não foram submetidos ao coordenador."
                 )
             incidente_ja_vinculado = conn.execute(
                 text("""
@@ -881,6 +883,17 @@ def salvar_ticket_evento(
                 SELECT :ticket_id, unnest(CAST(:ocorrencia_ids AS BIGINT[]))
             """),
             {"ticket_id": int(ticket_id), "ocorrencia_ids": ids},
+        )
+
+        # Marca as emissões como submetidas ao coordenador
+        conn.execute(
+            text("""
+                UPDATE ocorrencias
+                SET submetida_coordenador_em = COALESCE(submetida_coordenador_em, now())
+                WHERE id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
+                  AND evento_id = :evento_id
+            """),
+            {"ocorrencia_ids": ids, "evento_id": int(evento_id)},
         )
 
         (
@@ -2201,6 +2214,38 @@ def carregar_opcoes_identificacao(_client=None, evento_id=None) -> list:
 # =========================================================================
 
 
+def sugerir_entidades_teste_etiquetagem(_client=None, termo: str = "") -> list[dict]:
+    """Retorna entidades já usadas em testes de qualquer evento."""
+    termo = str(termo or "").strip()
+    if len(termo) < 2:
+        return []
+    try:
+        with get_engine().connect() as conn:
+            rows = (
+                conn.execute(
+                    text("""
+                        SELECT DISTINCT ON (lower(trim(t.entidade)))
+                               t.entidade, t.perfil, t.cpf_cnpj,
+                               t.responsavel_contato, t.telefone, t.email,
+                               t.licenca
+                        FROM testes_etiquetagem t
+                        WHERE unaccent(lower(t.entidade)) LIKE
+                              unaccent(lower(:termo))
+                        ORDER BY lower(trim(t.entidade)),
+                                 t.atualizado_em DESC NULLS LAST, t.id DESC
+                        LIMIT 10
+                    """),
+                    {"termo": f"%{_escape_like(termo)}%"},
+                )
+                .mappings()
+                .all()
+            )
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"Erro sugerir_entidades_teste_etiquetagem: {e}", exc_info=True)
+        return []
+
+
 def listar_faixas_numeracao_etiqueta(_client=None, evento_id=None) -> list[dict]:
     """Lista as faixas de numeração de etiqueta cadastradas para o evento."""
     try:
@@ -2944,6 +2989,21 @@ def inserir_emissao_I_W(
                 },
             )
             ocorrencia_id = resultado.scalar_one()
+            if dados_formulario.get("Submeter ao coordenador") is True:
+                conn.execute(text("""
+                    UPDATE ocorrencias SET submetida_coordenador_em = now()
+                    WHERE id = :id AND evento_id = :evento_id
+                """), {"id": ocorrencia_id, "evento_id": int(evento_id)})
+                conn.execute(text("""
+                    INSERT INTO auditoria_ocorrencias
+                        (ocorrencia_id, evento_id, usuario_fiscal, campo, valor_anterior, valor_novo)
+                    VALUES (:id, :evento_id, :usuario, 'Submissão ao coordenador', NULL,
+                            'Emissão submetida ao coordenador')
+                """), {
+                    "id": ocorrencia_id,
+                    "evento_id": int(evento_id),
+                    "usuario": dados_formulario.get("Fiscal", ""),
+                })
             criado_em = conn.execute(
                 text("SELECT criado_em FROM ocorrencias WHERE id = :ocorrencia_id"),
                 {"ocorrencia_id": ocorrencia_id},
@@ -3497,7 +3557,38 @@ def excluir_imagem_bsr_erb(
         return f"ERRO: {e}"
 
 
-def listar_bsr_erb(evento_id: int, ocultar_vinculados: bool = False) -> list[dict]:
+def submeter_bsr_erb(registro_id: int, evento_id: int, usuario_fiscal: str) -> str:
+    """Submete uma única vez um incidente ativo do evento à coordenação."""
+    try:
+        with get_engine().begin() as conn:
+            parametros = {"id": int(registro_id), "evento_id": int(evento_id), "usuario": usuario_fiscal}
+            registro = conn.execute(text("""
+                SELECT submetido_coordenador_em FROM bsr_erb
+                WHERE id = :id AND evento_id = :evento_id AND excluido_em IS NULL
+                FOR UPDATE
+            """), parametros).mappings().first()
+            if registro is None:
+                return "ERRO: Incidente não encontrado."
+            if registro["submetido_coordenador_em"] is not None:
+                return "Incidente já submetido ao coordenador."
+            conn.execute(text("""
+                UPDATE bsr_erb SET submetido_coordenador_em = now()
+                WHERE id = :id AND evento_id = :evento_id
+            """), parametros)
+            conn.execute(text("""
+                INSERT INTO auditoria_bsr_erb
+                    (bsr_erb_id, evento_id, usuario_fiscal, campo, valor_anterior, valor_novo)
+                VALUES (:id, :evento_id, :usuario, 'Submissão ao coordenador', NULL,
+                        'Incidente submetido ao coordenador')
+            """), parametros)
+        return "Incidente submetido ao coordenador com sucesso."
+    except Exception as e:
+        return f"ERRO: {e}"
+
+
+def listar_bsr_erb(
+    evento_id: int, ocultar_vinculados: bool = False, somente_submetidos: bool = False
+) -> list[dict]:
     """Lista registros BSR/ERB do evento com as fotos anexadas."""
     with get_engine().connect() as conn:
         registros = (
@@ -3505,6 +3596,7 @@ def listar_bsr_erb(evento_id: int, ocultar_vinculados: bool = False) -> list[dic
                 text("""
                   SELECT b.id, b.id_exibicao, b.tipo, b.regiao, b.latitude, b.longitude,
                        b.observacoes, b.cadastrado_por, b.situacao, b.concluida_por, b.criado_em,
+                      b.submetido_coordenador_em,
                       vinculacao.ticket_id AS ticket_id_vinculado,
                       (vinculacao.ticket_id IS NOT NULL) AS ja_possui_ticket,
                        COALESCE(string_agg(DISTINCT f.nome, ', ' ORDER BY f.nome), '') AS fiscais,
@@ -3526,6 +3618,7 @@ def listar_bsr_erb(evento_id: int, ocultar_vinculados: bool = False) -> list[dic
                                 WHERE b.evento_id = :evento_id
                                     AND b.excluido_em IS NULL
                                     AND (:ocultar_vinculados = false OR vinculacao.ticket_id IS NULL)
+                                    AND (:somente_submetidos = false OR b.submetido_coordenador_em IS NOT NULL)
                 GROUP BY b.id, b.id_exibicao, b.tipo, b.regiao, b.latitude, b.longitude,
                          b.observacoes, b.cadastrado_por, b.situacao, b.concluida_por,
                         b.criado_em, vinculacao.ticket_id, i.id, i.nome_arquivo, i.tipo_mime,
@@ -3535,6 +3628,7 @@ def listar_bsr_erb(evento_id: int, ocultar_vinculados: bool = False) -> list[dic
                 {
                     "evento_id": int(evento_id),
                     "ocultar_vinculados": ocultar_vinculados,
+                    "somente_submetidos": somente_submetidos,
                 },
             )
             .mappings()
@@ -3560,6 +3654,7 @@ def listar_bsr_erb(evento_id: int, ocultar_vinculados: bool = False) -> list[dic
                 "concluida_por": registro["concluida_por"],
                 "criado_em": registro["criado_em"],
                 "ticket_id_vinculado": registro["ticket_id_vinculado"],
+                "submetido_coordenador_em": registro["submetido_coordenador_em"],
                 "ja_possui_ticket": registro["ja_possui_ticket"],
                 "imagens": [],
             },

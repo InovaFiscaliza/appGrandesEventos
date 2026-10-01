@@ -93,7 +93,7 @@
             <ul id="lista-imagens-bsr-erb" class="lista-imagens" aria-live="polite"></ul>
         </div>
         <div class="inserir-acoes">
-            <button type="submit" class="btn btn-submit">{{ "Salvar alterações" if registro_edicao else "Submeter o incidente ao coordenador" }}</button>
+            <button type="submit" class="btn btn-submit">{{ "Salvar alterações" if registro_edicao else "Salvar incidente" }}</button>
             {% if registro_edicao %}<a href="/bsr-erb" class="btn btn-back">Cancelar</a>{% endif %}
         </div>
     </form>
@@ -170,7 +170,7 @@
     <div class="table-scroll">
         <table class="ute-table" data-paginacao="10">
             <thead>
-                <tr><th>ID</th><th>Tipo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th>Fotos</th><th>Registrado em</th></tr>
+                <tr><th>ID</th><th>Tipo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th>Fotos</th><th>Registrado em</th><th>Ações</th></tr>
             </thead>
             <tbody>
                 {% for registro in registros %}
@@ -193,6 +193,16 @@
                         {% else %}-{% endif %}
                     </td>
                     <td>{{ registro.criado_em.strftime('%d/%m/%Y %H:%M') if registro.criado_em else "-" }}</td>
+                    <td class="ticket-acoes">
+                        <a href="/bsr-erb?editar={{ registro.id }}" class="btn-ticket-mini">Editar</a>
+                        {% if registro.submetido_coordenador_em or registro.ja_possui_ticket %}
+                        <span class="font-size-s text-neutral-6">Submetido ao coordenador</span>
+                        {% else %}
+                        <form method="post" action="/bsr-erb/{{ registro.id }}/submeter" class="ticket-acao-inline" data-confirmacao-msg="Confirma a submissão deste incidente ao coordenador?">
+                            <button type="submit" class="btn-ticket-mini">Submeter ao coordenador</button>
+                        </form>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
