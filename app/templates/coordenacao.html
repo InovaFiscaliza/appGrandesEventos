@@ -69,9 +69,9 @@
     </div>
 
     <div class="card background-neutral-0 padding-l border-radius-m coordenacao-lista-card">
-        <h2 class="font-semi-bold margin-bottom-m">Emissões submetidas para inspeção</h2>
+        <h2 class="font-semi-bold margin-bottom-m">Emissões para inspeção</h2>
         <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
-            Revise as emissões submetidas e selecione uma ou mais para criar um ticket e atribuí-lo aos fiscais responsáveis. Linhas em cinza já estão vinculadas a ticket.
+            Emissões pendentes não submetidas podem ser consultadas, mas só podem gerar tickets depois que o fiscal as submeter. Linhas em cinza já estão vinculadas a ticket.
         </p>
         <div class="table-scroll" role="region" aria-label="Emissões submetidas para inspeção" tabindex="0" style="margin-bottom:1rem;">
             <table class="ute-table" data-paginacao="10">
@@ -94,7 +94,7 @@
                     {% for emissao in emissões %}
                     <tr{% if emissao.ja_possui_ticket %} class="emissao-ja-vinculada"{% endif %}>
                         <td>
-                            <input type="checkbox" name="ocorrencia_ids" value="{{ emissao.id }}" form="ticket-form" aria-label="Selecionar emissão {{ emissao.id }}" {% if emissao.ja_possui_ticket %}disabled title="Emissão já vinculada ao ticket #{{ emissao.ticket_id_vinculado }}"{% endif %}>
+                            <input type="checkbox" name="ocorrencia_ids" value="{{ emissao.id }}" form="ticket-form" aria-label="Selecionar emissão {{ emissao.id }}" {% if emissao.ja_possui_ticket %}disabled title="Emissão já vinculada ao ticket #{{ emissao.ticket_id_vinculado }}"{% elif not emissao.submetida_coordenador_em %}disabled title="Aguardando submissão do fiscal"{% endif %}>
                         </td>
                         <td>
                             <button type="button" class="emissao-id-btn" data-emissao-id="{{ emissao.id }}">{{ emissao.id_exibicao or emissao.id }}</button>
@@ -112,7 +112,13 @@
                         <td>{{ emissao.local_regiao or 'Não informado' }}</td>
                         <td>{{ emissao.situacao or '-' }}</td>
                         <td>{{ emissao.concluida_por or '-' }}</td>
-                        <td class="ticket-acoes"><a class="btn-ticket-mini" href="/consultar?emissao_id={{ emissao.id }}">Editar</a></td>
+                        <td class="ticket-acoes">
+                            {% if emissao.submetida_coordenador_em %}
+                            <a class="btn-ticket-mini" href="/consultar?emissao_id={{ emissao.id }}">Editar</a>
+                            {% else %}
+                            <span class="font-size-s text-neutral-6">Aguardando submissão</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr>

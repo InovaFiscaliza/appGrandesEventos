@@ -10,8 +10,9 @@ const ORIGENS_CAMPO = {
 function setSelect(id, val) {
   const el = document.getElementById(id);
   if (!el) return;
+  const valorNormalizado = textoSeguro(val);
   for (const opt of el.options) {
-    if (opt.value === val) {
+    if (opt.value === valorNormalizado) {
       opt.selected = true;
       return;
     }
@@ -35,36 +36,38 @@ document
   ?.addEventListener("change", atualizarCamposUteEdicao);
 
 function preencherForm(row) {
-  document.getElementById("f-row_key").value = row.row_key || "";
-  document.getElementById("f-fonte").value = row.fonte || "";
-  document.getElementById("f-id_val").value = row.id || "";
-  document.getElementById("f-estacao_raw").value = row.estacao_raw || "";
+  document.getElementById("f-row_key").value = textoSeguro(row.row_key);
+  document.getElementById("f-fonte").value = textoSeguro(row.fonte);
+  document.getElementById("f-id_val").value = textoSeguro(row.id);
+  document.getElementById("f-estacao_raw").value = textoSeguro(row.estacao_raw);
   setSelect(
     "f-estacao",
-    row.estacao_id || ORIGENS_CAMPO[row.origem_captura] || ""
+    textoSeguro(row.estacao_id)
+      || ORIGENS_CAMPO[textoSeguro(row.origem_captura)]
+      || ""
   );
-  document.getElementById("f-id").value = row.id || "";
-  document.getElementById("f-fiscal").value = row.fiscal || "";
-  document.getElementById("f-cadastrado-por").value = row.cadastrado_por || "Não informado";
-  document.getElementById("f-data").value = row.data || "";
-  document.getElementById("f-hora").value = row.hora || "";
-  document.getElementById("f-freq").value = row.freq || "";
-  document.getElementById("f-largura").value = row.largura || "";
-  document.getElementById("f-faixa").value = row.faixa || "";
-  document.getElementById("f-proc").value = row.processo_sei || "";
-  document.getElementById("f-ato-ute").value = row.ato_ute || "";
-  document.getElementById("f-obs").value = row.ocorrencia || "";
-  document.getElementById("f-cient").value = row.ciente || "";
+  document.getElementById("f-id").value = textoSeguro(row.id);
+  document.getElementById("f-fiscal").value = textoSeguro(row.fiscal);
+  document.getElementById("f-cadastrado-por").value = textoSeguro(row.cadastrado_por) || "Não informado";
+  document.getElementById("f-data").value = textoSeguro(row.data);
+  document.getElementById("f-hora").value = textoSeguro(row.hora);
+  document.getElementById("f-freq").value = textoSeguro(row.freq);
+  document.getElementById("f-largura").value = textoSeguro(row.largura);
+  document.getElementById("f-faixa").value = textoSeguro(row.faixa);
+  document.getElementById("f-proc").value = textoSeguro(row.processo_sei);
+  document.getElementById("f-ato-ute").value = textoSeguro(row.ato_ute);
+  document.getElementById("f-obs").value = textoSeguro(row.ocorrencia);
+  document.getElementById("f-cient").value = textoSeguro(row.ciente);
   setSelect(
     "f-ute",
-    ["sim", "true", "1", "ok"].includes((row.ute || "").toLowerCase())
+    ["sim", "true", "1", "ok"].includes(textoSeguro(row.ute).toLowerCase())
       ? "Sim"
       : "Não"
   );
-  setSelect("f-ident", row.identificacao || "");
-  setSelect("f-autz", row.autorizado || "");
-  setSelect("f-interf", row.interferente || "");
-  setSelect("f-situ", row.situacao || "");
+  setSelect("f-ident", row.identificacao);
+  setSelect("f-autz", row.autorizado);
+  setSelect("f-interf", row.interferente);
+  setSelect("f-situ", row.situacao);
   const somenteLeitura =
     document.getElementById("bloco-form")?.dataset.somenteLeitura === "true" ||
     row.pode_editar !== true;
@@ -132,7 +135,11 @@ async function carregarImagensOcorrencia(id, somenteLeitura = false) {
 }
 
 function textoSeguro(valor) {
-  return String(valor || "");
+  if (valor === null || valor === undefined) return "";
+  const texto = String(valor).trim();
+  return ["nan", "none", "null", "nat"].includes(texto.toLowerCase())
+    ? ""
+    : texto;
 }
 
 function formatarInicio(row) {

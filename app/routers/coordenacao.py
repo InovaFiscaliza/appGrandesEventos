@@ -451,7 +451,10 @@ async def get_emissao_detalhe(request: Request, ocorrencia_id: int):
         )
 
     emissao = obter_emissao_evento(int(evento_id), int(ocorrencia_id))
-    if not emissao or emissao.get("submetida_coordenador_em") is None:
+    if not emissao or (
+        emissao.get("submetida_coordenador_em") is None
+        and str(emissao.get("situacao") or "").strip().casefold() != "pendente"
+    ):
         return JSONResponse({"erro": "Emissão não encontrada"}, status_code=404)
 
     emissao["imagens"] = carregar_imagens_ocorrencia(

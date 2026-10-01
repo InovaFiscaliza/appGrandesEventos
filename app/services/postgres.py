@@ -686,7 +686,7 @@ def listar_emissoes_evento(
                       COALESCE(NULLIF(trim(criador.nome), ''), NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por,
                       o.local_regiao, o.data,
                        o.hora, o.frequencia_mhz, o.largura_khz, o.situacao,
-                       o.concluida_por,
+                       o.concluida_por, o.submetida_coordenador_em,
                        vinculacao.ticket_id AS ticket_id_vinculado,
                        (vinculacao.ticket_id IS NOT NULL) AS ja_possui_ticket
                 FROM ocorrencias o
@@ -708,7 +708,10 @@ def listar_emissoes_evento(
                 ) vinculacao ON true
                 WHERE o.evento_id = :evento_id
                                     AND (:ocultar_vinculadas = false OR vinculacao.ticket_id IS NULL)
-                  AND o.submetida_coordenador_em IS NOT NULL
+                  AND (
+                      o.submetida_coordenador_em IS NOT NULL
+                      OR lower(trim(o.situacao)) = 'pendente'
+                  )
                   AND (
                       lower(trim(o.situacao)) = 'pendente'
                       OR (

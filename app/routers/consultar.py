@@ -119,10 +119,14 @@ def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
     if _usuario_e_coordenador(request, int(sp_id)):
         if "SubmetidaCoordenadorEm" not in pendencias.columns:
             return pd.DataFrame(columns=pendencias.columns)
-        pendencias_visiveis = pendencias[
-            pendencias["SubmetidaCoordenadorEm"].notna()
-        ].copy()
-        pendencias_visiveis["PodeEditar"] = True
+        submetida = pendencias["SubmetidaCoordenadorEm"].notna()
+        pendente = (
+            pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
+            == "pendente"
+        )
+        visivel = submetida | pendente
+        pendencias_visiveis = pendencias[visivel].copy()
+        pendencias_visiveis["PodeEditar"] = submetida[visivel]
         return pendencias_visiveis
 
     fiscal_id = request.session.get("fiscal_id")
@@ -146,17 +150,33 @@ def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
     return pendencias_visiveis
 
 
+def _texto_json(valor, padrao: str = "") -> str:
+    """Converte escalares nulos do pandas em texto vazio para a interface."""
+    if valor is None or pd.isna(valor):
+        return padrao
+    texto = str(valor)
+    if texto.strip().casefold() in {"nan", "none", "null", "nat"}:
+        return padrao
+    return texto
+
+
 def _make_row_key(row: pd.Series) -> str:
-    return f"{row['Fonte']}|||{row['ID']}|||{row.get('EstacaoRaw', '')}"
+    return "|||".join(
+        (
+            _texto_json(row.get("Fonte")),
+            _texto_json(row.get("ID")),
+            _texto_json(row.get("EstacaoRaw")),
+        )
+    )
 
 
 def _make_label(row: pd.Series) -> str:
     parts = [
-        str(row.get("Local", "")),
-        str(row.get("Data", "")),
-        f"{row.get('Frequência (MHz)', '')} MHz",
-        str(row.get("Ocorrência (observações)", "")),
-        f"ID {row.get('ID', '')}",
+        _texto_json(row.get("Local")),
+        _texto_json(row.get("Data")),
+        f"{_texto_json(row.get('Frequência (MHz)'))} MHz",
+        _texto_json(row.get("Ocorrência (observações)")),
+        f"ID {_texto_json(row.get('ID'))}",
     ]
     return " | ".join(p for p in parts if p.strip() and p.strip() != " MHz")
 
@@ -398,7 +418,7 @@ async def api_pendencias(request: Request):
         return JSONResponse([])
     records = []
     for _, row in df.iterrows():
-        id_ocorrencia = str(row.get("ID", ""))
+        id_ocorrencia = _texto_json(row.get("ID"))
         imagens = []
         if id_ocorrencia.isdigit():
             imagens = carregar_imagens_ocorrencia(
@@ -408,30 +428,33 @@ async def api_pendencias(request: Request):
             {
                 "row_key": _make_row_key(row),
                 "label": _make_label(row),
-                "fonte": str(row.get("Fonte", "")),
-                "id": str(row.get("ID", "")),
-                "id_exibicao": str(row.get("IDExibicao", "") or row.get("ID", "")),
-                "local": str(row.get("Local", "")),
-                "fiscal": str(row.get("Fiscal", "")),
-                "cadastrado_por": str(row.get("CadastradoPor", "Não informado")),
+                "fonte": _texto_json(row.get("Fonte")),
+                "id": id_ocorrencia,
+                "id_exibicao": _texto_json(row.get("IDExibicao"), id_ocorrencia)
+                or id_ocorrencia,
+                "local": _texto_json(row.get("Local")),
+                "fiscal": _texto_json(row.get("Fiscal")),
+                "cadastrado_por": _texto_json(
+                    row.get("CadastradoPor"), "Não informado"
+                ),
                 "pode_editar": bool(row.get("PodeEditar", False)),
-                "data": str(row.get("Data", "")),
-                "hora": str(row.get("HH:mm", "")),
-                "freq": str(row.get("Frequência (MHz)", "")),
-                "largura": str(row.get("Largura (kHz)", "")),
-                "faixa": str(row.get("Faixa de Frequência Envolvida", "")),
-                "identificacao": str(row.get("Identificação", "")),
-                "autorizado": str(row.get("Autorizado?", "")),
-                "ute": str(row.get("UTE?", "")),
-                "processo_sei": str(row.get("Processo SEI UTE", "")),
-                "ato_ute": str(row.get("Ato UTE", "")),
-                "ocorrencia": str(row.get("Ocorrência (observações)", "")),
-                "ciente": str(row.get("Alguém mais ciente?", "")),
-                "interferente": str(row.get("Interferente?", "")),
-                "situacao": str(row.get("Situação", "")),
-                "estacao_raw": str(row.get("EstacaoRaw", "")),
-                "estacao_id": str(row.get("EstacaoID", "")),
-                "origem_captura": str(row.get("OrigemCaptura", "")),
+                "data": _texto_json(row.get("Data")),
+                "hora": _texto_json(row.get("HH:mm")),
+                "freq": _texto_json(row.get("Frequência (MHz)")),
+                "largura": _texto_json(row.get("Largura (kHz)")),
+                "faixa": _texto_json(row.get("Faixa de Frequência Envolvida")),
+                "identificacao": _texto_json(row.get("Identificação")),
+                "autorizado": _texto_json(row.get("Autorizado?")),
+                "ute": _texto_json(row.get("UTE?")),
+                "processo_sei": _texto_json(row.get("Processo SEI UTE")),
+                "ato_ute": _texto_json(row.get("Ato UTE")),
+                "ocorrencia": _texto_json(row.get("Ocorrência (observações)")),
+                "ciente": _texto_json(row.get("Alguém mais ciente?")),
+                "interferente": _texto_json(row.get("Interferente?")),
+                "situacao": _texto_json(row.get("Situação")),
+                "estacao_raw": _texto_json(row.get("EstacaoRaw")),
+                "estacao_id": _texto_json(row.get("EstacaoID")),
+                "origem_captura": _texto_json(row.get("OrigemCaptura")),
                 "imagens": imagens,
             }
         )
