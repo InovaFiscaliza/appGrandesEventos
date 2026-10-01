@@ -224,6 +224,7 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     id                BIGSERIAL PRIMARY KEY,
     id_exibicao       TEXT,
     evento_id         BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    criado_por_fiscal_id BIGINT REFERENCES fiscais(id) ON DELETE SET NULL,
     estacao_id        BIGINT REFERENCES estacoes(id) ON DELETE SET NULL,
     origem_captura    TEXT,
     id_planilha       TEXT,        -- ID original da planilha (ex: "Abo-100", "1-RF02")
@@ -250,6 +251,7 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
 );
 
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS origem_captura TEXT;
+ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS criado_por_fiscal_id BIGINT REFERENCES fiscais(id) ON DELETE SET NULL;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS concluida_por TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS id_exibicao TEXT;
 ALTER TABLE ocorrencias ADD COLUMN IF NOT EXISTS ato_ute TEXT;
@@ -320,6 +322,7 @@ CREATE INDEX IF NOT EXISTS idx_ocorrencia_fiscais_fiscal
 
 -- Índices para consultas frequentes
 CREATE INDEX IF NOT EXISTS idx_ocorr_evento_situacao ON ocorrencias (evento_id, situacao);
+CREATE INDEX IF NOT EXISTS idx_ocorr_evento_criador ON ocorrencias (evento_id, criado_por_fiscal_id);
 CREATE INDEX IF NOT EXISTS idx_ocorr_frequencia      ON ocorrencias (evento_id, frequencia_mhz);
 CREATE INDEX IF NOT EXISTS idx_ocorr_busca_trgm      ON ocorrencias USING gin (observacoes gin_trgm_ops);
 
@@ -385,6 +388,7 @@ CREATE TABLE IF NOT EXISTS bsr_erb (
     id          BIGSERIAL PRIMARY KEY,
     id_exibicao TEXT,
     evento_id   BIGINT NOT NULL REFERENCES eventos(id) ON DELETE CASCADE,
+    criado_por_fiscal_id BIGINT REFERENCES fiscais(id) ON DELETE SET NULL,
     tipo        TEXT NOT NULL,
     regiao      TEXT,
     latitude    NUMERIC(9,6),
@@ -404,12 +408,15 @@ ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS id_exibicao TEXT;
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS situacao TEXT NOT NULL DEFAULT 'Pendente';
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS concluida_por TEXT;
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS cadastrado_por TEXT;
+ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS criado_por_fiscal_id BIGINT REFERENCES fiscais(id) ON DELETE SET NULL;
 ALTER TABLE bsr_erb ADD COLUMN IF NOT EXISTS submetido_coordenador_em TIMESTAMPTZ;
 UPDATE bsr_erb SET situacao = 'Pendente' WHERE situacao IS NULL OR trim(situacao) = '';
 UPDATE bsr_erb
 SET id_exibicao = id::text || '-' || upper(substr(md5(criado_em::text || ':' || id::text), 1, 4));
 CREATE UNIQUE INDEX IF NOT EXISTS uq_bsr_erb_id_exibicao
     ON bsr_erb (id_exibicao);
+CREATE INDEX IF NOT EXISTS idx_bsr_erb_evento_criador
+    ON bsr_erb (evento_id, criado_por_fiscal_id);
 
 CREATE TABLE IF NOT EXISTS bsr_erb_imagens (
     id            BIGSERIAL PRIMARY KEY,

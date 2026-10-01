@@ -18,7 +18,6 @@ from app.services.postgres import (
     cancelar_ticket_evento,
     atualizar_ticket_evento,
     carregar_imagens_ocorrencia,
-    concluir_emissao_coordenador,
     excluir_escala_evento,
     listar_emissoes_evento,
     listar_coordenadores_evento,
@@ -118,7 +117,9 @@ async def get_coordenacao(request: Request):
             tickets_concluidos_coordenador=tickets_concluidos_coordenador,
             status_ticket_rotulos=STATUS_TICKET_ROTULOS,
             emissões=listar_emissoes_evento(int(evento_id), ocultar_vinculadas=True),
-            incidentes=listar_bsr_erb(int(evento_id), ocultar_vinculados=True, somente_submetidos=True),
+            incidentes=listar_bsr_erb(
+                int(evento_id), ocultar_vinculados=True, somente_submetidos=True
+            ),
             escalas=listar_escalas_evento(int(evento_id)),
             fiscais=fiscais_evento,
             flash_success=request.session.pop("flash_success", None),
@@ -452,7 +453,7 @@ async def get_emissao_detalhe(request: Request, ocorrencia_id: int):
         )
 
     emissao = obter_emissao_evento(int(evento_id), int(ocorrencia_id))
-    if not emissao:
+    if not emissao or emissao.get("submetida_coordenador_em") is None:
         return JSONResponse({"erro": "Emissão não encontrada"}, status_code=404)
 
     emissao["imagens"] = carregar_imagens_ocorrencia(
@@ -481,22 +482,13 @@ async def get_ticket_detalhe(request: Request, ticket_id: int):
 
 @router.post("/coordenacao/emissao/{ocorrencia_id}/concluir")
 async def post_concluir_emissao_coordenador(request: Request, ocorrencia_id: int):
-    """Registra a conclusão definitiva de uma emissão pela coordenação."""
+    """Impede alteração direta de uma emissão pela coordenação."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return RedirectResponse("/", status_code=302)
     if not _usuario_e_coordenador(request, int(evento_id)):
         return _acesso_negado(request)
-
-    res = concluir_emissao_coordenador(
-        evento_id=int(evento_id),
-        ocorrencia_id=ocorrencia_id,
-        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
+    request.session["flash_error"] = (
+        "A coordenação não altera emissões diretamente. Crie um ticket e atribua-o aos fiscais."
     )
-
-    if res.startswith("ERRO"):
-        request.session["flash_error"] = res
-    else:
-        request.session["flash_success"] = res
-
     return RedirectResponse("/coordenacao", status_code=303)

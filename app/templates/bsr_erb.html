@@ -94,7 +94,7 @@
         </div>
         <div class="inserir-acoes">
             <button type="submit" class="btn btn-submit">{{ "Salvar alterações" if registro_edicao else "Salvar incidente" }}</button>
-            {% if registro_edicao %}<a href="/bsr-erb" class="btn btn-back">Cancelar</a>{% endif %}
+            <a href="/bsr-erb" class="btn btn-back">Cancelar</a>
         </div>
     </form>
 </div>
@@ -165,18 +165,20 @@
 <section class="form-card font-semi-bold incidentes-lista">
     <div class="section-heading">
         <h5 class="teq-title">Incidentes cadastrados</h5>
+        {% if not mostrar_form %}<a href="/bsr-erb?novo=1" class="btn">Cadastrar incidente</a>{% endif %}
     </div>
     {% if registros %}
     <div class="table-scroll">
         <table class="ute-table" data-paginacao="10">
             <thead>
-                <tr><th>ID</th><th>Tipo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th>Fotos</th><th>Registrado em</th><th>Ações</th></tr>
+                <tr><th>ID</th><th>Tipo</th><th>Cadastrado por</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Observações</th><th>Fotos</th><th>Registrado em</th><th>Ações</th></tr>
             </thead>
             <tbody>
                 {% for registro in registros %}
                 <tr>
                     <td>{{ registro.id_exibicao or registro.id }}</td>
                     <td>{{ registro.tipo }}</td>
+                    <td>{{ registro.cadastrado_por or 'Não informado' }}</td>
                     <td>{{ registro.regiao or "-" }}</td>
                     <td>{{ registro.latitude or "-" }}</td>
                     <td>{{ registro.longitude or "-" }}</td>
@@ -194,7 +196,9 @@
                     </td>
                     <td>{{ registro.criado_em.strftime('%d/%m/%Y %H:%M') if registro.criado_em else "-" }}</td>
                     <td class="ticket-acoes">
+                        {% if not eh_coordenador and registro.criado_por_fiscal_id|int == request.session.get('fiscal_id', -1)|int and not registro.submetido_coordenador_em %}
                         <a href="/bsr-erb?editar={{ registro.id }}" class="btn-ticket-mini">Editar</a>
+                        {% endif %}
                         {% if registro.submetido_coordenador_em or registro.ja_possui_ticket %}
                         <span class="font-size-s text-neutral-6">Submetido ao coordenador</span>
                         {% else %}

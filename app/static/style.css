@@ -1328,6 +1328,16 @@ body {
 .form-card.incidentes-lista { background: #fff; }
 .incidentes-lista .ute-table td { font-weight: 400; }
 .incidentes-lista .ute-table th { font-weight: 700; }
+.incidentes-lista .ticket-acoes .btn-ticket-mini {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0 .65rem;
+    font-size: .85rem;
+    line-height: 1;
+    text-decoration: none;
+}
 .form-card.estacoes-lista { background: #fff; }
 .estacoes-lista .ute-table td,
 .estacoes-lista .ute-table .estacao-acao .btn {

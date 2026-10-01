@@ -45,6 +45,7 @@ function preencherForm(row) {
   );
   document.getElementById("f-id").value = row.id || "";
   document.getElementById("f-fiscal").value = row.fiscal || "";
+  document.getElementById("f-cadastrado-por").value = row.cadastrado_por || "Não informado";
   document.getElementById("f-data").value = row.data || "";
   document.getElementById("f-hora").value = row.hora || "";
   document.getElementById("f-freq").value = row.freq || "";
@@ -64,14 +65,26 @@ function preencherForm(row) {
   setSelect("f-autz", row.autorizado || "");
   setSelect("f-interf", row.interferente || "");
   setSelect("f-situ", row.situacao || "");
+  const somenteLeitura =
+    document.getElementById("bloco-form")?.dataset.somenteLeitura === "true" ||
+    row.pode_editar !== true;
+  const camposEditaveis = document.querySelectorAll(
+    "#form-consultar select, #form-consultar textarea, #form-consultar input[type=file]"
+  );
+  camposEditaveis.forEach((campo) => { campo.disabled = false; });
   atualizarCamposUteEdicao();
+  camposEditaveis.forEach((campo) => { campo.disabled = somenteLeitura || campo.disabled; });
+  document.querySelectorAll("#form-consultar .consultar-acoes button").forEach((botao) => {
+    botao.disabled = somenteLeitura;
+    botao.hidden = somenteLeitura;
+  });
   document.getElementById("f-imagens-excluir").value = "";
-  carregarImagensOcorrencia(row.id);
+  carregarImagensOcorrencia(row.id, somenteLeitura);
   document.getElementById("bloco-form").style.display = "block";
   document.getElementById("consultar-voltar").style.display = "none";
 }
 
-async function carregarImagensOcorrencia(id) {
+async function carregarImagensOcorrencia(id, somenteLeitura = false) {
   const lista = document.getElementById("lista-imagens-salvas");
   if (!lista) return;
   lista.replaceChildren();
@@ -92,23 +105,25 @@ async function carregarImagensOcorrencia(id) {
         }
       });
       item.appendChild(preview);
-      const excluir = document.createElement("button");
-      excluir.type = "button";
-      excluir.className = "imagem-preview-excluir";
-      excluir.setAttribute("data-confirmacao-imagem", "true");
-      excluir.setAttribute("aria-label", `Excluir ${imagem.nome_arquivo}`);
-      excluir.title = "Excluir imagem";
-      excluir.textContent = "🗑️";
-      excluir.addEventListener("click", () =>
-        window.confirmarExclusaoImagem(() => {
-          const campo = document.getElementById("f-imagens-excluir");
-          const ids = campo.value ? campo.value.split(",") : [];
-          if (!ids.includes(String(imagem.id))) ids.push(String(imagem.id));
-          campo.value = ids.filter(Boolean).join(",");
-          item.remove();
-        }, excluir)
-      );
-      item.appendChild(excluir);
+      if (!somenteLeitura) {
+        const excluir = document.createElement("button");
+        excluir.type = "button";
+        excluir.className = "imagem-preview-excluir";
+        excluir.setAttribute("data-confirmacao-imagem", "true");
+        excluir.setAttribute("aria-label", `Excluir ${imagem.nome_arquivo}`);
+        excluir.title = "Excluir imagem";
+        excluir.textContent = "🗑️";
+        excluir.addEventListener("click", () =>
+          window.confirmarExclusaoImagem(() => {
+            const campo = document.getElementById("f-imagens-excluir");
+            const ids = campo.value ? campo.value.split(",") : [];
+            if (!ids.includes(String(imagem.id))) ids.push(String(imagem.id));
+            campo.value = ids.filter(Boolean).join(",");
+            item.remove();
+          }, excluir)
+        );
+        item.appendChild(excluir);
+      }
       lista.appendChild(item);
     });
   } catch (erro) {
@@ -139,6 +154,7 @@ function renderizarTabela(lista) {
     tr.dataset.rowKey = row.row_key;
     const valores = [
       textoSeguro(row.id_exibicao || row.id),
+      textoSeguro(row.cadastrado_por),
       textoSeguro(row.estacao_raw || row.fonte),
       textoSeguro(row.local),
       formatarInicio(row),
@@ -283,6 +299,30 @@ window.addEventListener("message", (evento) => {
 
 const linkHistorico = document.getElementById("btn-consultar-historico");
 linkHistorico?.addEventListener("click", abrirHistoricoPopup);
+
+document.getElementById("btn-submeter-ticket")?.addEventListener("click", async (evento) => {
+  evento.preventDefault();
+  const ocorrenciaId = document.getElementById("f-id_val")?.value;
+  if (!ocorrenciaId || !window.confirm("Submeter esta emissão ao coordenador?")) return;
+  if (!navigator.onLine) {
+    window.alert("Conecte-se à rede para submeter a emissão ao coordenador.");
+    return;
+  }
+
+  const botao = evento.currentTarget;
+  botao.disabled = true;
+  try {
+    const resposta = await fetch(`/consultar/submeter-ticket/${encodeURIComponent(ocorrenciaId)}`, {
+      method: "POST",
+      headers: { Accept: "text/html" },
+    });
+    if (!resposta.redirected) throw new Error(`Falha HTTP ${resposta.status}`);
+    window.location.assign(resposta.url);
+  } catch (erro) {
+    botao.disabled = false;
+    window.alert("Não foi possível submeter a emissão. Tente novamente.");
+  }
+});
 
 function popularTabela(lista) {
   const selectedKey = new URLSearchParams(window.location.search).get("key") || "";

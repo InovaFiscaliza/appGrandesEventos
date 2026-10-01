@@ -89,6 +89,12 @@ def _fiscal_logado(request: Request) -> str:
     return str(request.session.get("fiscal_nome", "")).strip()
 
 
+def _fiscal_logado_id(request: Request) -> int | None:
+    """Retorna o ID fiscal associado ao usuário autenticado para autoria."""
+    valor = request.session.get("fiscal_id")
+    return int(valor) if valor and str(valor).isdigit() else None
+
+
 def _largura_da_banda(valor: str) -> float | None:
     """Converte uma banda da lista compartilhada para seu valor numérico em kHz."""
     if valor not in BANDA_OPCOES:
@@ -115,6 +121,11 @@ async def get_inserir(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+    if _fiscal_logado_id(request) is None:
+        request.session["flash_error"] = (
+            "Usuário autenticado não identificado para o cadastro."
+        )
+        return RedirectResponse("/menu", status_code=303)
 
     idents = carregar_opcoes_identificacao(evento_id=sp_id)
     estacoes = listar_estacoes_evento(evento_id=sp_id)
@@ -159,6 +170,12 @@ async def post_inserir(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None:
+        request.session["flash_error"] = (
+            "Usuário autenticado não identificado para o cadastro."
+        )
+        return RedirectResponse("/menu", status_code=303)
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
@@ -269,6 +286,7 @@ async def post_inserir(request: Request):
         "Dia": dia_obj,
         "Hora": hora_obj,
         "Fiscal": fiscal,
+        "Criador fiscal ID": fiscal_id,
         "Local/Região": local,
         "Frequência em MHz": freq,
         "Largura em kHz": larg,
@@ -372,6 +390,12 @@ async def post_inserir_salvar(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None:
+        request.session["flash_error"] = (
+            "Usuário autenticado não identificado para o cadastro."
+        )
+        return RedirectResponse("/menu", status_code=303)
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
@@ -479,6 +503,7 @@ async def post_inserir_salvar(request: Request):
         "Dia": dia_obj,
         "Hora": hora_obj,
         "Fiscal": fiscal,
+        "Criador fiscal ID": fiscal_id,
         "Local/Região": local,
         "Frequência em MHz": freq,
         "Largura em kHz": larg,
@@ -595,6 +620,12 @@ async def api_inserir(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None:
+        return JSONResponse(
+            {"erro": "Usuário autenticado não identificado para o cadastro."},
+            status_code=403,
+        )
     try:
         dados = await request.json()
     except Exception:
@@ -606,7 +637,10 @@ async def api_inserir(request: Request):
             {"erro": "Fiscal da sessão não identificado."}, status_code=401
         )
     dados["Fiscal"] = fiscal
-    dados["Submeter ao coordenador"] = dados.get("Submeter ao coordenador", True) is True
+    dados["Criador fiscal ID"] = fiscal_id
+    dados["Submeter ao coordenador"] = (
+        dados.get("Submeter ao coordenador", True) is True
+    )
     if not dados["Submeter ao coordenador"]:
         dados["Situação"] = SITUACAO_PENDENTE
     situacao = str(dados.get("Situação", "Pendente") or "Pendente").strip()

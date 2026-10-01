@@ -18,8 +18,7 @@ from app.services.postgres import (
     listar_coordenadores_evento,
     listar_estacoes_evento,
     listar_tickets_evento,
-    registrar_auditoria_coordenacao,
-    salvar_ticket_evento,
+    submeter_emissao_evento,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
@@ -114,12 +113,24 @@ def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
         if d is not None and not d.empty
     ]
     pendencias = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-    if pendencias.empty or _usuario_e_coordenador(request, int(sp_id)):
+    if pendencias.empty:
         return pendencias
 
-    fiscal_logado = str(request.session.get("fiscal_nome", "")).strip().casefold()
+    if _usuario_e_coordenador(request, int(sp_id)):
+        if "SubmetidaCoordenadorEm" not in pendencias.columns:
+            return pd.DataFrame(columns=pendencias.columns)
+        pendencias_visiveis = pendencias[
+            pendencias["SubmetidaCoordenadorEm"].notna()
+        ].copy()
+        pendencias_visiveis["PodeEditar"] = False
+        return pendencias_visiveis
+
     fiscal_id = request.session.get("fiscal_id")
-    if not fiscal_logado or "Fiscal" not in pendencias.columns:
+    if (
+        not fiscal_id
+        or not str(fiscal_id).isdigit()
+        or "CriadorFiscalID" not in pendencias.columns
+    ):
         return pd.DataFrame(columns=pendencias.columns)
 
     ocorrencias_em_tickets_atribuidos = set()
@@ -133,13 +144,17 @@ def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
                 if item.strip()
             )
 
-    return pendencias[
-        (
-            pendencias["Fiscal"].fillna("").astype(str).str.strip().str.casefold()
-            == fiscal_logado
-        )
-        | pendencias["ID"].astype(str).isin(ocorrencias_em_tickets_atribuidos)
-    ].copy()
+    criada_pelo_fiscal = pd.to_numeric(
+        pendencias["CriadorFiscalID"], errors="coerce"
+    ).eq(int(fiscal_id))
+    atribuida_ao_fiscal = (
+        pendencias["ID"].astype(str).isin(ocorrencias_em_tickets_atribuidos)
+    )
+    submetida = pendencias["SubmetidaCoordenadorEm"].notna()
+    visivel = criada_pelo_fiscal | atribuida_ao_fiscal | submetida
+    pendencias_visiveis = pendencias[visivel].copy()
+    pendencias_visiveis["PodeEditar"] = (criada_pelo_fiscal & ~submetida)[visivel]
+    return pendencias_visiveis
 
 
 def _make_row_key(row: pd.Series) -> str:
@@ -186,6 +201,7 @@ async def get_consultar(request: Request, key: str = ""):
             selected_row=selected_row,
             estacoes=estacoes,
             origens_campo=ORIGENS_CAMPO,
+            eh_coordenador=_usuario_e_coordenador(request, int(sp_id)),
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -238,6 +254,12 @@ async def get_imagem_historico(request: Request, imagem_id: int, ocorrencia_id: 
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return Response(status_code=401)
+    pendencias = _load_pendencias(request, evento_id)
+    if (
+        pendencias.empty
+        or str(ocorrencia_id) not in pendencias["ID"].astype(str).values
+    ):
+        return Response(status_code=403)
     imagem = carregar_imagem_ocorrencia(evento_id, ocorrencia_id, imagem_id)
     if not imagem:
         return Response(status_code=404)
@@ -249,6 +271,9 @@ async def post_consultar_salvar(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+    if _usuario_e_coordenador(request, int(sp_id)):
+        request.session["flash_error"] = "A coordenação não edita emissões nesta tela."
+        return RedirectResponse("/consultar", status_code=303)
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
@@ -278,7 +303,7 @@ async def post_consultar_salvar(request: Request):
         if not pendencias.empty
         else pd.DataFrame()
     )
-    if ocorrencia.empty:
+    if ocorrencia.empty or not bool(ocorrencia.iloc[0].get("PodeEditar", False)):
         request.session["flash_error"] = (
             "Você não tem permissão para alterar esta emissão."
         )
@@ -398,6 +423,8 @@ async def api_pendencias(request: Request):
                 "id_exibicao": str(row.get("IDExibicao", "") or row.get("ID", "")),
                 "local": str(row.get("Local", "")),
                 "fiscal": str(row.get("Fiscal", "")),
+                "cadastrado_por": str(row.get("CadastradoPor", "Não informado")),
+                "pode_editar": bool(row.get("PodeEditar", False)),
                 "data": str(row.get("Data", "")),
                 "hora": str(row.get("HH:mm", "")),
                 "freq": str(row.get("Frequência (MHz)", "")),
@@ -433,7 +460,7 @@ async def api_ocorrencia_imagens(request: Request, id: int):
         if not pendencias.empty
         else pd.DataFrame()
     )
-    if ocorrencia.empty:
+    if ocorrencia.empty or not bool(ocorrencia.iloc[0].get("PodeEditar", False)):
         return JSONResponse({"erro": "Acesso não autorizado"}, status_code=403)
     return JSONResponse(carregar_imagens_ocorrencia(evento_id, id))
 
@@ -444,6 +471,10 @@ async def api_consultar_salvar(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    if _usuario_e_coordenador(request, int(sp_id)):
+        return JSONResponse(
+            {"erro": "A coordenação não edita emissões nesta tela."}, status_code=403
+        )
     try:
         dados = await request.json()
     except Exception:
@@ -504,10 +535,13 @@ async def api_consultar_salvar(request: Request):
 
 @router.post("/consultar/submeter-ticket/{ocorrencia_id}")
 async def post_consultar_submeter_ticket(request: Request, ocorrencia_id: int):
-    """Submete uma emissão ao coordenador criando um ticket e atribuindo ao fiscal logado."""
+    """Submete uma emissão à coordenação para posterior criação de ticket."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return RedirectResponse("/", status_code=302)
+    if _usuario_e_coordenador(request, int(evento_id)):
+        request.session["flash_error"] = "Somente fiscais podem submeter emissões."
+        return RedirectResponse("/consultar", status_code=303)
 
     fiscal_id = request.session.get("fiscal_id")
     fiscal_nome = request.session.get("fiscal_nome", "Usuário não identificado")
@@ -515,45 +549,13 @@ async def post_consultar_submeter_ticket(request: Request, ocorrencia_id: int):
         request.session["flash_error"] = "Fiscal não identificado na sessão."
         return RedirectResponse("/consultar", status_code=303)
 
-    # Verifica se o fiscal tem acesso à ocorrência
-    pendencias = _load_pendencias(request, evento_id)
-    tem_acesso = False
-    if not pendencias.empty:
-        tem_acesso = str(ocorrencia_id) in pendencias["ID"].astype(str).values
-
-    if not tem_acesso:
-        request.session["flash_error"] = (
-            "Você não tem permissão para submeter esta emissão."
-        )
-        return RedirectResponse("/consultar", status_code=303)
-
-    try:
-        ticket_id = salvar_ticket_evento(
-            evento_id=int(evento_id),
-            ocorrencia_ids=[ocorrencia_id],
-            incidente_ids=None,
-            prioridade="normal",
-            observacoes="Emissão submetida pelo fiscal para inspeção da coordenação.",
-            fiscal_ids=[int(fiscal_id)],
-            usuario_fiscal=fiscal_nome,
-        )
-    except ValueError as exc:
-        request.session["flash_error"] = str(exc)
-        return RedirectResponse("/consultar", status_code=303)
-
-    registrar_auditoria_coordenacao(
+    resultado = submeter_emissao_evento(
         evento_id=int(evento_id),
+        ocorrencia_id=ocorrencia_id,
+        fiscal_id=int(fiscal_id),
         usuario_fiscal=fiscal_nome,
-        acao="Emissão submetida via consulta",
-        valor_anterior=None,
-        valor_novo=(
-            f"Ticket #{ticket_id} criado para ocorrência #{ocorrencia_id}; "
-            f"fiscal #{fiscal_id} atribuído"
-        ),
     )
-
-    request.session["flash_success"] = (
-        f"✅ Emissão #{ocorrencia_id} submetida ao coordenador com sucesso "
-        f"(Ticket #{ticket_id})."
-    )
+    request.session[
+        "flash_error" if resultado.startswith("ERRO") else "flash_success"
+    ] = resultado
     return RedirectResponse("/consultar", status_code=303)

@@ -14,13 +14,31 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _filtros_visibilidade_busca(request: Request) -> tuple[int | None, bool]:
+    coordenador = (
+        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
+    )
+    if coordenador:
+        return None, True
+    fiscal_id = request.session.get("fiscal_id")
+    return (int(fiscal_id) if fiscal_id and str(fiscal_id).isdigit() else -1), False
+
+
 @router.get("/api/busca/sugestoes")
 async def get_sugestoes_busca(request: Request, termo: str = ""):
     """Retorna sugestões de emissões do evento selecionado."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
-    return JSONResponse(sugerir_busca_emissoes(evento_id=evento_id, termo=termo))
+    fiscal_id, somente_submetidas = _filtros_visibilidade_busca(request)
+    return JSONResponse(
+        sugerir_busca_emissoes(
+            evento_id=evento_id,
+            termo=termo,
+            fiscal_id=fiscal_id,
+            somente_submetidas=somente_submetidas,
+        )
+    )
 
 
 def _ctx(request: Request, **kwargs):
@@ -116,7 +134,13 @@ async def post_busca(request: Request):
             ),
         )
 
-    res = _buscar_por_texto_livre(evento_id=sp_id, termos=termo)
+    fiscal_id, somente_submetidas = _filtros_visibilidade_busca(request)
+    res = _buscar_por_texto_livre(
+        evento_id=sp_id,
+        termos=termo,
+        fiscal_id=fiscal_id,
+        somente_submetidas=somente_submetidas,
+    )
     imagens_por_ocorrencia = carregar_imagens_ocorrencias(
         evento_id=sp_id,
         ocorrencia_ids=res["ID"].tolist() if not res.empty else [],

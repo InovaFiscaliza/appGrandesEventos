@@ -71,7 +71,7 @@
     <div class="card background-neutral-0 padding-l border-radius-m coordenacao-lista-card">
         <h2 class="font-semi-bold margin-bottom-m">Emissões submetidas para inspeção</h2>
         <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
-            Revise as emissões pendentes ou concluídas pelo fiscal. A coordenação pode concluir definitivamente cada emissão ou selecionar uma ou mais para atribuir um ticket. Linhas em cinza já estão vinculadas a ticket.
+            Revise as emissões submetidas e selecione uma ou mais para criar um ticket e atribuí-lo aos fiscais responsáveis. Linhas em cinza já estão vinculadas a ticket.
         </p>
         <div class="table-scroll" role="region" aria-label="Emissões submetidas para inspeção" tabindex="0" style="margin-bottom:1rem;">
             <table class="ute-table" data-paginacao="10">
@@ -83,10 +83,10 @@
                         <th>Frequência</th>
                         <th>Largura</th>
                         <th>Fiscal</th>
+                        <th>Cadastrado por</th>
                         <th>Local</th>
                         <th>Status</th>
                         <th>Concluída por</th>
-                        <th>Ação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -107,18 +107,10 @@
                         <td>{{ emissao.frequencia_mhz or '-' }}{% if emissao.frequencia_mhz %} MHz{% endif %}</td>
                         <td>{{ emissao.largura_khz or '-' }}{% if emissao.largura_khz %} kHz{% endif %}</td>
                         <td>{{ emissao.fiscal or 'Sem fiscal' }}</td>
+                        <td>{{ emissao.cadastrado_por or 'Não informado' }}</td>
                         <td>{{ emissao.local_regiao or 'Não informado' }}</td>
                         <td>{{ emissao.situacao or '-' }}</td>
                         <td>{{ emissao.concluida_por or '-' }}</td>
-                        <td class="ticket-acoes">
-                            {% if emissao.ja_possui_ticket %}
-                            <span class="text-neutral-6 font-size-s">Tratar pelo ticket #{{ emissao.ticket_id_vinculado }}</span>
-                            {% else %}
-                            <form method="post" action="/coordenacao/emissao/{{ emissao.id }}/concluir" class="ticket-acao-inline" data-confirmacao-msg="Confirma a conclusão definitiva desta emissão pelo coordenador?">
-                                <button type="submit" class="btn-ticket-mini btn-ticket-encerrar">Concluir pelo coordenador</button>
-                            </form>
-                            {% endif %}
-                        </td>
                     </tr>
                     {% else %}
                     <tr>
@@ -1025,6 +1017,7 @@
                     renderDetalheLinha('Identificação', emissao.identificacao),
                     renderDetalheLinha('Local', emissao.local_regiao),
                     renderDetalheLinha('Fiscal', emissao.fiscal),
+                    renderDetalheLinha('Cadastrado por', emissao.cadastrado_por),
                     renderDetalheLinha('Data', emissao.data),
                     renderDetalheLinha('Hora', emissao.hora),
                     renderDetalheLinha('Frequência (MHz)', emissao.frequencia_mhz),
@@ -1093,6 +1086,7 @@
                     + renderRegistrosTicket('Emissões', ticket.emissoes, [
                         { rotulo: 'ID', chave: 'id_exibicao' }, { rotulo: 'Identificação', chave: 'identificacao' },
                         { rotulo: 'Local', chave: 'local_regiao' }, { rotulo: 'Fiscal', chave: 'fiscal' },
+                        { rotulo: 'Cadastrado por', chave: 'cadastrado_por' },
                         { rotulo: 'Frequência (MHz)', chave: 'frequencia_mhz' }, { rotulo: 'Observações', chave: 'observacoes' },
                     ])
                     + renderRegistrosTicket('Incidentes', ticket.incidentes, [

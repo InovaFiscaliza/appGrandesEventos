@@ -44,6 +44,23 @@ TIPOS_OCORRENCIA_VALIDOS = set(TIPOS_OCORRENCIA) | {
 }
 
 
+def _eh_coordenador(request: Request) -> bool:
+    return (
+        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
+    )
+
+
+def _fiscal_logado_id(request: Request) -> int | None:
+    valor = request.session.get("fiscal_id")
+    return int(valor) if valor and str(valor).isdigit() else None
+
+
+def _listar_registros_visiveis(request: Request, evento_id: int) -> list[dict]:
+    if _eh_coordenador(request):
+        return listar_bsr_erb(evento_id, fiscal_id=_fiscal_logado_id(request) or -1)
+    return listar_bsr_erb(evento_id, fiscal_id=_fiscal_logado_id(request) or -1)
+
+
 async def _ler_imagens(form) -> tuple[list[dict], list[str]]:
     """Lê e valida as fotos anexadas ao registro BSR/ERB."""
     imagens = []
@@ -94,7 +111,8 @@ def _fiscais_participantes_evento(request: Request, evento_id: int) -> list[dict
     fiscal_logado_id = str(request.session.get("fiscal_id", ""))
     ids_evento = set(listar_fiscais_evento(evento_id))
     return [
-        fiscal for fiscal in listar_fiscais()
+        fiscal
+        for fiscal in listar_fiscais()
         if int(fiscal["id"]) in ids_evento and str(fiscal["id"]) != fiscal_logado_id
     ]
 
@@ -103,7 +121,8 @@ def _fiscais_participantes_evento(request: Request, evento_id: int) -> list[dict
 async def get_bsr_erb(request: Request):
     if not request.session.get("spreadsheet_id"):
         return RedirectResponse("/", status_code=302)
-    registros = listar_bsr_erb(int(request.session["spreadsheet_id"]))
+    evento_id = int(request.session["spreadsheet_id"])
+    registros = _listar_registros_visiveis(request, evento_id)
     fiscais_participantes = _fiscais_participantes_evento(
         request, int(request.session["spreadsheet_id"])
     )
@@ -113,11 +132,20 @@ async def get_bsr_erb(request: Request):
     registro_edicao = None
     if editar_id and editar_id.isdigit():
         registro_edicao = next(
-            (registro for registro in registros if registro["id"] == int(editar_id)),
+            (
+                registro
+                for registro in registros
+                if registro["id"] == int(editar_id)
+                and not _eh_coordenador(request)
+                and registro.get("criado_por_fiscal_id") == _fiscal_logado_id(request)
+                and registro.get("submetido_coordenador_em") is None
+            ),
             None,
         )
         if registro_edicao is None:
-            request.session["flash_error"] = "Incidente não encontrado."
+            request.session["flash_error"] = (
+                "Incidente não encontrado ou sem permissão para editar."
+            )
             return RedirectResponse("/bsr-erb", status_code=303)
     return templates.TemplateResponse(
         request,
@@ -134,14 +162,19 @@ async def get_bsr_erb(request: Request):
             lat=registro_edicao["latitude"] if registro_edicao else "",
             lon=registro_edicao["longitude"] if registro_edicao else "",
             observacoes=registro_edicao["observacoes"] if registro_edicao else "",
-            situacao=registro_edicao["situacao"] if registro_edicao else SITUACAO_PENDENTE,
+            situacao=(
+                registro_edicao["situacao"] if registro_edicao else SITUACAO_PENDENTE
+            ),
             situacao_opcoes=[SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL],
             fiscais_participantes=fiscais_participantes,
-            fiscais_participantes_ids=(registro_edicao.get("fiscal_ids", []) if registro_edicao else []),
+            fiscais_participantes_ids=(
+                registro_edicao.get("fiscal_ids", []) if registro_edicao else []
+            ),
             registros=registros,
             registro_edicao=registro_edicao,
             evento=evento,
-            mostrar_form=bool(registro_edicao or novo or not editar_id),
+            mostrar_form=bool(registro_edicao or novo),
+            eh_coordenador=_eh_coordenador(request),
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -153,6 +186,12 @@ async def post_bsr_erb(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None:
+        request.session["flash_error"] = (
+            "Usuário autenticado não identificado para o cadastro."
+        )
+        return RedirectResponse("/bsr-erb", status_code=303)
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
@@ -162,7 +201,13 @@ async def post_bsr_erb(request: Request):
     lon = form.get("lon", "").strip()
     observacoes = form.get("observacoes", "").strip()
     situacao = form.get("situacao", SITUACAO_PENDENTE).strip()
-    fiscais_participantes_ids = list(dict.fromkeys(int(item) for item in form.getlist("fiscais_participantes") if str(item).isdigit()))
+    fiscais_participantes_ids = list(
+        dict.fromkeys(
+            int(item)
+            for item in form.getlist("fiscais_participantes")
+            if str(item).isdigit()
+        )
+    )
 
     lat = _normalize_coord(lat)
     lon = _normalize_coord(lon)
@@ -194,11 +239,12 @@ async def post_bsr_erb(request: Request):
                 observacoes=observacoes,
                 situacao=situacao,
                 situacao_opcoes=[SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL],
-                registros=listar_bsr_erb(int(sp_id)),
+                registros=_listar_registros_visiveis(request, int(sp_id)),
                 registro_edicao=None,
                 mostrar_form=True,
                 tipo_opcoes=TIPOS_OCORRENCIA,
                 evento=obter_evento(int(sp_id)),
+                eh_coordenador=_eh_coordenador(request),
                 flash_error=error,
                 flash_success=None,
             ),
@@ -213,6 +259,8 @@ async def post_bsr_erb(request: Request):
         observacoes=observacoes,
         situacao=situacao,
         cadastrado_por=request.session.get("fiscal_nome", "Usuário não identificado"),
+        criado_por_fiscal_id=fiscal_id,
+        fiscal_ids=fiscais_participantes_ids,
         imagens=imagens,
     )
 
@@ -227,11 +275,12 @@ async def post_bsr_erb(request: Request):
                 lat=lat,
                 lon=lon,
                 observacoes=observacoes,
-                registros=listar_bsr_erb(int(sp_id)),
+                registros=_listar_registros_visiveis(request, int(sp_id)),
                 registro_edicao=None,
                 mostrar_form=True,
                 tipo_opcoes=TIPOS_OCORRENCIA,
                 evento=obter_evento(int(sp_id)),
+                eh_coordenador=_eh_coordenador(request),
                 flash_error=res,
                 flash_success=None,
             ),
@@ -246,6 +295,12 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None or _eh_coordenador(request):
+        request.session["flash_error"] = (
+            "A coordenação não pode editar incidentes existentes."
+        )
+        return RedirectResponse("/bsr-erb", status_code=303)
 
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
@@ -255,6 +310,13 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
     lon = _normalize_coord(form.get("lon", "").strip())
     observacoes = form.get("observacoes", "").strip()
     situacao = form.get("situacao", SITUACAO_PENDENTE).strip()
+    fiscais_participantes_ids = list(
+        dict.fromkeys(
+            int(item)
+            for item in form.getlist("fiscais_participantes")
+            if str(item).isdigit()
+        )
+    )
 
     error = "; ".join(erros_imagens) if erros_imagens else None
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
@@ -274,8 +336,10 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
         registro_edicao = next(
             (
                 registro
-                for registro in listar_bsr_erb(int(sp_id))
+                for registro in _listar_registros_visiveis(request, int(sp_id))
                 if registro["id"] == registro_id
+                and registro.get("criado_por_fiscal_id") == fiscal_id
+                and registro.get("submetido_coordenador_em") is None
             ),
             None,
         )
@@ -291,11 +355,12 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
                 observacoes=observacoes,
                 situacao=situacao,
                 situacao_opcoes=[SITUACAO_PENDENTE, SITUACAO_CONCLUIDA_FISCAL],
-                registros=listar_bsr_erb(int(sp_id)),
+                registros=_listar_registros_visiveis(request, int(sp_id)),
                 registro_edicao=registro_edicao,
                 mostrar_form=True,
                 tipo_opcoes=TIPOS_OCORRENCIA,
                 evento=obter_evento(int(sp_id)),
+                eh_coordenador=_eh_coordenador(request),
                 flash_error=error,
                 flash_success=None,
             ),
@@ -310,6 +375,7 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
         lon=lon,
         observacoes=observacoes,
         situacao=situacao,
+        criado_por_fiscal_id=fiscal_id,
         fiscal_ids=fiscais_participantes_ids,
         imagens=imagens,
     )
@@ -326,10 +392,17 @@ async def post_submeter_bsr_erb(request: Request, registro_id: int):
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return RedirectResponse("/", status_code=302)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None:
+        request.session["flash_error"] = (
+            "Usuário autenticado não identificado para a submissão."
+        )
+        return RedirectResponse("/bsr-erb", status_code=303)
     res = submeter_bsr_erb(
         registro_id=registro_id,
         evento_id=evento_id,
         usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
+        criado_por_fiscal_id=fiscal_id,
     )
     request.session["flash_error" if res.startswith("ERRO") else "flash_success"] = res
     return RedirectResponse("/bsr-erb", status_code=303)
@@ -341,7 +414,18 @@ async def post_excluir_bsr_erb(request: Request, registro_id: int):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
-    res = excluir_bsr_erb(registro_id=registro_id, evento_id=sp_id)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None or _eh_coordenador(request):
+        request.session["flash_error"] = (
+            "A coordenação não pode excluir incidentes existentes."
+        )
+        return RedirectResponse("/bsr-erb", status_code=303)
+    res = excluir_bsr_erb(
+        registro_id=registro_id,
+        evento_id=sp_id,
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
+        criado_por_fiscal_id=fiscal_id,
+    )
     request.session["flash_error" if res.startswith("ERRO") else "flash_success"] = res
     return RedirectResponse("/bsr-erb", status_code=303)
 
@@ -354,10 +438,18 @@ async def post_excluir_imagem_bsr_erb(
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return RedirectResponse("/", status_code=302)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None or _eh_coordenador(request):
+        request.session["flash_error"] = (
+            "A coordenação não pode remover fotos de incidentes existentes."
+        )
+        return RedirectResponse("/bsr-erb", status_code=303)
     res = excluir_imagem_bsr_erb(
         imagem_id=imagem_id,
         registro_id=registro_id,
         evento_id=int(evento_id),
+        usuario_fiscal=request.session.get("fiscal_nome", "Usuário não identificado"),
+        criado_por_fiscal_id=fiscal_id,
     )
     request.session["flash_error" if res.startswith("ERRO") else "flash_success"] = res
     return RedirectResponse(f"/bsr-erb?editar={registro_id}", status_code=303)
@@ -369,6 +461,12 @@ async def api_bsr_erb(request: Request):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
+    fiscal_id = _fiscal_logado_id(request)
+    if fiscal_id is None:
+        return JSONResponse(
+            {"erro": "Usuário autenticado não identificado para o cadastro."},
+            status_code=403,
+        )
     try:
         dados = await request.json()
     except Exception:
@@ -380,7 +478,13 @@ async def api_bsr_erb(request: Request):
     lon = _normalize_coord(dados.get("lon", ""))
     observacoes = dados.get("observacoes", "").strip()
     situacao = str(dados.get("situacao", SITUACAO_PENDENTE)).strip()
-    fiscais_participantes_ids = list(dict.fromkeys(int(item) for item in dados.get("fiscais_participantes", []) if str(item).isdigit()))
+    fiscais_participantes_ids = list(
+        dict.fromkeys(
+            int(item)
+            for item in dados.get("fiscais_participantes", [])
+            if str(item).isdigit()
+        )
+    )
 
     if tipo not in TIPOS_OCORRENCIA_VALIDOS:
         return JSONResponse({"erro": "Tipo de incidente inválido"}, status_code=400)
@@ -406,6 +510,7 @@ async def api_bsr_erb(request: Request):
         lon=lon,
         observacoes=observacoes,
         situacao=situacao,
+        criado_por_fiscal_id=fiscal_id,
         fiscal_ids=fiscais_participantes_ids,
         cadastrado_por=request.session.get("fiscal_nome", "Usuário não identificado"),
     )
