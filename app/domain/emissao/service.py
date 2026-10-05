@@ -8,9 +8,6 @@ além da stdlib e do próprio domínio.
 
 from __future__ import annotations
 
-from typing import List, Optional
-from datetime import date
-
 from .model import Emissao
 from .repository import EmissaoRepository
 
@@ -30,7 +27,7 @@ class EmissaoService:
         """
         self._repository = repository
 
-    def submeter_para_coordenacao(self, emissao_id: int) -> Optional[Emissao]:
+    def submeter_para_coordenacao(self, emissao_id: int) -> Emissao | None:
         """Submete uma emissão para análise da coordenação.
 
         Regra de negócio: apenas emissões com situação 'pendente' podem ser
@@ -89,7 +86,7 @@ class EmissaoService:
         emissao.situacao = "pendente"
         return self._repository.save(emissao)
 
-    def concluir_emissao(self, emissao_id: int) -> Optional[Emissao]:
+    def concluir_emissao(self, emissao_id: int) -> Emissao | None:
         """Marca uma emissão como concluída.
 
         Regra de negócio: apenas emissões em coordenação ou pendentes
@@ -112,7 +109,7 @@ class EmissaoService:
         emissao.situacao = "concluido"
         return self._repository.update(emissao)
 
-    def cancelar_emissao(self, emissao_id: int) -> Optional[Emissao]:
+    def cancelar_emissao(self, emissao_id: int) -> Emissao | None:
         """Cancela uma emissão.
 
         Regra de negócio: apenas emissões pendentes podem ser canceladas diretamente.
@@ -134,7 +131,7 @@ class EmissaoService:
         emissao.situacao = "cancelado"
         return self._repository.update(emissao)
 
-    def listar_por_evento(self, evento_id: int, incluir_todas: bool = False) -> List[Emissao]:
+    def listar_por_evento(self, evento_id: int, incluir_todas: bool = False) -> list[Emissao]:
         """Lista todas as emissões de um determinado evento.
 
         Args:
@@ -146,7 +143,7 @@ class EmissaoService:
         """
         return self._repository.list_by_evento(evento_id, incluir_todas)
 
-    def listar_por_fiscal(self, fiscal_id: int) -> List[Emissao]:
+    def listar_por_fiscal(self, fiscal_id: int) -> list[Emissao]:
         """Lista todas as emissões registradas por um determinado fiscal.
 
         Args:
@@ -157,7 +154,7 @@ class EmissaoService:
         """
         return self._repository.list_by_fiscal(fiscal_id)
 
-    def obter_emissao(self, emissao_id: int) -> Optional[Emissao]:
+    def obter_emissao(self, emissao_id: int) -> Emissao | None:
         """Obtém uma emissão pelo seu ID.
 
         Args:

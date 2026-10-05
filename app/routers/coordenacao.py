@@ -6,8 +6,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.config import (
-    STATUS_TICKET_CONCLUIDO_FISCAIS,
     STATUS_TICKET_CONCLUIDO_COORDENADOR,
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
     STATUS_TICKET_PENDENTE,
     STATUS_TICKET_ROTULOS,
     STATUS_TICKET_VALIDOS,
@@ -15,16 +15,15 @@ from app.config import (
 )
 from app.services.postgres import (
     atualizar_escala_evento,
-    cancelar_ticket_evento,
     atualizar_ticket_evento,
+    cancelar_ticket_evento,
     carregar_imagens_ocorrencia,
     excluir_escala_evento,
+    listar_bsr_erb,
     listar_emissoes_evento,
-    listar_coordenadores_evento,
     listar_escalas_evento,
     listar_fiscais,
     listar_fiscais_evento,
-    listar_bsr_erb,
     listar_tickets_evento,
     obter_detalhes_ticket_evento,
     obter_emissao_evento,

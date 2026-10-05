@@ -7,11 +7,10 @@ de infraestrutura (ex: usando SQLAlchemy, etc.).
 
 from __future__ import annotations
 
-from typing import Protocol, List, Optional
-
-from datetime import date
+from typing import Protocol
 
 from .model import Emissao
+
 
 class EmissaoRepository(Protocol):
     """Protocolo que define as operações necessárias para manipular emissões.
@@ -21,7 +20,7 @@ class EmissaoRepository(Protocol):
     interface para que a camada de serviço possa trabalhar com abstração.
     """
 
-    def get_by_id(self, emissao_id: int) -> Optional[Emissao]:
+    def get_by_id(self, emissao_id: int) -> Emissao | None:
         """Busca uma emissão pelo seu identificador único.
 
         Args:
@@ -32,7 +31,7 @@ class EmissaoRepository(Protocol):
         """
         ...
 
-    def list_by_evento(self, evento_id: int, incluir_todas: bool = False) -> List[Emissao]:
+    def list_by_evento(self, evento_id: int, incluir_todas: bool = False) -> list[Emissao]:
         """Lista todas as emissões associadas a um determinado evento.
 
         Args:
@@ -44,7 +43,7 @@ class EmissaoRepository(Protocol):
         """
         ...
 
-    def list_by_fiscal(self, fiscal_id: int) -> List[Emissao]:
+    def list_by_fiscal(self, fiscal_id: int) -> list[Emissao]:
         """Lista todas as emissões registradas por um determinado fiscal.
 
         Args:
@@ -95,7 +94,7 @@ class EmissaoRepository(Protocol):
 
     def update_submetida_coordenador_em(
         self, emissao_id: int, submetida_coordenador_em: bool
-    ) -> Optional[Emissao]:
+    ) -> Emissao | None:
         """Atualiza apenas o flag de submissão à coordenação de uma emissão.
 
         Args:

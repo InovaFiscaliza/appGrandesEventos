@@ -5,28 +5,18 @@ Implementação concreta do EmissaoRepository usando o serviço postgres.py exis
 
 from __future__ import annotations
 
-from typing import List, Optional
+import logging
 from datetime import date, time
 
-from app.services.postgres import (
-    carregar_opcoes_identificacao,
-    FrequenciaOcupadaError,
-    inserir_emissao_I_W,
-    consultar_conflitos_frequencia,
-    listar_fiscais,
-    listar_fiscais_evento,
-    listar_estacoes_evento,
-    obter_fuso_horario_evento,
-    verificar_equipamento_frequencia,
-    obter_emissao_evento,
-    # Note: We might need to add more functions as required
-)
-from app.services.db import get_engine
 from sqlalchemy import text
-import logging
 
 from app.domain.emissao.model import Emissao
 from app.domain.emissao.repository import EmissaoRepository
+from app.services.db import get_engine
+from app.services.postgres import (
+    FrequenciaOcupadaError,
+    inserir_emissao_I_W,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +25,6 @@ class PostgresEmissaoRepository(EmissaoRepository):
 
     def __init__(self) -> None:
         """Inicializa o repositório. Não há dependências externas além do postgres.py."""
-        pass
 
     def _emissao_to_dict(self, emissao: Emissao) -> dict:
         """Converte uma instância de Emissao para dicionário compatível com inserir_emissao_I_W."""
@@ -91,7 +80,7 @@ class PostgresEmissaoRepository(EmissaoRepository):
             fiscal_nome=data.get("cadastrado_por"),
         )
 
-    def get_by_id(self, emissao_id: int) -> Optional[Emissao]:
+    def get_by_id(self, emissao_id: int) -> Emissao | None:
         """Busca uma emissão pelo ID."""
         try:
             with get_engine().connect() as conn:
@@ -119,7 +108,7 @@ class PostgresEmissaoRepository(EmissaoRepository):
             logger.error(f"Erro ao buscar emissão por ID {emissao_id}: {e}")
             return None
 
-    def list_by_evento(self, evento_id: int, incluir_todas: bool = False) -> List[Emissao]:
+    def list_by_evento(self, evento_id: int, incluir_todas: bool = False) -> list[Emissao]:
         """Lista todas as emissões de um evento.
 
         Args:
@@ -162,7 +151,7 @@ class PostgresEmissaoRepository(EmissaoRepository):
             logger.error(f"Erro ao listar emissões do evento {evento_id}: {e}")
             return []
 
-    def list_by_fiscal(self, fiscal_nome: str) -> List[Emissao]:
+    def list_by_fiscal(self, fiscal_nome: str) -> list[Emissao]:
         """Lista todas as emissões de um fiscal (filtrando pelo nome do fiscal)."""
         try:
             with get_engine().connect() as conn:
@@ -290,7 +279,7 @@ class PostgresEmissaoRepository(EmissaoRepository):
 
     def update_submetida_coordenador_em(
         self, emissao_id: int, submetida_coordenador_em: bool
-    ) -> Optional[Emissao]:
+    ) -> Emissao | None:
         """Atualiza apenas o flag de submissão à coordenação de uma emissão."""
         try:
             with get_engine().begin() as conn:
@@ -357,4 +346,4 @@ class PostgresEmissaoRepository(EmissaoRepository):
         except Exception as e:
             logger.error(f"Erro ao adicionar imagens para a emissão {emissao_id}: {e}")
             raise
-            return None
+            return

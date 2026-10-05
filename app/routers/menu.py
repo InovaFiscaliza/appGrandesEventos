@@ -1,20 +1,22 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.infrastructure.persistence.postgres.emissao_repository import PostgresEmissaoRepository
-from app.domain.emissao.service import EmissaoService
-from app.services.postgres import (
-    get_city_map_url,
-    listar_coordenadores_evento,
-    listar_tickets_evento,
-)
-from app.utils.formatters import _img_b64
 from app.config import (
     STATUS_TICKET_CONCLUIDO_COORDENADOR,
     STATUS_TICKET_CONCLUIDO_FISCAIS,
     TITULO_PRINCIPAL,
 )
+from app.domain.emissao.service import EmissaoService
+from app.infrastructure.persistence.postgres.emissao_repository import (
+    PostgresEmissaoRepository,
+)
+from app.services.postgres import (
+    get_city_map_url,
+    listar_tickets_evento,
+)
+from app.utils.formatters import _img_b64
+
 
 def get_emissao_service() -> EmissaoService:
     repo = PostgresEmissaoRepository()

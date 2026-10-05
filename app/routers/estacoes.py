@@ -5,10 +5,9 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import MODELOS_EQUIPAMENTO, TITULO_PRINCIPAL
 from app.services.postgres import (
+    atualizar_estacao,
     criar_estacao,
     desabilitar_estacao,
-    atualizar_estacao,
-    listar_coordenadores_evento,
     listar_estacoes_evento,
     listar_eventos_detalhes,
     registrar_auditoria_coordenacao,

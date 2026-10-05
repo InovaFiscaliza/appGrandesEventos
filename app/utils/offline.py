@@ -16,13 +16,13 @@ Uso nos routers:
     return templates.TemplateResponse(..., **preparar_offline_ctx(dados_json))
 """
 
-from typing import Any, Dict
+from typing import Any
 
 
 def preparar_offline_ctx(
-    form_data: Dict[str, str],
+    form_data: dict[str, str],
     store_name: str = "fila_envio",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Prepara o contexto para o template quando o servidor detecta modo offline.
     O frontend (app.js) captura offline_salvo=True e salva no IndexedDB.
@@ -41,7 +41,7 @@ def preparar_offline_ctx(
     }
 
 
-def extrair_dados_inserir(form) -> Dict[str, str]:
+def extrair_dados_inserir(form) -> dict[str, str]:
     """
     Extrai os dados do formulário de inserção no formato esperado
     pela fila offline e pela API /api/inserir.
@@ -72,7 +72,7 @@ def extrair_dados_inserir(form) -> Dict[str, str]:
     }
 
 
-def extrair_dados_edicao(form) -> Dict[str, str]:
+def extrair_dados_edicao(form) -> dict[str, str]:
     """
     Extrai os dados do formulário de edição de pendência (consultar) no formato
     esperado pela fila offline e pela API /api/consultar-salvar.

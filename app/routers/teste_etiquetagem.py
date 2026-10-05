@@ -6,24 +6,23 @@ from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
 
 from app.config import BANDA_OPCOES, TITULO_PRINCIPAL
+from app.services.permissoes import MODULO_TESTE_ETIQUETAGEM, modulo_disponivel
 from app.services.postgres import (
     atualizar_teste_etiquetagem,
     carregar_imagens_teste_etiquetagem,
-    excluir_teste_etiquetagem,
-    inserir_teste_etiquetagem,
-    listar_testes_etiquetagem,
     consultar_equipamentos_frequencia,
-    obter_teste_etiquetagem,
-    obter_evento,
+    excluir_teste_etiquetagem,
     faixa_numeracao_disponivel,
+    inserir_teste_etiquetagem,
     listar_faixas_numeracao_etiqueta,
     listar_numeros_etiqueta_ocupados,
+    listar_testes_etiquetagem,
+    obter_evento,
+    obter_teste_etiquetagem,
     proximo_numero_etiqueta_disponivel,
     sugerir_entidades_teste_etiquetagem,
     verificar_etiqueta_existente,
-    verificar_frequencia_etiquetagem,
 )
-from app.services.permissoes import MODULO_TESTE_ETIQUETAGEM, modulo_disponivel
 from app.utils.formatters import _img_b64
 from app.utils.geocoding import obter_endereco_por_coordenadas
 
@@ -91,7 +90,7 @@ def _frequencia_da_etiqueta(valor: str) -> float | None:
 
 def _largura_da_etiqueta(valor: str) -> float:
     """Extrai a largura em kHz embutida no texto da frequência."""
-    correspondencia = re.search(r"⌂\s*([\d.,]+)\s*kHz", str(valor or ""), re.I)
+    correspondencia = re.search(r"⌂\s*([\d.,]+)\s*kHz", str(valor or ""), re.IGNORECASE)
     if not correspondencia:
         return 0.0
     try:

@@ -1,30 +1,27 @@
+import logging
 from urllib.parse import quote
 
-import logging
-
 import pandas as pd
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
 
+from app.config import IDENT_OPCOES, ORIGENS_CAMPO, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
+from app.domain.emissao.service import EmissaoService
+from app.infrastructure.persistence.postgres.emissao_repository import (
+    PostgresEmissaoRepository,
+)
 from app.services.postgres import (
     atualizar_campos_na_aba_mae,
-    carregar_imagens_ocorrencia,
     carregar_imagem_ocorrencia,
-    carregar_pendencias_painel_mapeadas,
-    carregar_pendencias_todas_estacoes,
+    carregar_imagens_ocorrencia,
     consultar_historico_ocorrencia,
-    listar_coordenadores_evento,
     listar_estacoes_evento,
-    listar_tickets_evento,
-    submeter_emissao_evento,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
-from app.config import IDENT_OPCOES, ORIGENS_CAMPO, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
-from app.infrastructure.persistence.postgres.emissao_repository import PostgresEmissaoRepository
-from app.domain.emissao.service import EmissaoService
+
 
 def get_emissao_service() -> EmissaoService:
     repo = PostgresEmissaoRepository()
@@ -277,7 +274,7 @@ async def get_historico_ocorrencia(
         return RedirectResponse("/consultar", status_code=303)
 
     evento_id_int = int(evento_id)
-    pendencias = await _load_pendencias(request, evento_id_int, emissao_service)
+    await _load_pendencias(request, evento_id_int, emissao_service)
     # Use EmissaoService to check if the emission exists and the user has permission
     emissao = emissao_service.obter_emissao(id)
     if not emissao:
@@ -314,7 +311,7 @@ async def get_imagem_historico(
     if not evento_id:
         return Response(status_code=401)
     evento_id_int = int(evento_id)
-    pendencias = await _load_pendencias(request, evento_id_int, emissao_service)
+    await _load_pendencias(request, evento_id_int, emissao_service)
     # Use EmissaoService to check if the emission exists
     emissao = emissao_service.obter_emissao(ocorrencia_id)
     if not emissao:
@@ -437,7 +434,7 @@ async def post_consultar_salvar(
             ),
         )
 
-    if res.startswith("ERRO") or res.startswith("Erro"):
+    if res.startswith(("ERRO", "Erro")):
         request.session["flash_error"] = res
     else:
         request.session["flash_success"] = res
@@ -600,7 +597,7 @@ async def api_consultar_salvar(
     else:
         return JSONResponse({"erro": "Origem da ocorrência inválida."}, status_code=400)
 
-    if res.startswith("ERRO") or res.startswith("Erro"):
+    if res.startswith(("ERRO", "Erro")):
         return JSONResponse({"erro": res}, status_code=500)
     return JSONResponse({"ok": True})
 
@@ -620,7 +617,7 @@ async def post_consultar_submeter_ticket(
         return RedirectResponse("/consultar", status_code=303)
 
     fiscal_id = request.session.get("fiscal_id")
-    fiscal_nome = request.session.get("fiscal_nome", "Usuário não identificado")
+    request.session.get("fiscal_nome", "Usuário não identificado")
     if not fiscal_id or not str(fiscal_id).isdigit():
         request.session["flash_error"] = "Fiscal não identificado na sessão."
         return RedirectResponse("/consultar", status_code=303)

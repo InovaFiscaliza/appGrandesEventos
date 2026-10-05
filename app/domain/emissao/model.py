@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, time
-from typing import Optional
 
 
 @dataclass
@@ -48,21 +47,21 @@ class Emissao:
     largura_khz: float
     local_regiao: str
     identificacao: str
-    autorizado: Optional[bool] = None
+    autorizado: bool | None = None
     ute: bool = False
-    processo_sei_ute: Optional[str] = None
-    ato_ute: Optional[str] = None
+    processo_sei_ute: str | None = None
+    ato_ute: str | None = None
     observacoes: str = ""
-    alguem_ciente: Optional[bool] = None
+    alguem_ciente: bool | None = None
     interferente: bool = False
     situacao: str = "pendente"
     fonte: str = "PAINEL"
     data: date = field(default_factory=date.today)
     hora: time = field(default_factory=time.min)
     fiscal_id: int = 0
-    id_exibicao: Optional[str] = None
-    equipamento: Optional[str] = None
-    fiscal_nome: Optional[str] = None
+    id_exibicao: str | None = None
+    equipamento: str | None = None
+    fiscal_nome: str | None = None
 
     def __post_init__(self) -> None:
         """Validações básicas de consistência após a inicialização."""

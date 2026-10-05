@@ -6,22 +6,6 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
 
-from app.services.postgres import (
-    carregar_opcoes_identificacao,
-    FrequenciaOcupadaError,
-    inserir_emissao_I_W,
-    consultar_conflitos_frequencia,
-    listar_fiscais,
-    listar_fiscais_evento,
-    listar_estacoes_evento,
-    obter_fuso_horario_evento,
-    verificar_equipamento_frequencia,
-)
-from app.utils.formatters import _data_hora_foto, _img_b64
-from app.utils.offline import (
-    extrair_dados_inserir,
-    preparar_offline_ctx,
-)
 from app.config import (
     BANDA_OPCOES,
     FAIXA_OPCOES,
@@ -29,6 +13,22 @@ from app.config import (
     SITUACAO_PENDENTE,
     SITUACOES_DISPONIVEIS_AO_FISCAL,
     TITULO_PRINCIPAL,
+)
+from app.services.postgres import (
+    FrequenciaOcupadaError,
+    carregar_opcoes_identificacao,
+    consultar_conflitos_frequencia,
+    inserir_emissao_I_W,
+    listar_estacoes_evento,
+    listar_fiscais,
+    listar_fiscais_evento,
+    obter_fuso_horario_evento,
+    verificar_equipamento_frequencia,
+)
+from app.utils.formatters import _data_hora_foto, _img_b64
+from app.utils.offline import (
+    extrair_dados_inserir,
+    preparar_offline_ctx,
 )
 
 router = APIRouter()

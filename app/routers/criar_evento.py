@@ -5,32 +5,32 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import IntegrityError
 
+from app.config import TITULO_PRINCIPAL
 from app.services.postgres import (
     atualizar_evento,
+    atualizar_fiscais_evento,
+    atualizar_unidades_evento,
+    cidade_pertence_uf,
     criar_evento,
+    criar_faixa_numeracao_etiqueta,
+    criar_fiscal,
+    excluir_faixa_numeracao_etiqueta,
+    excluir_fiscal,
+    listar_coordenadores_evento,
     listar_estacoes_evento,
     listar_eventos_detalhes,
-    obter_evento,
-    atualizar_unidades_evento,
-    listar_unidades_evento,
-    listar_unidades_executantes,
+    listar_faixas_numeracao_etiqueta,
     listar_fiscais,
-    criar_fiscal,
     listar_fiscais_evento,
-    listar_coordenadores_evento,
-    registrar_auditoria_evento,
-    obter_snapshot_auditoria_evento,
-    atualizar_fiscais_evento,
-    excluir_fiscal,
     listar_municipios,
     listar_ufs_municipios,
-    cidade_pertence_uf,
-    listar_faixas_numeracao_etiqueta,
-    criar_faixa_numeracao_etiqueta,
-    excluir_faixa_numeracao_etiqueta,
+    listar_unidades_evento,
+    listar_unidades_executantes,
+    obter_evento,
+    obter_snapshot_auditoria_evento,
+    registrar_auditoria_evento,
 )
 from app.utils.formatters import _img_b64
-from app.config import TITULO_PRINCIPAL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
