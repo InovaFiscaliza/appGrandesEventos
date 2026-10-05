@@ -4,8 +4,9 @@ import sys
 
 sys.path.insert(0, ".")
 
-from app.services.db import get_engine
 from sqlalchemy import text
+
+from app.services.db import get_engine
 
 with open("db/schema.sql", "r", encoding="utf-8") as f:
     ddl = f.read()

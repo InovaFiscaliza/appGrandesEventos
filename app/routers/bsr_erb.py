@@ -3,26 +3,26 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
 
+from app.config import (
+    SITUACAO_CONCLUIDA_FISCAL,
+    SITUACAO_PENDENTE,
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
+    STATUS_TICKET_PENDENTE,
+    TITULO_PRINCIPAL,
+)
 from app.services.postgres import (
     atualizar_bsr_erb,
-    excluir_imagem_bsr_erb,
     excluir_bsr_erb,
+    excluir_imagem_bsr_erb,
     inserir_bsr_erb,
-    submeter_bsr_erb,
     listar_bsr_erb,
     listar_fiscais,
     listar_fiscais_evento,
     listar_tickets_evento,
     obter_evento,
+    submeter_bsr_erb,
 )
 from app.utils.formatters import _img_b64, _normalize_coord, _valid_coord
-from app.config import (
-    STATUS_TICKET_CONCLUIDO_FISCAIS,
-    STATUS_TICKET_PENDENTE,
-    SITUACAO_CONCLUIDA_FISCAL,
-    SITUACAO_PENDENTE,
-    TITULO_PRINCIPAL,
-)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

@@ -32,12 +32,11 @@ from app.routers import (
     teste_etiquetagem,
     tratamento_tickets,
 )
+from app.services.permissoes import permissoes_interface
 from app.services.postgres import (
     buscar_planilhas,
-    listar_coordenadores_evento,
     obter_evento,
 )
-from app.services.permissoes import permissoes_interface
 
 _inicio_aplicacao = time.perf_counter()
 
@@ -66,9 +65,7 @@ async def carregar_eventos_no_request(request: Request, call_next):
     caminho = request.url.path
 
     if (
-        caminho.startswith("/static/")
-        or caminho == "/sw.js"
-        or caminho.startswith("/api/")
+        caminho.startswith(("/static/", "/api/")) or caminho == "/sw.js"
     ):
         resposta = await call_next(request)
         return resposta

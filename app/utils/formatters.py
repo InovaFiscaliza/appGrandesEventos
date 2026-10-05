@@ -4,12 +4,11 @@ import re
 import unicodedata
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 
 from PIL import Image
 
 
-def _img_b64(path: str) -> Optional[str]:
+def _img_b64(path: str) -> str | None:
     p = Path(path)
     if not p.exists():
         return None
@@ -91,8 +90,7 @@ def _first_empty_row_in_block(aba, start_col_letter: str, end_col_letter: str) -
     for idx in range(start_idx, end_idx + 1):
         try:
             vals = aba.col_values(idx)
-            if len(vals) > max_len:
-                max_len = len(vals)
+            max_len = max(max_len, len(vals))
         except Exception:
             pass
     return max_len + 1
@@ -130,8 +128,7 @@ def _next_sequential_id(aba, col_letter: str = "H", start_row: int = 2) -> str:
         if match:
             try:
                 n = int(match.group(1))
-                if n > max_num:
-                    max_num = n
+                max_num = max(max_num, n)
             except Exception:
                 pass
 

@@ -3,9 +3,9 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from app.config import TITULO_PRINCIPAL
 from app.services.postgres import carregar_dados_ute
 from app.utils.formatters import _img_b64
-from app.config import TITULO_PRINCIPAL
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
