@@ -3,7 +3,7 @@ from urllib.parse import quote
 import logging
 
 import pandas as pd
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
@@ -23,6 +23,12 @@ from app.services.postgres import (
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
 from app.config import IDENT_OPCOES, ORIGENS_CAMPO, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
+from app.infrastructure.persistence.postgres.emissao_repository import PostgresEmissaoRepository
+from app.domain.emissao.service import EmissaoService
+
+def get_emissao_service() -> EmissaoService:
+    repo = PostgresEmissaoRepository()
+    return EmissaoService(repo)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -103,16 +109,43 @@ def _fiscal_pode_tratar_ocorrencia(
     return bool(fiscal_logado and fiscal_logado == fiscal_ocorrencia)
 
 
-def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
-    dfs = [
-        d
-        for d in [
-            carregar_pendencias_painel_mapeadas(evento_id=sp_id, incluir_todas=True),
-            carregar_pendencias_todas_estacoes(evento_id=sp_id, incluir_todas=True),
-        ]
-        if d is not None and not d.empty
-    ]
-    pendencias = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+async def _load_pendencias(request: Request, sp_id: int, emissao_service: EmissaoService) -> pd.DataFrame:
+    # Use EmissaoService to list emissions for the event
+    emissoes = emissao_service.listar_por_evento(sp_id, incluir_todas=True)
+    
+    if not emissoes:
+        return pd.DataFrame()
+
+    # Convert domain models to a DataFrame that mimics the previous postgres.py output
+    data = []
+    for e in emissoes:
+        data.append({
+            "ID": e.id,
+            "evento_id": e.evento_id,
+            "Frequência (MHz)": e.frequencia_mhz,
+            "Largura (kHz)": e.largura_khz,
+            "Local": e.local_regiao,
+            "Identificação": e.identificacao,
+            "Autorizado?": "Sim" if e.autorizado else ("Não" if e.autorizado is False else "Indefinido"),
+            "UTE?": "Sim" if e.ute else "Não",
+            "Processo SEI UTE": e.processo_sei_ute or "",
+            "Ato UTE": e.ato_ute or "",
+            "Ocorrência (observações)": e.observacoes,
+            "Alguém mais ciente?": e.alguem_ciente,
+            "Interferente?": e.interferente,
+            "Situação": e.situacao,
+            "Fonte": e.fonte,
+            "Data": e.data,
+            "HH:mm": e.hora.strftime("%H:%M") if e.hora else "",
+            "CriadorFiscalID": e.fiscal_id,
+            "Fiscal": e.fiscal_nome or "",
+            "SubmetidaCoordenadorEm": None, # To be enriched if needed
+            "IDExibicao": e.id_exibicao,
+            "EstacaoRaw": e.equipamento or "",
+            "EstacaoID": e.id,
+        })
+    
+    pendencias = pd.DataFrame(data)
     if pendencias.empty:
         return pendencias
 
@@ -182,12 +215,18 @@ def _make_label(row: pd.Series) -> str:
 
 
 @router.get("/consultar", response_class=HTMLResponse)
-async def get_consultar(request: Request, key: str = "", emissao_id: int | None = None):
+async def get_consultar(
+    request: Request,
+    key: str = "",
+    emissao_id: int | None = None,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
-    df = _load_pendencias(request, sp_id)
+    sp_id_int = int(sp_id)
+    df = await _load_pendencias(request, sp_id_int, emissao_service)
     estacoes = listar_estacoes_evento(evento_id=sp_id)
 
     pendencias = []
@@ -222,7 +261,11 @@ async def get_consultar(request: Request, key: str = "", emissao_id: int | None 
 
 
 @router.get("/consultar/historico", response_class=HTMLResponse)
-async def get_historico_ocorrencia(request: Request, id: int | None = None):
+async def get_historico_ocorrencia(
+    request: Request, 
+    id: int | None = None,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     """Exibe o histórico de alterações da ocorrência selecionada."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
@@ -233,13 +276,11 @@ async def get_historico_ocorrencia(request: Request, id: int | None = None):
         )
         return RedirectResponse("/consultar", status_code=303)
 
-    pendencias = _load_pendencias(request, evento_id)
-    ocorrencia = (
-        pendencias[pendencias["ID"].astype(str) == str(id)]
-        if not pendencias.empty
-        else pd.DataFrame()
-    )
-    if ocorrencia.empty:
+    evento_id_int = int(evento_id)
+    pendencias = await _load_pendencias(request, evento_id_int, emissao_service)
+    # Use EmissaoService to check if the emission exists and the user has permission
+    emissao = emissao_service.obter_emissao(id)
+    if not emissao:
         request.session["flash_error"] = (
             "Você não tem permissão para consultar esta emissão."
         )
@@ -262,16 +303,21 @@ async def get_historico_ocorrencia(request: Request, id: int | None = None):
 
 
 @router.get("/consultar/historico/imagem/{imagem_id}")
-async def get_imagem_historico(request: Request, imagem_id: int, ocorrencia_id: int):
+async def get_imagem_historico(
+    request: Request, 
+    imagem_id: int, 
+    ocorrencia_id: int,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     """Entrega uma imagem do histórico validando evento e ocorrência da sessão."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return Response(status_code=401)
-    pendencias = _load_pendencias(request, evento_id)
-    if (
-        pendencias.empty
-        or str(ocorrencia_id) not in pendencias["ID"].astype(str).values
-    ):
+    evento_id_int = int(evento_id)
+    pendencias = await _load_pendencias(request, evento_id_int, emissao_service)
+    # Use EmissaoService to check if the emission exists
+    emissao = emissao_service.obter_emissao(ocorrencia_id)
+    if not emissao:
         return Response(status_code=403)
     imagem = carregar_imagem_ocorrencia(evento_id, ocorrencia_id, imagem_id)
     if not imagem:
@@ -280,11 +326,15 @@ async def get_imagem_historico(request: Request, imagem_id: int, ocorrencia_id: 
 
 
 @router.post("/consultar/salvar")
-async def post_consultar_salvar(request: Request):
+async def post_consultar_salvar(
+    request: Request,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
+    sp_id_int = int(sp_id)
     form = await request.form()
     imagens, erros_imagens = await _ler_imagens(form)
     imagens_excluir = [
@@ -307,7 +357,7 @@ async def post_consultar_salvar(request: Request):
     estacao_id = form.get("estacao_id", "").strip()
     acao = form.get("acao", "salvar")
 
-    pendencias = _load_pendencias(request, sp_id)
+    pendencias = await _load_pendencias(request, sp_id_int, emissao_service)
     ocorrencia = (
         pendencias[pendencias["ID"].astype(str) == str(id_val)]
         if not pendencias.empty
@@ -379,7 +429,7 @@ async def post_consultar_salvar(request: Request):
                 pendencias=[],
                 selected_key=row_key,
                 selected_row=None,
-                estacoes=listar_estacoes_evento(evento_id=sp_id),
+            estacoes=listar_estacoes_evento(evento_id=sp_id_int),
                 origens_campo=ORIGENS_CAMPO,
                 flash_success=None,
                 flash_error=None,
@@ -392,7 +442,7 @@ async def post_consultar_salvar(request: Request):
     else:
         request.session["flash_success"] = res
     if acao == "salvar_proxima":
-        proximas = _load_pendencias(request, sp_id)
+        proximas = await _load_pendencias(request, sp_id_int, emissao_service)
         proxima_key = ""
         if not proximas.empty:
             for _, row in proximas.iterrows():
@@ -408,12 +458,16 @@ async def post_consultar_salvar(request: Request):
 
 
 @router.get("/api/pendencias")
-async def api_pendencias(request: Request):
+async def api_pendencias(
+    request: Request,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     """Retorna pendências como JSON para uso offline (IndexedDB)."""
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
-    df = _load_pendencias(request, sp_id)
+    sp_id_int = int(sp_id)
+    df = await _load_pendencias(request, sp_id_int, emissao_service)
     if df.empty:
         return JSONResponse([])
     records = []
@@ -462,12 +516,17 @@ async def api_pendencias(request: Request):
 
 
 @router.get("/api/ocorrencia-imagens")
-async def api_ocorrencia_imagens(request: Request, id: int):
+async def api_ocorrencia_imagens(
+    request: Request, 
+    id: int,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     """Retorna as imagens da ocorrência selecionada para exibição em miniatura."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
-    pendencias = _load_pendencias(request, evento_id)
+    evento_id_int = int(evento_id)
+    pendencias = await _load_pendencias(request, evento_id_int, emissao_service)
     ocorrencia = (
         pendencias[pendencias["ID"].astype(str) == str(id)]
         if not pendencias.empty
@@ -479,7 +538,10 @@ async def api_ocorrencia_imagens(request: Request, id: int):
 
 
 @router.post("/api/consultar-salvar")
-async def api_consultar_salvar(request: Request):
+async def api_consultar_salvar(
+    request: Request,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     """Recebe JSON da fila offline (IndexedDB/sync.js) e salva a edição na planilha."""
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
@@ -489,9 +551,10 @@ async def api_consultar_salvar(request: Request):
     except Exception:
         return JSONResponse({"erro": "JSON inválido"}, status_code=400)
 
+    sp_id_int = int(sp_id)
     fonte = dados.get("fonte", "")
     id_val = dados.get("id_val", "")
-    pendencias = _load_pendencias(request, sp_id)
+    pendencias = await _load_pendencias(request, sp_id_int, emissao_service)
     ocorrencia = (
         pendencias[pendencias["ID"].astype(str) == str(id_val)]
         if not pendencias.empty
@@ -543,7 +606,11 @@ async def api_consultar_salvar(request: Request):
 
 
 @router.post("/consultar/submeter-ticket/{ocorrencia_id}")
-async def post_consultar_submeter_ticket(request: Request, ocorrencia_id: int):
+async def post_consultar_submeter_ticket(
+    request: Request, 
+    ocorrencia_id: int,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     """Submete uma emissão à coordenação para posterior criação de ticket."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
@@ -558,12 +625,15 @@ async def post_consultar_submeter_ticket(request: Request, ocorrencia_id: int):
         request.session["flash_error"] = "Fiscal não identificado na sessão."
         return RedirectResponse("/consultar", status_code=303)
 
-    resultado = submeter_emissao_evento(
-        evento_id=int(evento_id),
-        ocorrencia_id=ocorrencia_id,
-        fiscal_id=int(fiscal_id),
-        usuario_fiscal=fiscal_nome,
-    )
+    resultado = emissao_service.submeter_para_coordenacao(ocorrencia_id)
+    if resultado:
+        resultado_msg = "Emissão submetida ao coordenador com sucesso!"
+    else:
+        resultado_msg = "ERRO: Não foi possível submeter a emissão. Ela pode não existir ou não estar com situação 'pendente'."
+    
+    request.session[
+        "flash_error" if resultado_msg.startswith("ERRO") else "flash_success"
+    ] = resultado_msg
     request.session[
         "flash_error" if resultado.startswith("ERRO") else "flash_success"
     ] = resultado
