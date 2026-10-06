@@ -454,6 +454,8 @@ async def post_editar_bsr_erb(request: Request, registro_id: int):
         if ticket_id is not None
         else "/bsr-erb"
     )
+    if request.query_params.get("popup") == "1":
+        destino += "&popup=1" if "?" in destino else "?popup=1"
     return RedirectResponse(destino, status_code=303)
 
 

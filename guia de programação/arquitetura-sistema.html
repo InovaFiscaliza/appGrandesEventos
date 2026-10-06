@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AppGrandesEventos — guia de arquitetura e programação</title>
+<style>
+:root{--bg:#f4f6fa;--ink:#192b43;--muted:#53657c;--blue:#165ccc;--line:#dce4ef;--card:#fff}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 system-ui,Segoe UI,sans-serif}a{color:var(--blue)}aside{position:fixed;inset:0 auto 0 0;width:260px;background:#14253d;color:white;padding:28px 22px;overflow:auto}aside strong{font-size:21px}aside p{color:#bdcde2;font-size:13px}aside a{display:block;color:#dbe7f8;text-decoration:none;padding:7px 10px;border-radius:6px;font-size:14px}aside a:hover,aside a.active{background:#284264;color:white}main{margin-left:260px;max-width:1200px;padding:48px 5vw 80px}header{margin-bottom:36px}h1{font-size:clamp(30px,4vw,48px);line-height:1.15;letter-spacing:-1px;margin:14px 0}h2{font-size:27px;line-height:1.25;margin:0 0 22px}h3{font-size:19px;margin:22px 0 8px}p{margin:10px 0 16px}.lead{font-size:20px;color:var(--muted)}.tag{color:var(--blue);font-size:12px;letter-spacing:2px;font-weight:700;text-transform:uppercase}section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px;margin:24px 0;scroll-margin-top:20px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.box{border:1px solid var(--line);border-radius:10px;padding:18px}.box h3{margin-top:0}.muted,small{color:var(--muted)}code{background:#eef3fa;padding:2px 5px;border-radius:4px;font:13px/1.5 Consolas,monospace;overflow-wrap:anywhere}pre{background:#14253d;color:#e0ebfa;border-radius:10px;padding:20px;overflow:auto;line-height:1.6;font-size:13px}pre code{background:transparent;color:inherit;padding:0;white-space:pre;overflow-wrap:normal}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:#eef3fa}ul,ol{padding-left:24px}li{margin:8px 0}.note{border-left:4px solid var(--blue);padding:12px 18px;background:#edf4ff;border-radius:0 8px 8px 0;margin:18px 0}.flow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.node{background:#edf4ff;border:1px solid #c7dbfb;padding:16px;border-radius:10px;flex:1;min-width:145px;text-align:center}.node small{display:block}.arrow{font-size:24px;color:var(--blue)}details{border:1px solid var(--line);border-radius:8px;margin:12px 0;padding:14px}summary{cursor:pointer;font-weight:600}button{background:var(--blue);color:white;border:0;border-radius:7px;padding:10px 16px;cursor:pointer;font:inherit}.step{display:none}.step.active{display:block}.steps{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.steps button{background:#eaf1fc;color:var(--blue)}.steps button[aria-pressed=true]{background:var(--blue);color:white}.checklist label{display:block;padding:8px 0}.checklist input{margin-right:10px}.footer{font-size:13px;color:var(--muted)}@media(max-width:900px){aside{position:static;width:auto}aside nav{display:flex;flex-wrap:wrap}main{margin:0;padding:28px 18px}.grid{grid-template-columns:1fr}section{padding:22px}.arrow{display:none}}@media print{aside,.steps,button{display:none}main{margin:0;padding:0;max-width:none}section{break-inside:avoid;border-radius:0}.step{display:block}body{background:white;font-size:12px}pre{white-space:pre-wrap}h1{font-size:30px}}
+</style>
+</head>
+<body>
+<aside><strong>AppGrandesEventos</strong><p>Guia para entender e alterar o sistema com autonomia.</p><nav aria-label="Conteúdo">
+<a href="#visao">01 · Visão geral</a><a href="#pastas">02 · Arquivos e responsabilidades</a><a href="#requisicao">03 · Caminho de uma requisição</a><a href="#modulos">04 · Mapa das telas</a><a href="#banco">05 · Banco de dados</a><a href="#tickets">06 · Tickets e popups</a><a href="#programar">07 · Como fazer alterações</a><a href="#exemplo">08 · Exemplo completo</a><a href="#offline">09 · Funcionamento offline</a><a href="#ambiente">10 · Executar e depurar</a><a href="#estudo">11 · Roteiro de estudo</a><a href="#detalhes">12 · Conceitos em detalhe</a><a href="#laboratorio">13 · Tela completa</a><a href="#codigo">14 · Código completo</a><a href="#exercicios">15 · Exercícios e testes</a><a href="#codigo-real">16 · Código real do AppGrandesEventos</a></nav></aside>
+<main>
+<header><span class="tag">Arquitetura explicada a partir do código</span><h1>Entenda o sistema.<br>Aprenda a modificá-lo.</h1><p class="lead">Um mapa do AppGrandesEventos, do clique na tela até a gravação no banco, com exemplos para programar sem depender de IA.</p><p class="muted">Referência: código local consultado em 2 de outubro de 2026. Este documento é independente da aplicação e pode ser aberto diretamente no navegador.</p><button onclick="window.print()">Imprimir / salvar como PDF</button></header>
+
+<section id="visao"><h2>01 · A arquitetura em uma página</h2><p>O AppGrandesEventos organiza a monitoração do espectro em eventos: emissões, incidentes, estações, fiscais, tickets, escalas e testes de etiquetagem. É uma aplicação web com um servidor Python e páginas HTML. A organização atual concentra bastante lógica nas rotas e no serviço de dados.</p>
+<div class="flow" aria-label="Arquitetura: navegador, servidor e banco"><div class="node"><strong>Navegador</strong><small>HTML · CSS · JavaScript</small></div><span class="arrow">↔</span><div class="node"><strong>FastAPI</strong><small>main.py + routers</small></div><span class="arrow">↔</span><div class="node"><strong>Serviços</strong><small>postgres.py + db.py</small></div><span class="arrow">↔</span><div class="node"><strong>PostgreSQL</strong><small>Tabelas e relacionamentos</small></div></div>
+<div class="grid" style="margin-top:20px"><div class="box"><h3>O que roda no servidor?</h3><p>Python recebe os pedidos, verifica a sessão e as permissões, consulta o banco e prepara as respostas. Jinja2 transforma templates em HTML antes de enviá-los ao navegador.</p></div><div class="box"><h3>O que roda no navegador?</h3><p>HTML define os elementos. CSS define o visual. JavaScript responde aos cliques, abre popups, busca JSON e mantém filas offline em IndexedDB.</p></div></div>
+<p class="note"><strong>Vocabulário:</strong> rota é um endereço atendido pelo servidor; template é um modelo de HTML; serviço é uma função que executa uma operação; API é uma rota que troca dados, geralmente em JSON. GET busca uma página ou dados. POST envia dados para processamento.</p>
+<p>Não há um frontend React separado neste projeto. Há páginas renderizadas com Jinja2 e algumas áreas preenchidas por JavaScript. SQLAlchemy gerencia conexões e executa consultas SQL; o acesso principal aos dados está em funções de <code>postgres.py</code>, sem uma camada de modelos ORM separada.</p></section>
+
+<section id="pastas"><h2>02 · Onde cada coisa fica</h2>
+<pre><code>appgrandeseventos/
+├── main.py                  inicialização, sessão, middleware e registro de rotas
+├── pyproject.toml           dependências Python e comando de execução
+├── uv.lock                  versões resolvidas das dependências
+├── app/
+│   ├── config.py            constantes e opções do domínio
+│   ├── routers/             rotas HTTP, validações e montagem das respostas
+│   ├── services/
+│   │   ├── postgres.py      SQL, operações de dados e regras de persistência
+│   │   ├── db.py            engine SQLAlchemy e configuração da conexão
+│   │   └── permissoes.py    políticas de visibilidade da interface
+│   ├── templates/           páginas Jinja2 e cabeçalho compartilhado
+│   ├── static/              CSS, JavaScript, imagens e recursos PWA
+│   └── utils/               formatação, geocodificação e apoio ao offline
+├── db/schema.sql            definição de tabelas e alterações de estrutura
+├── local_server/            preparação e implantação local
+│   └── migrations/          migrações SQL versionadas
+├── scripts/                 manutenção, backup e tarefas auxiliares
+├── bd_backup/               arquivos de backup
+├── requisitos/              documentos de requisitos
+└── guia de programação/     este guia, prévia e exemplo executável</code></pre>
+<div class="table-wrap"><table><thead><tr><th>Arquivo</th><th>Leia para entender</th></tr></thead><tbody>
+<tr><td><code>main.py</code></td><td>Como a aplicação nasce, monta <code>/static</code>, registra routers e prepara o contexto de cada pedido.</td></tr>
+<tr><td><code>app/templates/base.html</code></td><td>A estrutura compartilhada das páginas e os scripts comuns. <code>{% block content %}</code> recebe o conteúdo de cada tela.</td></tr>
+<tr><td><code>app/templates/partials/header.html</code></td><td>Cabeçalho e seleção de evento.</td></tr>
+<tr><td><code>app/static/style.css</code></td><td>Classes visuais, tabelas, formulários, responsividade e popups.</td></tr>
+<tr><td><code>app/config.py</code></td><td>Valores aceitos para situações, status de tickets e opções de campos.</td></tr>
+<tr><td><code>app/services/postgres.py</code></td><td>Como ler e gravar cada entidade, controlar vínculos e registrar auditoria.</td></tr></tbody></table></div>
+<p class="note">A pasta servida por <code>/static</code> é <code>app/static</code>, conforme <code>main.py</code>. Existe também uma pasta <code>static</code> na raiz: confirme o caminho montado antes de editar um arquivo.</p></section>
+
+<section id="requisicao"><h2>03 · Acompanhe uma requisição</h2><p>Exemplo real: a coordenação seleciona registros e cria um ticket. Clique nas etapas para seguir o caminho.</p>
+<div class="steps" role="group" aria-label="Etapas da criação de ticket"><button data-step="0" aria-pressed="true">1. Tela</button><button data-step="1" aria-pressed="false">2. Rota</button><button data-step="2" aria-pressed="false">3. Serviço</button><button data-step="3" aria-pressed="false">4. Resposta</button></div>
+<div class="step active"><h3>HTML e JavaScript preparam o envio</h3><p>Em <code>app/templates/coordenacao.html</code>, o botão abre o popup. O formulário <code>ticket-form</code> envia para <code>POST /coordenacao/ticket</code>. Os checkboxes das tabelas usam <code>form="ticket-form"</code>: mesmo fora do formulário, fazem parte do envio.</p><pre><code>&lt;input type="checkbox" name="incidente_ids" value="42" form="ticket-form"&gt;
+&lt;form id="ticket-form" method="post" action="/coordenacao/ticket"&gt;
+    &lt;select name="prioridade"&gt;...&lt;/select&gt;
+    &lt;button type="submit"&gt;Criar ticket&lt;/button&gt;
+&lt;/form&gt;</code></pre></div>
+<div class="step"><h3>A rota recebe e valida</h3><p><code>post_ticket_evento()</code>, em <code>app/routers/coordenacao.py</code>, obtém o evento da sessão, verifica o papel do usuário, lê <code>await request.form()</code> e usa <code>getlist()</code> para os campos com vários valores. Se nenhum registro foi selecionado, devolve uma mensagem de erro.</p></div>
+<div class="step"><h3>O serviço grava no banco</h3><p>A rota chama <code>salvar_ticket_evento()</code> em <code>app/services/postgres.py</code>. Essa função recebe IDs e campos, aplica as regras de persistência e salva ticket e vínculos. A rota também chama <code>registrar_auditoria_coordenacao()</code>.</p><p>Abra a função e acompanhe as consultas e a transação. A operação precisa manter o ticket consistente com as emissões, incidentes e fiscais atribuídos.</p></div>
+<div class="step"><h3>O navegador recebe a resposta</h3><p>A rota guarda <code>flash_success</code> na sessão e responde com redirecionamento 303 para <code>/coordenacao</code>. O navegador faz um novo GET; a rota lê os dados atualizados e renderiza o template. Este padrão evita repetir o POST ao atualizar a página.</p></div>
+<h3>Como reconhecer os três tipos de dado</h3><ul><li><code>request.query_params</code>: parâmetros na URL, como <code>?editar=42&amp;ticket_id=7</code>.</li><li><code>await request.form()</code>: valores enviados por formulário; o atributo <code>name</code> define a chave.</li><li><code>request.session</code>: contexto do usuário, como evento, fiscal e papel selecionados.</li></ul>
+<p><code>id</code> identifica um elemento para JavaScript e rótulos. <code>name</code> identifica um campo enviado ao Python. Eles têm funções diferentes.</p></section>
+
+<section id="modulos"><h2>04 · Mapa das telas e rotas</h2><div class="table-wrap"><table><thead><tr><th>Tela / endereço</th><th>Router</th><th>Template / JavaScript principal</th></tr></thead><tbody>
+<tr><td>Seleção de evento e fiscal · <code>/</code></td><td><code>selecao.py</code></td><td><code>selecao.html</code> · <code>selecao.js</code></td></tr>
+<tr><td>Menu · <code>/menu</code></td><td><code>menu.py</code></td><td><code>menu.html</code></td></tr>
+<tr><td>Cadastro de emissão · <code>/inserir</code></td><td><code>inserir.py</code></td><td><code>inserir.html</code> · <code>inserir.js</code></td></tr>
+<tr><td>Consulta / edição · <code>/consultar</code></td><td><code>consultar.py</code></td><td><code>consultar.html</code> · <code>consultar.js</code></td></tr>
+<tr><td>Incidentes · <code>/bsr-erb</code></td><td><code>bsr_erb.py</code></td><td><code>bsr_erb.html</code> · <code>bsr_erb.js</code></td></tr>
+<tr><td>Coordenação · <code>/coordenacao</code></td><td><code>coordenacao.py</code></td><td><code>coordenacao.html</code> · scripts dentro do template</td></tr>
+<tr><td>Trabalho dos fiscais · <code>/tratamento-tickets</code></td><td><code>tratamento_tickets.py</code></td><td><code>tratamento_tickets.html</code> · scripts dentro do template</td></tr>
+<tr><td>Eventos e fiscais · <code>/criar-evento</code></td><td><code>criar_evento.py</code></td><td><code>criar_evento.html</code> · <code>fiscais.js</code></td></tr>
+<tr><td>Estações · <code>/estacoes</code></td><td><code>estacoes.py</code></td><td><code>estacoes.html</code></td></tr>
+<tr><td>Busca · <code>/busca</code></td><td><code>busca.py</code></td><td><code>busca.html</code> · <code>busca.js</code></td></tr>
+<tr><td>UTE · <code>/ute</code></td><td><code>tabela_ute.py</code></td><td><code>tabela_ute.html</code> · <code>tabela_ute.js</code></td></tr>
+<tr><td>Etiquetagem · <code>/teste_etiquetagem</code></td><td><code>teste_etiquetagem.py</code></td><td><code>teste_etiquetagem.html</code> · <code>teste_etiquetagem.js</code></td></tr>
+<tr><td>Auditoria · <code>/auditoria</code></td><td><code>auditoria.py</code></td><td><code>auditoria.html</code> · <code>auditoria.js</code></td></tr></tbody></table></div><p class="muted">Routers ficam em <code>app/routers</code>, templates em <code>app/templates</code> e scripts em <code>app/static</code>. O mapa lista os pontos principais; cada módulo pode ter outras rotas e dependências.</p></section>
+
+<section id="banco"><h2>05 · Como os dados se relacionam</h2><p>O evento é o contexto central. Nas operações, confira o <code>evento_id</code> para não misturar dados de eventos diferentes. “Emissão” na interface corresponde principalmente à tabela <code>ocorrencias</code>. “Incidente” corresponde a <code>bsr_erb</code>.</p>
+<pre><code>eventos
+├── estacoes ── ocorrencias (emissões)
+├── bsr_erb (incidentes)
+├── eventos_fiscais ── fiscais
+├── eventos_coordenadores ── fiscais
+├── escalas_trabalho ── fiscais
+├── tickets
+│   ├── ticket_ocorrencias ── ocorrencias
+│   ├── ticket_incidentes ── bsr_erb
+│   └── ticket_fiscais ── fiscais
+├── tabela_ute
+└── testes_etiquetagem</code></pre>
+<p class="muted">Mapa conceitual simplificado: não representa todas as colunas e chaves estrangeiras. Consulte <code>db/schema.sql</code> para a definição exata.</p>
+<div class="grid"><div class="box"><h3>Tabelas de vínculo</h3><p>Um ticket pode ter vários fiscais e vários registros. <code>ticket_fiscais</code>, <code>ticket_ocorrencias</code> e <code>ticket_incidentes</code> representam essas relações. Não transforme uma relação em um campo de texto sem estudar as consultas existentes.</p></div><div class="box"><h3>Imagens e auditoria</h3><p>Há tabelas específicas para imagens e históricos, como <code>ocorrencia_imagens</code>, <code>bsr_erb_imagens</code>, <code>auditoria_ocorrencias</code> e <code>auditoria_bsr_erb</code>. Verifique esses caminhos quando alterar anexos ou gravação.</p></div></div>
+<h3>Nomes antigos ainda aparecem</h3><p><code>spreadsheet_id</code> na sessão representa o ID do evento no PostgreSQL. Algumas funções mantêm nomes da integração anterior com planilhas. O comentário inicial de <code>postgres.py</code> explica essa compatibilidade. Não conclua pelo nome que a operação ainda usa Google Sheets.</p>
+<h3>Quando adicionar uma coluna</h3><ol><li>Entenda a entidade e defina tipo, obrigatoriedade e valor padrão.</li><li>Prepare uma migração SQL conforme <code>local_server/migrations/README.md</code> e mantenha a definição de referência coerente.</li><li>Atualize INSERT, UPDATE e SELECT no serviço.</li><li>Atualize rota, formulário e renderização.</li><li>Se o dado é editável offline, revise também fila, API de sincronização e cache.</li><li>Aplique e verifique primeiro em uma cópia de desenvolvimento do banco.</li></ol></section>
+
+<section id="tickets"><h2>06 · Tickets, permissões e popups</h2><div class="flow"><div class="node">Pendente<small>Trabalho dos fiscais</small></div><span class="arrow">→</span><div class="node">Concluído pelos fiscais<small>Inspeção da coordenação</small></div><span class="arrow">→</span><div class="node">Concluído pelo coordenador<small>Encerramento</small></div></div><p>A coordenação pode devolver o ticket para pendente ou cancelá-lo por uma ação específica. Consulte os valores exatos em <code>app/config.py</code> e as transições em <code>atualizar_ticket_evento()</code> e <code>cancelar_ticket_evento()</code>.</p>
+<h3>O popup de edição de um registro</h3><ol><li>O fiscal clica em um número em <code>tratamento_tickets.html</code>.</li><li>O JavaScript abre um <code>iframe</code> dentro de um popup.</li><li>Emissão: <code>/consultar?emissao_id=11&amp;ticket_id=4&amp;popup=1</code>.</li><li>Incidente: <code>/bsr-erb?editar=42&amp;ticket_id=4&amp;popup=1</code>.</li><li>O modo <code>popup=1</code> limita a interface ao registro selecionado. O servidor continua validando se o usuário pode editar.</li></ol>
+<p class="note"><strong>Dois controles diferentes:</strong> esconder um botão ajuda a interface; verificar a permissão no servidor protege a operação. Uma pessoa pode enviar um POST sem clicar no botão. Por isso a rota de gravação precisa validar sessão, evento, vínculo e status.</p>
+<p><code>request.state.permissoes</code> orienta a visibilidade de módulos. As regras específicas também aparecem nos routers e serviços: <code>_load_pendencias()</code> em <code>consultar.py</code>, <code>_ticket_autoriza_edicao_incidente()</code> em <code>bsr_erb.py</code> e funções do módulo de tratamento. Leia a implementação atual: os comentários nem sempre acompanham todas as mudanças.</p>
+<p>A sessão usa cookie assinado por <code>SessionMiddleware</code>. No código atual, a chave é gerada na inicialização, então reiniciar o servidor pode invalidar a sessão anterior. Essa sessão mantém o contexto de seleção do evento e fiscal; ela não deve ser confundida com um sistema completo de autenticação por senha.</p></section>
+
+<section id="programar"><h2>07 · Como decidir o que editar</h2><div class="table-wrap"><table><thead><tr><th>Você quer…</th><th>Comece por…</th><th>Confira também…</th></tr></thead><tbody>
+<tr><td>Mudar um texto ou botão</td><td>Template da tela</td><td>Condições Jinja2 e manipuladores de clique</td></tr><tr><td>Mudar posição, cor ou largura</td><td>Template + <code>style.css</code></td><td>Regras responsivas e estilos inline</td></tr><tr><td>Abrir ou fechar um popup</td><td>JavaScript da tela</td><td>IDs, atributo <code>hidden</code> e <code>role="dialog"</code></td></tr><tr><td>Validar um formulário</td><td>Router da operação POST</td><td>Validação no serviço e mensagens ao usuário</td></tr><tr><td>Permitir edição para outro papel</td><td>Regra do servidor</td><td>GET, POST, API, vínculo ao evento e visibilidade</td></tr><tr><td>Adicionar um campo persistente</td><td>Schema / migração + serviço</td><td>Router, template, JS, auditoria e offline</td></tr><tr><td>Criar uma nova tela</td><td>Router + template</td><td><code>main.py</code>, menu e permissões</td></tr></tbody></table></div>
+<h3>Uma rotina manual que funciona</h3><ol><li>Descreva a mudança em uma frase e um exemplo: “ao clicar no ID 42, mostrar só o formulário do incidente 42”.</li><li>Reproduza o comportamento e anote o endereço da tela.</li><li>Pesquise esse endereço ou o texto do botão no projeto.</li><li>Siga o fluxo: template → JavaScript → rota → serviço → banco.</li><li>Faça uma alteração pequena e teste antes de continuar.</li><li>Revise o diff para confirmar que só mudou o necessário.</li></ol>
+<pre><code># PowerShell, na raiz do projeto; requer ripgrep (rg)
+rg -n 'Criar novo ticket' app
+rg -n '/coordenacao/ticket' app
+rg -n 'def salvar_ticket_evento' app/services/postgres.py
+git diff --stat
+git diff -- app/templates/coordenacao.html</code></pre>
+<p>Na busca do editor, procure os mesmos termos se não tiver <code>rg</code>. Para ler uma função, anote suas entradas, retornos e efeitos: ela só consulta ou também grava?</p></section>
+
+<section id="exemplo"><h2>08 · Exemplo: criar uma tela simples</h2><p>Primeiro exercício: criar uma página de ajuda. A seção 13 traz um módulo completo com banco e popup. Os trechos abaixo são exemplos para você implementar manualmente; esta documentação não registra uma rota nova na aplicação.</p>
+<h3>1. Crie <code>app/routers/ajuda.py</code></h3><pre><code>from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+
+router = APIRouter()
+templates = Jinja2Templates(directory="app/templates")
+
+@router.get("/ajuda", response_class=HTMLResponse)
+async def get_ajuda(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "ajuda.html",
+        {"request": request,
+         "evento_nome": request.session.get("evento_nome", "")},
+    )</code></pre>
+<h3>2. Crie <code>app/templates/ajuda.html</code></h3><pre><code>{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+&lt;section class="module-section"&gt;
+    &lt;h1&gt;Ajuda&lt;/h1&gt;
+    &lt;p&gt;Selecione um módulo no menu para começar.&lt;/p&gt;
+    &lt;a href="/menu" class="btn"&gt;Voltar ao menu&lt;/a&gt;
+&lt;/section&gt;
+{% endblock %}</code></pre>
+<h3>3. Registre o router em <code>main.py</code></h3><pre><code># Junto aos imports dos routers:
+from app.routers import ajuda
+
+# Junto aos app.include_router(...):
+app.include_router(ajuda.router)</code></pre>
+<h3>4. Execute e confira</h3><p>Inicie em modo de desenvolvimento, selecione evento e fiscal pela tela inicial e abra <code>http://localhost:8501/ajuda</code>. O middleware atual exige sessão para essa rota. Se funcionar, adicione um link para <code>/ajuda</code> ao menu.</p>
+<details><summary>Como ler a sintaxe de Jinja2</summary><ul><li><code>{{ evento_nome }}</code> imprime um valor do contexto Python.</li><li><code>{% if condicao %}...{% endif %}</code> mostra um trecho condicionalmente.</li><li><code>{% for item in itens %}...{% endfor %}</code> repete elementos.</li><li><code>{% extends "base.html" %}</code> usa uma estrutura compartilhada.</li><li><code>{% include "partials/header.html" %}</code> inclui outro template.</li></ul><p>Esses comandos são executados no servidor. O navegador recebe o HTML resultante.</p></details>
+<details><summary>Exercício seguinte: entender um popup</summary><p>Crie um botão <code>type="button"</code> e um contêiner com <code>hidden</code>. No JavaScript, conecte o clique do botão a <code>popup.hidden = false</code>; conecte o botão de fechar a <code>popup.hidden = true</code>. Só depois acrescente um formulário e uma rota POST. Dentro de um formulário, omitir <code>type="button"</code> pode fazer um botão enviar os dados por engano.</p></details></section>
+
+<section id="offline"><h2>09 · A camada offline também precisa de atenção</h2><div class="grid"><div class="box"><h3>Cache de arquivos</h3><p><code>sw.js</code> é o Service Worker. Mantém recursos em cache e usa estratégias para requisições. <code>main.py</code> serve esse arquivo em <code>/sw.js</code> para que tenha escopo na aplicação.</p></div><div class="box"><h3>Dados e filas locais</h3><p><code>app.js</code> expõe <code>AppOffline</code> e usa IndexedDB. <code>sync.js</code> envia operações pendentes quando a conexão volta. <code>db.js</code> hoje é apenas um arquivo de compatibilidade.</p></div></div>
+<pre><code>Fila no navegador       → rota de sincronização
+fila_envio              → POST /api/inserir
+fila_bsr_erb            → POST /api/bsr-erb
+fila_edicoes            → POST /api/consultar-salvar</code></pre>
+<p><code>connectivity.js</code> acompanha a conectividade, e <code>app/utils/offline.py</code> prepara contextos usados nos retornos offline. Uploads de fotos merecem verificação específica: arquivos multipart não são equivalentes aos objetos JSON dessas filas.</p>
+<p class="note">Ao mudar um campo, uma permissão ou uma API de edição, confira tanto o envio normal quanto a sincronização offline. Ao mudar JavaScript ou CSS, verifique a versão na URL do recurso e o cache do Service Worker se o navegador continuar mostrando código antigo.</p></section>
+
+<section id="ambiente"><h2>10 · Execute, observe e depure</h2><h3>Subir a aplicação no PowerShell</h3><p>Para o sistema real, use o banco de desenvolvimento já configurado. O laboratório da seção 13 também usa PostgreSQL, pela conexão do projeto, e exige um banco de desenvolvimento configurado. O projeto declara Python 3.13 ou superior em <code>pyproject.toml</code>.</p><pre><code>Set-Location D:\NetbeansProjects\appgrandeseventos
+uv sync
+uv run uvicorn main:app --reload --port 8501</code></pre><p>Abra <code>http://localhost:8501</code>. Para configuração de Podman e instalação local, consulte <code>README.md</code> e <code>local_server/README.md</code>.</p>
+<p>A conexão é lida em <code>app/services/db.py</code>: primeiro <code>DATABASE_URL</code>, depois o arquivo legado <code>.streamlit/secrets.toml</code> e, por último, um valor local padrão. Exemplo com valores que você deve substituir:</p><pre><code>$env:DATABASE_URL = "postgresql+psycopg://USUARIO:SENHA@127.0.0.1:5432/BANCO_DESENVOLVIMENTO"
+uv run uvicorn main:app --reload --port 8501</code></pre>
+<h3>As três janelas de depuração</h3><div class="grid"><div class="box"><h3>Terminal do servidor</h3><p>Erros Python, falhas SQL e logs de requisição. Leia a última linha do traceback para identificar a exceção e as linhas anteriores para localizar seu código.</p></div><div class="box"><h3>DevTools do navegador — F12</h3><p><strong>Console:</strong> erros JavaScript. <strong>Network:</strong> URL, método, payload e resposta. <strong>Elements:</strong> HTML e CSS. <strong>Application:</strong> Service Worker, cache e IndexedDB.</p></div></div>
+<div class="table-wrap"><table><thead><tr><th>Sintoma</th><th>Primeira investigação</th></tr></thead><tbody><tr><td>Botão não aparece</td><td>Template, condição Jinja2, <code>hidden</code>, CSS e cache</td></tr><tr><td>Clique não faz nada</td><td>Console, ID do elemento e listener JavaScript</td></tr><tr><td>Campo não chega ao Python</td><td><code>name</code>, <code>disabled</code>, associação ao formulário e payload em Network</td></tr><tr><td>Registro aparece somente para leitura</td><td>Flag <code>PodeEditar</code> / <code>pode_editar</code>, sessão, vínculo e status</td></tr><tr><td>Erro 500</td><td>Traceback no terminal; função e consulta envolvidas</td></tr><tr><td>Alteração some após salvar</td><td>POST, UPDATE, transação, SELECT de retorno e evento selecionado</td></tr><tr><td>Página volta para a seleção</td><td>Sessão com evento/fiscal e possível reinício do servidor</td></tr></tbody></table></div>
+<h3>Antes de considerar uma mudança pronta</h3><div class="checklist"><label><input type="checkbox">O caso solicitado funciona com os dados esperados.</label><label><input type="checkbox">Campos vazios ou inválidos geram mensagens compreensíveis.</label><label><input type="checkbox">O fiscal correto pode editar e outro fiscal não recebe acesso indevido.</label><label><input type="checkbox">A operação continua dentro do evento selecionado.</label><label><input type="checkbox">Após salvar e recarregar, os dados permanecem corretos.</label><label><input type="checkbox">Console e terminal não mostram novos erros.</label><label><input type="checkbox">O diff contém apenas as alterações pretendidas.</label></div>
+<p>Para mudanças no banco ou regras, faça testes que cubram resultado, erro e permissão. O script <code>scripts/testar_insercao_emissao.py</code> existe, mas leia-o antes de executar: o nome indica uma operação de inserção e ele não substitui uma suíte completa para todos os módulos.</p></section>
+
+<section id="estudo"><h2>11 · Uma sequência para aprender no próprio projeto</h2><ol><li><strong>HTML e formulários:</strong> leia <code>tratamento_tickets.html</code>; identifique tabela, botões, <code>name</code> e <code>action</code>. Exercício: mudar um rótulo.</li><li><strong>CSS:</strong> localize as classes no <code>style.css</code>. Exercício: ajustar o espaçamento de uma área específica.</li><li><strong>JavaScript:</strong> acompanhe os cliques que abrem popups. Exercício: incluir um título com o ID selecionado usando <code>textContent</code>.</li><li><strong>Python:</strong> estude função, dicionário, lista, <code>if</code>, <code>for</code> e tratamento de exceções. Exercício: explicar as entradas e saídas de <code>post_ticket_evento()</code>.</li><li><strong>FastAPI e Jinja2:</strong> faça a tela de ajuda do exemplo. Exercício: passar uma variável Python e mostrá-la no HTML.</li><li><strong>SQL:</strong> estude SELECT, JOIN, INSERT, UPDATE, chave estrangeira e transação. Exercício: acompanhar uma consulta de listagem no serviço.</li><li><strong>Regras do domínio:</strong> siga um ticket da criação ao encerramento e identifique as permissões de cada etapa.</li><li><strong>Offline:</strong> acompanhe uma fila desde a gravação local até a API de sincronização.</li></ol>
+<p class="note">Para ganhar autonomia, termine cada exercício respondendo: “qual arquivo recebe a entrada?”, “qual função decide o resultado?” e “onde o dado é gravado?”. Quando essas respostas ficam claras, fica mais fácil planejar a próxima alteração.</p></section>
+<section id="detalhes"><h2>12 · Entenda o código em detalhe</h2>
+<h3>Uma variável percorre várias camadas</h3><p>Imagine o campo <code>titulo</code>. No HTML, o usuário digita em <code>&lt;input name="titulo"&gt;</code>. O navegador envia uma chave chamada <code>titulo</code> no POST. Python lê <code>form.get("titulo", "")</code>. O serviço remove espaços, valida o tamanho e entrega o valor ao SQL. O SELECT devolve um dicionário; Jinja2 exibe <code>{{ tarefa.titulo }}</code>. Um nome errado em qualquer etapa pode interromper esse caminho.</p>
+<div class="flow"><div class="node">name="titulo"<small>HTML</small></div><span class="arrow">→</span><div class="node">form.get("titulo")<small>Python</small></div><span class="arrow">→</span><div class="node">INSERT / UPDATE<small>SQL</small></div><span class="arrow">→</span><div class="node">tarefa.titulo<small>Template</small></div></div>
+<h3>Como ler uma função Python</h3><pre><code>def listar(evento_id):       # entrada: evento a consultar
+    with conexao() as conn:  # controla abertura e fechamento
+        return [...]        # saída: lista de registros</code></pre><p><code>def</code> declara uma função. Os parâmetros são entradas. <code>return</code> devolve o resultado. A indentação determina o bloco: as linhas recuadas pertencem à função, ao <code>if</code> ou ao <code>with</code>. <code>async def</code> permite usar <code>await</code>, por exemplo ao ler o formulário. Isso não transforma uma consulta SQL síncrona em assíncrona.</p>
+<h3>Listas e dicionários</h3><pre><code>tarefa = {"id": 7, "titulo": "Verificar entrada", "status": "pendente"}
+tarefas = [tarefa]
+print(tarefa["titulo"])              # acesso à chave obrigatória
+print(tarefa.get("descricao", ""))   # padrão se a chave não existir</code></pre><p>A listagem do exemplo é uma lista de dicionários. Cada linha SQL vira um dicionário por <code>dict(row)</code>. No template, <code>tarefa.titulo</code> acessa a chave. Alguns serviços do sistema real devolvem DataFrames do pandas: leia o contrato antes de assumir o tipo de retorno.</p>
+<h3>GET, POST e redirecionamento</h3><p>GET pede uma representação; POST envia uma operação. <code>GET /</code> monta a listagem, <code>POST /tarefas</code> cria e <code>POST /tarefas/7/editar</code> altera a tarefa 7. Depois de salvar, um 303 manda o navegador fazer GET. A mensagem fica na sessão e é retirada por <code>pop()</code> na próxima renderização.</p>
+<h3>Validação em três níveis</h3><ol><li><strong>Navegador:</strong> required, minlength e maxlength dão resposta rápida.</li><li><strong>Python:</strong> confirma valores mesmo quando um POST é enviado por outra ferramenta. Também verifica a permissão.</li><li><strong>Banco:</strong> NOT NULL e CHECK preservam restrições dos dados.</li></ol><p>Um campo <code>disabled</code> não é enviado. Um campo apenas <code>hidden</code> continua podendo ser enviado: esconder não é autorização. O servidor sempre decide se a gravação é permitida.</p>
+<h3>SQL parametrizado</h3><pre><code># SQLAlchemy + PostgreSQL: padrão do sistema e do exemplo
+conn.execute(text("SELECT * FROM tickets WHERE evento_id = :evento_id"),
+             {"evento_id": evento_id})</code></pre><p>Os valores são enviados separadamente do SQL. Não concatene o título digitado em uma consulta. Uma transação agrupa alterações: faz commit ao concluir e rollback ao falhar. No exemplo, a edição verifica o registro e sua atribuição dentro de uma transação PostgreSQL com <code>get_engine().begin()</code> e bloqueio da linha por <code>FOR UPDATE</code>.</p>
+<h3>Como editar somente a linha escolhida</h3><ol><li>O botão contém o ID em <code>data-id</code>.</li><li>O clique localiza essa tarefa no array.</li><li><code>form.reset()</code> remove os valores da abertura anterior.</li><li>O script preenche os campos e muda o action para a rota do ID selecionado.</li><li>O servidor usa ID, evento e atribuição do banco para validar a alteração.</li></ol><p>O exemplo usa <code>&lt;dialog&gt;</code> nativo: <code>showModal()</code> abre com controle de foco e Escape. O sistema real usa principalmente contêineres com hidden e, em alguns casos, iframes. Os mecanismos são diferentes, mas ambos mostram um formulário específico.</p>
+<h3>Separação de responsabilidades</h3><p>A rota entende HTTP, sessão e mensagens. O serviço entende validação e SQL. O template entende apresentação. O JavaScript entende interação. Se o título é salvo incorretamente, veja o payload do POST. Se a posição do botão está errada, veja o template e o CSS.</p></section>
+<section id="laboratorio"><h2>13 · Tela completa: Gestão de tarefas</h2><p>Um módulo executável com formulário em popup, listagem, busca, contadores, edição, exclusão e simulação de permissões. Os arquivos estão em <code>guia de programação/exemplo_completo</code>.</p><p><a href="exemplo-tela.html">Abrir prévia da tela diretamente no navegador</a> · <a href="exemplo_completo/README.md">Instruções de execução</a></p>
+<p class="note">A prévia permite abrir popups e filtrar dados fictícios. A versão Python grava em banco. Usa PostgreSQL, SQLAlchemy e psycopg, com <code>get_engine()</code> importado de <code>app/services/db.py</code>. Os perfis são simulados: não é autenticação real.</p><h3>Execute a versão completa</h3><pre><code># Terminal na raiz do projeto; substitua os dados da conexão
+$env:DATABASE_URL = "postgresql+psycopg://USUARIO:SENHA@127.0.0.1:5432/BANCO_DESENVOLVIMENTO"
+uv run uvicorn laboratorio:app --app-dir "guia de programação/exemplo_completo" --reload --port 8502</code></pre><p>Abra <a href="http://localhost:8502">http://localhost:8502</a>. A porta 8502 permite manter o sistema real na 8501. O PostgreSQL deve existir antes da execução. Ao iniciar, o laboratório cria o schema <code>guia_programacao</code> e a tabela <code>tarefas</code> na conexão configurada. Ele não grava nas tabelas reais do aplicativo. Ctrl+C encerra o servidor.</p>
+<div class="table-wrap"><table><thead><tr><th>Ação</th><th>Rota</th><th>O que estudar</th></tr></thead><tbody><tr><td>Listar</td><td>GET /</td><td>SELECT e contexto Jinja2</td></tr><tr><td>Criar</td><td>POST /tarefas</td><td>Validação e INSERT</td></tr><tr><td>Editar</td><td>POST /tarefas/{id}/editar</td><td>Permissão, popup e UPDATE</td></tr><tr><td>Excluir</td><td>POST /tarefas/{id}/excluir</td><td>Coordenação e DELETE restrito ao evento</td></tr><tr><td>Trocar perfil</td><td>POST /perfil</td><td>Sessão de demonstração</td></tr></tbody></table></div>
+<h3>Permissões</h3><p>Ana e Bruno criam e editam somente suas tarefas. As demais aparecem para leitura. Coordenação pode editar, reatribuir e excluir. A interface respeita o perfil e o servidor valida novamente; mudar o HTML não concede permissão.</p><h3>Diferenças para a aplicação real</h3><ul><li>O exemplo usa o mesmo módulo de conexão, o mesmo PostgreSQL e o mesmo padrão SQLAlchemy do sistema; somente a tabela didática fica no schema separado guia_programacao.</li><li>O evento é fixo e os fiscais são fictícios. Na aplicação, eventos e vínculos vêm do banco.</li><li>Não há auditoria, anexos, sincronização offline ou proteção CSRF de produção nesta demonstração.</li></ul><h3>Para integrar um módulo real</h3><ol><li>Transforme as rotas em APIRouter e registre em main.py.</li><li>Use a sessão existente, incluindo spreadsheet_id como ID do evento.</li><li>Não copie a troca livre de perfil; use o usuário e as permissões reais.</li><li>Incorpore as funções ao serviço real e conecte as relações com eventos e fiscais; os parâmetros SQL já seguem o padrão PostgreSQL do projeto.</li><li>Prepare as migrações, relações e validações do domínio.</li><li>Revise auditoria e offline conforme os requisitos do módulo.</li></ol></section>
+<section id="codigo"><h2>14 · Código completo com PostgreSQL</h2><p>Este exemplo usa a mesma conexão do AppGrandesEventos. Leia o schema PostgreSQL, serviço SQLAlchemy, rotas, template e JavaScript.</p><details><summary>schema.sql</summary><p><a href="exemplo_completo/schema.sql">Abrir arquivo original</a></p><pre><code>CREATE SCHEMA IF NOT EXISTS guia_programacao;
+CREATE TABLE IF NOT EXISTS guia_programacao.tarefas (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    evento_id BIGINT NOT NULL,
+    titulo TEXT NOT NULL CHECK (char_length(titulo) BETWEEN 3 AND 100),
+    descricao TEXT NOT NULL DEFAULT &#x27;&#x27; CHECK (char_length(descricao) &lt;= 2000),
+    status TEXT NOT NULL CHECK (status IN (&#x27;pendente&#x27;, &#x27;concluida&#x27;)),
+    prioridade TEXT NOT NULL CHECK (prioridade IN (&#x27;baixa&#x27;, &#x27;normal&#x27;, &#x27;alta&#x27;)),
+    fiscal_id BIGINT NOT NULL CHECK (fiscal_id IN (1, 2)),
+    criado_em TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_guia_tarefas_evento
+    ON guia_programacao.tarefas(evento_id);
+</code></pre></details><details><summary>dados_exemplo.py</summary><p><a href="exemplo_completo/dados_exemplo.py">Abrir arquivo original</a></p><pre><code>&quot;&quot;&quot;Exemplo PostgreSQL: usa a mesma conexão SQLAlchemy do AppGrandesEventos.
+As tabelas didáticas ficam no schema guia_programacao.
+&quot;&quot;&quot;
+from pathlib import Path
+from sqlalchemy import text
+from app.services.db import get_engine
+
+BASE = Path(__file__).resolve().parent
+FISCAIS = {1: &quot;Ana — Fiscal&quot;, 2: &quot;Bruno — Fiscal&quot;}
+
+
+def preparar():
+    # Executado somente ao iniciar o laboratório, nunca ao importar o módulo.
+    # Configure DATABASE_URL para um banco PostgreSQL de desenvolvimento.
+    with get_engine().begin() as conn:
+        sql = (BASE / &quot;schema.sql&quot;).read_text(encoding=&quot;utf-8&quot;)
+        for comando in sql.split(&quot;;&quot;):
+            if comando.strip():
+                conn.execute(text(comando))
+
+
+def validar(form):
+    titulo = str(form.get(&quot;titulo&quot;, &quot;&quot;)).strip()
+    descricao = str(form.get(&quot;descricao&quot;, &quot;&quot;)).strip()
+    status = str(form.get(&quot;status&quot;, &quot;&quot;))
+    prioridade = str(form.get(&quot;prioridade&quot;, &quot;&quot;))
+    try:
+        fiscal_id = int(form.get(&quot;fiscal_id&quot;, &quot;&quot;))
+    except (TypeError, ValueError):
+        raise ValueError(&quot;Selecione um fiscal válido.&quot;) from None
+    if not 3 &lt;= len(titulo) &lt;= 100:
+        raise ValueError(&quot;O título deve ter entre 3 e 100 caracteres.&quot;)
+    if len(descricao) &gt; 2000:
+        raise ValueError(&quot;A descrição deve ter até 2000 caracteres.&quot;)
+    if status not in {&quot;pendente&quot;, &quot;concluida&quot;}:
+        raise ValueError(&quot;Status inválido.&quot;)
+    if prioridade not in {&quot;baixa&quot;, &quot;normal&quot;, &quot;alta&quot;}:
+        raise ValueError(&quot;Prioridade inválida.&quot;)
+    if fiscal_id not in FISCAIS:
+        raise ValueError(&quot;Fiscal não encontrado.&quot;)
+    return dict(titulo=titulo, descricao=descricao, status=status,
+                prioridade=prioridade, fiscal_id=fiscal_id)
+
+
+def listar(evento_id):
+    with get_engine().connect() as conn:
+        resultado = conn.execute(text(&quot;&quot;&quot;
+            SELECT * FROM guia_programacao.tarefas
+            WHERE evento_id = :evento_id ORDER BY id DESC
+        &quot;&quot;&quot;), {&quot;evento_id&quot;: int(evento_id)})
+        return [dict(row) for row in resultado.mappings().all()]
+
+
+def criar(evento_id, valores):
+    with get_engine().begin() as conn:
+        return conn.execute(text(&quot;&quot;&quot;
+            INSERT INTO guia_programacao.tarefas
+                (evento_id, titulo, descricao, status, prioridade, fiscal_id)
+            VALUES (:evento_id, :titulo, :descricao, :status, :prioridade, :fiscal_id)
+            RETURNING id
+        &quot;&quot;&quot;), {**valores, &quot;evento_id&quot;: int(evento_id)}).scalar_one()
+
+
+def editar(evento_id, tarefa_id, valores, fiscal_id, coordenador):
+    with get_engine().begin() as conn:
+        parametros = {&quot;evento_id&quot;: int(evento_id), &quot;tarefa_id&quot;: int(tarefa_id)}
+        atual = conn.execute(text(&quot;&quot;&quot;
+            SELECT * FROM guia_programacao.tarefas
+            WHERE evento_id = :evento_id AND id = :tarefa_id
+            FOR UPDATE
+        &quot;&quot;&quot;), parametros).mappings().first()
+        if atual is None:
+            raise ValueError(&quot;Tarefa não encontrada neste evento.&quot;)
+        if not coordenador and (atual[&quot;fiscal_id&quot;] != fiscal_id or valores[&quot;fiscal_id&quot;] != fiscal_id):
+            raise PermissionError(&quot;Você pode editar apenas suas tarefas e não pode reatribuí-las.&quot;)
+        conn.execute(text(&quot;&quot;&quot;
+            UPDATE guia_programacao.tarefas
+            SET titulo = :titulo, descricao = :descricao, status = :status,
+                prioridade = :prioridade, fiscal_id = :fiscal_id
+            WHERE evento_id = :evento_id AND id = :tarefa_id
+        &quot;&quot;&quot;), {**valores, **parametros})
+
+
+def excluir(evento_id, tarefa_id):
+    with get_engine().begin() as conn:
+        resultado = conn.execute(text(&quot;&quot;&quot;
+            DELETE FROM guia_programacao.tarefas
+            WHERE evento_id = :evento_id AND id = :tarefa_id
+        &quot;&quot;&quot;), {&quot;evento_id&quot;: int(evento_id), &quot;tarefa_id&quot;: int(tarefa_id)})
+        return resultado.rowcount == 1
+</code></pre></details><details><summary>laboratorio.py</summary><p><a href="exemplo_completo/laboratorio.py">Abrir arquivo original</a></p><pre><code>&quot;&quot;&quot;Exemplo didático independente. Execute da raiz: uv run uvicorn
+laboratorio:app --app-dir &quot;guia de programação/exemplo_completo&quot; --reload --port 8502
+&quot;&quot;&quot;
+import os
+from contextlib import asynccontextmanager
+import secrets
+from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
+
+import dados_exemplo as dados
+
+BASE = Path(__file__).resolve().parent
+@asynccontextmanager
+async def lifespan(app):
+    dados.preparar()
+    yield
+
+
+app = FastAPI(title=&quot;Exemplo PostgreSQL — AppGrandesEventos&quot;, lifespan=lifespan)
+app.add_middleware(SessionMiddleware, secret_key=os.environ.get(&quot;DEMO_SESSION_SECRET&quot;) or secrets.token_hex(32))
+app.mount(&quot;/static&quot;, StaticFiles(directory=BASE / &quot;static&quot;), name=&quot;static&quot;)
+templates = Jinja2Templates(directory=BASE / &quot;templates&quot;)
+
+
+def contexto(request):
+    # Sessão simulada para estudar permissões, com IDs fictícios apenas no schema didático.
+    request.session.setdefault(&quot;spreadsheet_id&quot;, 1)
+    request.session.setdefault(&quot;fiscal_id&quot;, 1)
+    request.session.setdefault(&quot;papel&quot;, &quot;fiscal&quot;)
+    return request.session
+
+
+def pode_editar(session, tarefa):
+    return session[&quot;papel&quot;] == &quot;coordenacao&quot; or tarefa[&quot;fiscal_id&quot;] == session[&quot;fiscal_id&quot;]
+
+
+def voltar(request, mensagem, erro=False):
+    request.session[&quot;mensagem&quot;] = {&quot;texto&quot;: mensagem, &quot;erro&quot;: erro}
+    return RedirectResponse(&quot;/&quot;, status_code=303)
+
+
+@app.get(&quot;/&quot;)
+async def listar(request: Request):
+    session = contexto(request)
+    tarefas = dados.listar(session[&quot;spreadsheet_id&quot;])
+    for tarefa in tarefas:
+        tarefa[&quot;pode_editar&quot;] = pode_editar(session, tarefa)
+    return templates.TemplateResponse(request, &quot;tarefas.html&quot;, {
+        &quot;request&quot;: request, &quot;tarefas&quot;: tarefas,
+        &quot;fiscais&quot;: dados.FISCAIS, &quot;session&quot;: session,
+        &quot;mensagem&quot;: request.session.pop(&quot;mensagem&quot;, None),
+        &quot;total&quot;: len(tarefas),
+        &quot;pendentes&quot;: sum(t[&quot;status&quot;] == &quot;pendente&quot; for t in tarefas),
+    })
+
+
+@app.post(&quot;/perfil&quot;)
+async def perfil(request: Request):
+    session = contexto(request)
+    form = await request.form()
+    perfil = str(form.get(&quot;perfil&quot;, &quot;&quot;))
+    # Troca livre apenas nesta demonstração; não é autenticação.
+    if perfil not in {&quot;fiscal_1&quot;, &quot;fiscal_2&quot;, &quot;coordenacao&quot;}:
+        return voltar(request, &quot;Perfil inválido.&quot;, True)
+    session[&quot;papel&quot;] = &quot;coordenacao&quot; if perfil == &quot;coordenacao&quot; else &quot;fiscal&quot;
+    session[&quot;fiscal_id&quot;] = 2 if perfil == &quot;fiscal_2&quot; else 1
+    return voltar(request, &quot;Perfil de demonstração alterado.&quot;)
+
+
+@app.post(&quot;/tarefas&quot;)
+async def criar(request: Request):
+    session = contexto(request)
+    form = await request.form()
+    try:
+        valores = dados.validar(form)
+        if session[&quot;papel&quot;] != &quot;coordenacao&quot; and valores[&quot;fiscal_id&quot;] != session[&quot;fiscal_id&quot;]:
+            raise ValueError(&quot;O fiscal pode criar tarefas apenas para si.&quot;)
+        dados.criar(session[&quot;spreadsheet_id&quot;], valores)
+    except ValueError as exc:
+        return voltar(request, str(exc), True)
+    return voltar(request, &quot;Tarefa cadastrada.&quot;)
+
+
+@app.post(&quot;/tarefas/{tarefa_id}/editar&quot;)
+async def editar(request: Request, tarefa_id: int):
+    session = contexto(request)
+    form = await request.form()
+    try:
+        valores = dados.validar(form)
+        # O serviço verifica também o registro atual dentro da transação.
+        dados.editar(session[&quot;spreadsheet_id&quot;], tarefa_id, valores,
+                     session[&quot;fiscal_id&quot;], session[&quot;papel&quot;] == &quot;coordenacao&quot;)
+    except (ValueError, PermissionError) as exc:
+        return voltar(request, str(exc), True)
+    return voltar(request, &quot;Alterações salvas.&quot;)
+
+
+@app.post(&quot;/tarefas/{tarefa_id}/excluir&quot;)
+async def excluir(request: Request, tarefa_id: int):
+    session = contexto(request)
+    if session[&quot;papel&quot;] != &quot;coordenacao&quot;:
+        return voltar(request, &quot;Somente a coordenação pode excluir tarefas.&quot;, True)
+    if not dados.excluir(session[&quot;spreadsheet_id&quot;], tarefa_id):
+        return voltar(request, &quot;Tarefa não encontrada neste evento.&quot;, True)
+    return voltar(request, &quot;Tarefa excluída.&quot;)
+</code></pre></details><details><summary>templates/tarefas.html</summary><p><a href="exemplo_completo/templates/tarefas.html">Abrir arquivo original</a></p><pre><code>&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;pt-BR&quot;&gt;
+&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;&lt;title&gt;Laboratório — Gestão de tarefas&lt;/title&gt;&lt;link rel=&quot;stylesheet&quot; href=&quot;/static/tarefas.css&quot;&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;header&gt;&lt;span class=&quot;brand&quot;&gt;APP GRANDES EVENTOS / LABORATÓRIO&lt;/span&gt;&lt;a href=&quot;/docs&quot;&gt;Rotas da demonstração&lt;/a&gt;&lt;/header&gt;
+&lt;main&gt;
+&lt;div class=&quot;heading&quot;&gt;&lt;div&gt;&lt;p class=&quot;eyebrow&quot;&gt;EXEMPLO COMPLETO · FASTAPI + JINJA2 + SQL&lt;/p&gt;&lt;h1&gt;Gestão de tarefas&lt;/h1&gt;&lt;p class=&quot;muted&quot;&gt;Cadastro, busca, permissões e edição em popup.&lt;/p&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; id=&quot;nova-tarefa&quot;&gt;+ Nova tarefa&lt;/button&gt;&lt;/div&gt;
+&lt;div class=&quot;notice&quot;&gt;Ambiente didático independente. Os dados ficam no PostgreSQL, no schema &lt;code&gt;guia_programacao&lt;/code&gt;, usando a conexão de &lt;code&gt;app/services/db.py&lt;/code&gt;. A troca de perfil abaixo simula usuários e não é um login real.&lt;/div&gt;
+{% if mensagem %}&lt;div class=&quot;message {{ &#x27;error&#x27; if mensagem.erro else &#x27;success&#x27; }}&quot; role=&quot;status&quot;&gt;{{ mensagem.texto }}&lt;/div&gt;{% endif %}
+&lt;div class=&quot;stats&quot;&gt;&lt;article&gt;&lt;span&gt;Total de tarefas&lt;/span&gt;&lt;strong&gt;{{ total }}&lt;/strong&gt;&lt;/article&gt;&lt;article&gt;&lt;span&gt;Pendentes&lt;/span&gt;&lt;strong&gt;{{ pendentes }}&lt;/strong&gt;&lt;/article&gt;&lt;article&gt;&lt;span&gt;Concluídas&lt;/span&gt;&lt;strong&gt;{{ total - pendentes }}&lt;/strong&gt;&lt;/article&gt;&lt;/div&gt;
+&lt;section class=&quot;panel&quot;&gt;&lt;div class=&quot;toolbar&quot;&gt;&lt;div&gt;&lt;h2&gt;Tarefas do evento de exemplo&lt;/h2&gt;&lt;label for=&quot;busca&quot;&gt;Buscar por título ou descrição&lt;/label&gt;&lt;input id=&quot;busca&quot; type=&quot;search&quot; placeholder=&quot;Digite para filtrar…&quot;&gt;&lt;/div&gt;&lt;form method=&quot;post&quot; action=&quot;/perfil&quot;&gt;&lt;label for=&quot;perfil&quot;&gt;Perfil de demonstração&lt;/label&gt;&lt;select id=&quot;perfil&quot; name=&quot;perfil&quot;&gt;&lt;option value=&quot;fiscal_1&quot; {% if session.papel == &#x27;fiscal&#x27; and session.fiscal_id == 1 %}selected{% endif %}&gt;Ana — Fiscal&lt;/option&gt;&lt;option value=&quot;fiscal_2&quot; {% if session.papel == &#x27;fiscal&#x27; and session.fiscal_id == 2 %}selected{% endif %}&gt;Bruno — Fiscal&lt;/option&gt;&lt;option value=&quot;coordenacao&quot; {% if session.papel == &#x27;coordenacao&#x27; %}selected{% endif %}&gt;Coordenação&lt;/option&gt;&lt;/select&gt;&lt;button type=&quot;submit&quot; class=&quot;secondary&quot;&gt;Trocar perfil&lt;/button&gt;&lt;/form&gt;&lt;/div&gt;
+&lt;div class=&quot;table-scroll&quot;&gt;&lt;table&gt;&lt;thead&gt;&lt;tr&gt;&lt;th&gt;ID / tarefa&lt;/th&gt;&lt;th&gt;Fiscal&lt;/th&gt;&lt;th&gt;Prioridade&lt;/th&gt;&lt;th&gt;Status&lt;/th&gt;&lt;th&gt;Ações&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;&lt;tbody&gt;
+{% for tarefa in tarefas %}
+&lt;tr data-search=&quot;{{ (tarefa.titulo ~ &#x27; &#x27; ~ tarefa.descricao)|lower }}&quot;&gt;&lt;td&gt;&lt;strong&gt;#{{ tarefa.id }} · {{ tarefa.titulo }}&lt;/strong&gt;&lt;small&gt;{{ tarefa.descricao or &#x27;Sem descrição&#x27; }}&lt;/small&gt;&lt;/td&gt;&lt;td&gt;{{ fiscais[tarefa.fiscal_id] }}&lt;/td&gt;&lt;td&gt;&lt;span class=&quot;badge {{ tarefa.prioridade }}&quot;&gt;{{ tarefa.prioridade|capitalize }}&lt;/span&gt;&lt;/td&gt;&lt;td&gt;{{ &#x27;Pendente&#x27; if tarefa.status == &#x27;pendente&#x27; else &#x27;Concluída&#x27; }}&lt;/td&gt;&lt;td class=&quot;actions&quot;&gt;
+{% if tarefa.pode_editar %}&lt;button type=&quot;button&quot; class=&quot;secondary editar&quot; data-id=&quot;{{ tarefa.id }}&quot;&gt;Editar&lt;/button&gt;{% else %}&lt;span class=&quot;muted&quot;&gt;Somente leitura&lt;/span&gt;{% endif %}
+{% if session.papel == &#x27;coordenacao&#x27; %}&lt;form method=&quot;post&quot; action=&quot;/tarefas/{{ tarefa.id }}/excluir&quot; class=&quot;excluir&quot;&gt;&lt;button class=&quot;danger&quot; type=&quot;submit&quot;&gt;Excluir&lt;/button&gt;&lt;/form&gt;{% endif %}
+&lt;/td&gt;&lt;/tr&gt;
+{% endfor %}
+&lt;/tbody&gt;&lt;/table&gt;&lt;/div&gt;&lt;p id=&quot;vazio&quot; {% if tarefas %}hidden{% endif %}&gt;Nenhuma tarefa encontrada. Use “Nova tarefa” para cadastrar.&lt;/p&gt;&lt;/section&gt;
+&lt;section class=&quot;explanation&quot;&gt;&lt;h2&gt;O que acontece ao salvar?&lt;/h2&gt;&lt;ol&gt;&lt;li&gt;O formulário envia um POST ao FastAPI.&lt;/li&gt;&lt;li&gt;A rota lê os campos, verifica o perfil e chama o serviço.&lt;/li&gt;&lt;li&gt;O serviço valida os valores e grava no PostgreSQL com SQLAlchemy e parâmetros nomeados.&lt;/li&gt;&lt;li&gt;Um redirecionamento 303 abre a listagem atualizada.&lt;/li&gt;&lt;/ol&gt;&lt;p&gt;Leia &lt;code&gt;laboratorio.py&lt;/code&gt;, &lt;code&gt;dados_exemplo.py&lt;/code&gt;, &lt;code&gt;templates/tarefas.html&lt;/code&gt; e &lt;code&gt;static/tarefas.js&lt;/code&gt; nessa ordem.&lt;/p&gt;&lt;/section&gt;
+&lt;/main&gt;
+&lt;dialog id=&quot;editor&quot; aria-labelledby=&quot;titulo-editor&quot;&gt;&lt;form id=&quot;form-tarefa&quot; method=&quot;post&quot; action=&quot;/tarefas&quot;&gt;&lt;div class=&quot;dialog-heading&quot;&gt;&lt;div&gt;&lt;p class=&quot;eyebrow&quot;&gt;FORMULÁRIO DE TAREFA&lt;/p&gt;&lt;h2 id=&quot;titulo-editor&quot;&gt;Nova tarefa&lt;/h2&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;secondary fechar&quot; aria-label=&quot;Fechar edição&quot;&gt;×&lt;/button&gt;&lt;/div&gt;
+&lt;label for=&quot;titulo&quot;&gt;Título *&lt;/label&gt;&lt;input id=&quot;titulo&quot; name=&quot;titulo&quot; required minlength=&quot;3&quot; maxlength=&quot;100&quot; placeholder=&quot;Ex.: Verificar emissão na entrada norte&quot;&gt;
+&lt;label for=&quot;descricao&quot;&gt;Descrição&lt;/label&gt;&lt;textarea id=&quot;descricao&quot; name=&quot;descricao&quot; rows=&quot;4&quot; maxlength=&quot;2000&quot; placeholder=&quot;Descreva o que precisa ser feito…&quot;&gt;&lt;/textarea&gt;
+&lt;div class=&quot;fields&quot;&gt;&lt;div&gt;&lt;label for=&quot;prioridade&quot;&gt;Prioridade *&lt;/label&gt;&lt;select id=&quot;prioridade&quot; name=&quot;prioridade&quot; required&gt;&lt;option value=&quot;baixa&quot;&gt;Baixa&lt;/option&gt;&lt;option value=&quot;normal&quot; selected&gt;Normal&lt;/option&gt;&lt;option value=&quot;alta&quot;&gt;Alta&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;&lt;div&gt;&lt;label for=&quot;status&quot;&gt;Status *&lt;/label&gt;&lt;select id=&quot;status&quot; name=&quot;status&quot; required&gt;&lt;option value=&quot;pendente&quot;&gt;Pendente&lt;/option&gt;&lt;option value=&quot;concluida&quot;&gt;Concluída&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;label for=&quot;fiscal_id&quot;&gt;Fiscal responsável *&lt;/label&gt;&lt;select id=&quot;fiscal_id&quot; name=&quot;fiscal_id&quot; required&gt;{% for id, nome in fiscais.items() if session.papel == &#x27;coordenacao&#x27; or id == session.fiscal_id %}&lt;option value=&quot;{{ id }}&quot;&gt;{{ nome }}&lt;/option&gt;{% endfor %}&lt;/select&gt;
+&lt;p class=&quot;muted&quot;&gt;* Campo obrigatório. Os valores também são validados no servidor.&lt;/p&gt;&lt;div class=&quot;dialog-actions&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;secondary fechar&quot;&gt;Cancelar&lt;/button&gt;&lt;button type=&quot;submit&quot;&gt;Salvar tarefa&lt;/button&gt;&lt;/div&gt;&lt;/form&gt;&lt;/dialog&gt;
+&lt;script id=&quot;tarefas-data&quot; type=&quot;application/json&quot;&gt;{{ tarefas|tojson }}&lt;/script&gt;
+&lt;script src=&quot;/static/tarefas.js&quot;&gt;&lt;/script&gt;
+&lt;/body&gt;&lt;/html&gt;
+</code></pre></details><details><summary>static/tarefas.js</summary><p><a href="exemplo_completo/static/tarefas.js">Abrir arquivo original</a></p><pre><code>// HTML mostra os dados; JavaScript controla busca e popup; Python grava.
+const tarefas = JSON.parse(document.getElementById(&quot;tarefas-data&quot;).textContent);
+const dialog = document.getElementById(&quot;editor&quot;);
+const form = document.getElementById(&quot;form-tarefa&quot;);
+let botaoOrigem;
+
+function abrir(tarefa, origem) {
+  botaoOrigem = origem;
+  form.reset();
+  form.action = tarefa ? `/tarefas/${tarefa.id}/editar` : &quot;/tarefas&quot;;
+  document.getElementById(&quot;titulo-editor&quot;).textContent = tarefa ? `Editar tarefa #${tarefa.id}` : &quot;Nova tarefa&quot;;
+  if (tarefa) {
+    for (const campo of [&quot;titulo&quot;, &quot;descricao&quot;, &quot;status&quot;, &quot;prioridade&quot;, &quot;fiscal_id&quot;]) {
+      form.elements.namedItem(campo).value = tarefa[campo];
+    }
+  }
+  dialog.showModal(); // dialog nativo controla foco e tecla Escape
+  form.elements.namedItem(&quot;titulo&quot;).focus();
+}
+
+document.getElementById(&quot;nova-tarefa&quot;).addEventListener(&quot;click&quot;, event =&gt; abrir(null, event.currentTarget));
+document.querySelectorAll(&quot;.editar&quot;).forEach(button =&gt; button.addEventListener(&quot;click&quot;, () =&gt; {
+  const tarefa = tarefas.find(item =&gt; item.id === Number(button.dataset.id));
+  if (tarefa) abrir(tarefa, button);
+}));
+document.querySelectorAll(&quot;.fechar&quot;).forEach(button =&gt; button.addEventListener(&quot;click&quot;, () =&gt; dialog.close()));
+dialog.addEventListener(&quot;close&quot;, () =&gt; botaoOrigem?.focus());
+document.querySelectorAll(&quot;.excluir&quot;).forEach(formExcluir =&gt; formExcluir.addEventListener(&quot;submit&quot;, event =&gt; {
+  if (!window.confirm(&quot;Excluir esta tarefa do exemplo?&quot;)) event.preventDefault();
+}));
+document.getElementById(&quot;busca&quot;).addEventListener(&quot;input&quot;, event =&gt; {
+  const termo = event.target.value.trim().toLocaleLowerCase(&quot;pt-BR&quot;);
+  let visiveis = 0;
+  document.querySelectorAll(&quot;tr[data-search]&quot;).forEach(row =&gt; {
+    row.hidden = !row.dataset.search.includes(termo);
+    if (!row.hidden) visiveis++;
+  });
+  document.getElementById(&quot;vazio&quot;).hidden = visiveis &gt; 0;
+});
+</code></pre></details><details><summary>static/tarefas.css</summary><p><a href="exemplo_completo/static/tarefas.css">Abrir arquivo original</a></p><pre><code>:root{--blue:#165ccc;--ink:#183049;--muted:#5c6e80;--line:#dce5ef}*{box-sizing:border-box}body{margin:0;font:16px/1.55 system-ui,Segoe UI,sans-serif;color:var(--ink);background:#f3f6fb}header{background:#142b46;color:white;padding:20px 5vw;display:flex;justify-content:space-between;gap:20px}header a{color:#d7e6ff}.brand{font-size:13px;letter-spacing:1px;font-weight:700}main{max-width:1200px;margin:auto;padding:38px 24px}h1{font-size:36px;margin:5px 0}h2{font-size:21px;margin:0 0 14px}.heading,.toolbar{display:flex;justify-content:space-between;gap:24px;align-items:center}.eyebrow{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--blue)}.muted{color:var(--muted)}button{background:var(--blue);color:white;border:1px solid transparent;padding:10px 16px;border-radius:8px;cursor:pointer;font:inherit;font-size:14px;font-weight:600}button:hover{filter:brightness(.94)}.secondary{background:#edf3fc;color:var(--blue);border-color:#ccdcf4}.danger{background:#fff0ef;color:#b03232;border-color:#f0cbcb}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #7ca9ef;outline-offset:2px}.notice,.message{padding:14px 18px;border-radius:10px;margin:20px 0;background:#eaf2ff}.error{background:#fee9e9;color:#8b2222}.success{background:#e5f5ed;color:#206441}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin:24px 0}.stats article,.panel,.explanation{background:white;border:1px solid var(--line);border-radius:14px;padding:24px}.stats span{display:block;color:var(--muted);font-size:14px}.stats strong{font-size:32px}.toolbar{align-items:end;margin-bottom:22px}.toolbar&gt;div{flex:1}.toolbar form{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.toolbar form label{width:100%}label{display:block;font-weight:600;font-size:13px;margin:14px 0 6px}input,select,textarea{width:100%;border:1px solid #cdd8e5;border-radius:7px;padding:11px;background:white;color:var(--ink);font:inherit;font-size:14px}.toolbar select{width:190px}.table-scroll{overflow:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:16px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:12px;background:#f7f9fc}td small{display:block;color:var(--muted);max-width:400px;white-space:pre-wrap;overflow-wrap:anywhere;margin-top:4px}.actions{display:flex;gap:8px}.badge{display:inline-block;padding:4px 9px;background:#edf3fb;border-radius:20px;font-size:12px}.alta{background:#fff0e6;color:#a34215}.baixa{background:#e8f5ee;color:#246a45}.explanation{margin-top:24px;font-size:14px}code{font-family:Consolas,monospace}dialog{border:0;border-radius:16px;padding:28px;width:min(620px,calc(100% - 32px));max-height:90vh;overflow:auto;color:var(--ink);box-shadow:0 20px 90px #142b4655}dialog::backdrop{background:#10243d88}.dialog-heading{display:flex;justify-content:space-between;align-items:start}.dialog-heading .eyebrow{margin-top:0}.dialog-heading button{font-size:23px;padding:2px 12px}.dialog-actions{display:flex;justify-content:end;gap:10px;margin-top:24px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:16px}[hidden]{display:none!important}@media(max-width:760px){.heading,.toolbar{align-items:stretch;flex-direction:column}.stats{gap:8px}.stats article{padding:14px}.fields{grid-template-columns:1fr}main{padding:22px 14px}h1{font-size:28px}header{flex-direction:column}.toolbar form{align-items:stretch}.toolbar select{flex:1}}
+</code></pre></details></section><section id="exercicios"><h2>15 · Exercícios e verificação</h2><h3>1. Troque um rótulo</h3><p>Altere “Nova tarefa” no botão e no popup. Procure no template e no JavaScript: o script redefine o título ao abrir. Confirme cadastro e edição.</p><h3>2. Acrescente um campo Local</h3><p>Defina a coluna no schema; adicione o input com name="local"; leia e valide no serviço; inclua no INSERT, UPDATE, listagem e preenchimento do popup. CREATE TABLE IF NOT EXISTS não altera tabelas existentes: prepare ALTER TABLE para o banco existente ou recrie apenas a base descartável do laboratório após guardar o que quiser manter.</p><h3>3. Exija descrição ao concluir</h3><p>Implemente a regra em validar(), compartilhada por cadastro e edição. Teste pendente sem descrição, concluída sem descrição e concluída com descrição.</p><h3>4. Confira autorização</h3><p>Crie uma tarefa como Ana. Troque para Bruno: a edição deve desaparecer. Um POST manual de edição como Bruno também deve ser recusado. Coordenação deve poder reatribuir; Ana não pode atribuir sua tarefa a Bruno.</p><h3>Observe em Network</h3><ol><li>URL /tarefas no cadastro e /tarefas/ID/editar na edição.</li><li>Método POST e payload com os cinco campos.</li><li>Redirecionamento 303 e novo GET após a operação.</li><li>Mensagem de sucesso ou erro e dados persistidos na tabela.</li></ol><p>Pratique primeiro no laboratório. Depois aplique os conceitos a uma alteração pequena do sistema real.</p></section>
+<section id="codigo-real"><h2>16 · Estude o código real do AppGrandesEventos</h2><p>Os trechos a seguir foram extraídos dos arquivos do projeto. Eles mostram como o sistema existente conecta sessão, evento, permissões, templates e PostgreSQL. O laboratório é um exercício; estes arquivos são a implementação da aplicação.</p>
+<h3>Conexão e driver</h3><p>db.py cria o engine SQLAlchemy. O prefixo postgresql+psycopg na URL escolhe o PostgreSQL e o driver psycopg. pool_pre_ping verifica a conexão antes do uso. As funções de postgres.py recebem esse engine por get_engine(). O fluxo real lê e grava no PostgreSQL.</p>
+<h3>Estrutura de uma tela real: Coordenação</h3><ol><li>main.py registra coordenacao.router e prepara sessão/contexto.</li><li>get_coordenacao() em app/routers/coordenacao.py consulta os dados do evento e entrega o contexto ao template.</li><li>coordenacao.html renderiza tabelas, formulário e popup.</li><li>post_ticket_evento() lê o formulário e verifica o papel do usuário.</li><li>salvar_ticket_evento() em postgres.py abre uma transação e verifica os registros com FOR UPDATE.</li><li>O serviço grava nas tabelas tickets, ticket_ocorrencias, ticket_incidentes e ticket_fiscais conforme as regras.</li><li>A rota registra auditoria e redireciona para recarregar a tela.</li></ol>
+<h3>Estrutura de uma tela real: edição de emissão</h3><p>get_consultar() carrega os registros visíveis no evento. consultar.js chama /api/pendencias, seleciona o ID e preenche o formulário. post_consultar_salvar() valida a permissão e os campos, e chama atualizar_campos_na_aba_mae(). Apesar do nome legado “aba”, a implementação grava no PostgreSQL. Na edição em popup, emissao_id identifica a emissão e ticket_id participa da autorização.</p>
+<h3>O que alterar para acrescentar um dado real</h3><p>Se o novo dado pertence a uma emissão, siga a tabela ocorrencias em db/schema.sql, prepare uma migração e encontre as funções que fazem INSERT, UPDATE e SELECT dessa entidade. Depois siga o router, o name do input, o preenchimento em consultar.js, a resposta JSON da API, a auditoria e a sincronização offline. Acrescentar apenas o campo no HTML não cria persistência.</p>
+<details><summary>app/services/db.py</summary><p>Trecho real, a partir da linha 1. <a href="../app/services/db.py">Abrir arquivo do projeto</a>.</p><pre><code>&quot;&quot;&quot;
+Conexão com o banco PostgreSQL via SQLAlchemy.
+
+A string de conexão é lida de:
+  1. Variável de ambiente DATABASE_URL (prioritário), ou
+  2. Arquivo .streamlit/secrets.toml, seção [database], chave url
+
+Uso:
+    from app.services.db import get_engine, SessionLocal
+    with SessionLocal() as session:
+        ...
+&quot;&quot;&quot;
+
+import os
+import tomllib
+from pathlib import Path
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+
+def _get_database_url() -&gt; str:
+    # 1. Tentar variável de ambiente
+    url = os.environ.get(&quot;DATABASE_URL&quot;)
+    if url:
+        return url
+    # 2. Tentar secrets.toml (padrão legado do Streamlit)
+    secrets_path = Path(&quot;.streamlit/secrets.toml&quot;)
+    if secrets_path.exists():
+        with open(secrets_path, &quot;rb&quot;) as f:
+            secrets = tomllib.load(f)
+        url = secrets.get(&quot;database&quot;, {}).get(&quot;url&quot;)
+        if url:
+            return url
+    # 3. Fallback para desenvolvimento local
+    return &quot;postgresql+psycopg://appeventos:appeventos@127.0.0.1:5432/appeventos&quot;
+
+
+_engine = create_engine(
+    _get_database_url(),
+    pool_pre_ping=True,  # verifica conexão antes de usar
+    pool_size=5,
+    max_overflow=10,
+    connect_args={&quot;connect_timeout&quot;: 5},
+    future=True,
+)
+
+SessionLocal = sessionmaker(bind=_engine, autoflush=False, future=True)
+
+
+def get_engine():
+    return _engine
+</code></pre></details><details><summary>app/routers/coordenacao.py — get_coordenacao()</summary><p>Trecho real, a partir da linha 79. <a href="../app/routers/coordenacao.py">Abrir arquivo do projeto</a>.</p><pre><code>@router.get(&quot;/coordenacao&quot;, response_class=HTMLResponse)
+async def get_coordenacao(request: Request):
+    &quot;&quot;&quot;Página inicial da coordenação do evento.&quot;&quot;&quot;
+    evento_id = request.session.get(&quot;spreadsheet_id&quot;)
+    if not evento_id:
+        return RedirectResponse(&quot;/&quot;, status_code=302)
+    if not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
+
+    event_fiscais_ids = set(listar_fiscais_evento(int(evento_id)))
+    fiscais_evento = [
+        fiscal for fiscal in listar_fiscais() if int(fiscal[&quot;id&quot;]) in event_fiscais_ids
+    ]
+
+    todos_tickets = listar_tickets_evento(int(evento_id))
+    tickets_pendentes = [
+        ticket
+        for ticket in todos_tickets
+        if ticket.get(&quot;status&quot;) == STATUS_TICKET_PENDENTE
+    ]
+    tickets_concluidos_fiscais = [
+        ticket
+        for ticket in todos_tickets
+        if ticket.get(&quot;status&quot;) == STATUS_TICKET_CONCLUIDO_FISCAIS
+    ]
+    tickets_concluidos_coordenador = [
+        ticket
+        for ticket in todos_tickets
+        if ticket.get(&quot;status&quot;) == STATUS_TICKET_CONCLUIDO_COORDENADOR
+    ]
+
+    return templates.TemplateResponse(
+        request,
+        &quot;coordenacao.html&quot;,
+        _ctx(
+            request,
+            tickets=tickets_pendentes,
+            tickets_concluidos_fiscais=tickets_concluidos_fiscais,
+            tickets_concluidos_coordenador=tickets_concluidos_coordenador,
+            status_ticket_rotulos=STATUS_TICKET_ROTULOS,
+            emissões=listar_emissoes_evento(int(evento_id)),
+            incidentes=listar_bsr_erb(int(evento_id), somente_submetidos=True),
+            escalas=listar_escalas_evento(int(evento_id)),
+            fiscais=fiscais_evento,
+            flash_success=request.session.pop(&quot;flash_success&quot;, None),
+            flash_error=request.session.pop(&quot;flash_error&quot;, None),
+        ),
+    )</code></pre></details><details><summary>app/routers/coordenacao.py — post_ticket_evento()</summary><p>Trecho real, a partir da linha 129. <a href="../app/routers/coordenacao.py">Abrir arquivo do projeto</a>.</p><pre><code>@router.post(&quot;/coordenacao/ticket&quot;)
+async def post_ticket_evento(request: Request):
+    &quot;&quot;&quot;Cria ou atualiza um ticket para uma emissão e atribui um ou mais fiscais.&quot;&quot;&quot;
+    evento_id = request.session.get(&quot;spreadsheet_id&quot;)
+    if not evento_id:
+        return RedirectResponse(&quot;/&quot;, status_code=302)
+    if not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
+
+    form = await request.form()
+    ocorrencia_ids = list(
+        dict.fromkeys(
+            int(item)
+            for item in form.getlist(&quot;ocorrencia_ids&quot;)
+            if str(item).strip().isdigit()
+        )
+    )
+    incidente_ids = list(
+        dict.fromkeys(
+            int(item)
+            for item in form.getlist(&quot;incidente_ids&quot;)
+            if str(item).strip().isdigit()
+        )
+    )
+    prioridade = str(form.get(&quot;prioridade&quot;, &quot;normal&quot;)).strip() or &quot;normal&quot;
+    observacoes = _observacao_opcional(form.get(&quot;observacoes&quot;, &quot;&quot;))
+    fiscais = [
+        int(item) for item in form.getlist(&quot;fiscais&quot;) if str(item).strip().isdigit()
+    ]
+
+    if not ocorrencia_ids and not incidente_ids:
+        request.session[&quot;flash_error&quot;] = (
+            &quot;Selecione ao menos uma emissão ou incidente para abrir o ticket.&quot;
+        )
+        return RedirectResponse(&quot;/coordenacao&quot;, status_code=303)
+
+    try:
+        ticket_id = salvar_ticket_evento(
+            evento_id=int(evento_id),
+            ocorrencia_ids=ocorrencia_ids,
+            incidente_ids=incidente_ids,
+            prioridade=prioridade,
+            observacoes=observacoes,
+            fiscal_ids=fiscais,
+            usuario_fiscal=request.session.get(
+                &quot;fiscal_nome&quot;, &quot;Usuário não identificado&quot;
+            ),
+        )
+    except ValueError as exc:
+        request.session[&quot;flash_error&quot;] = str(exc)
+        return RedirectResponse(&quot;/coordenacao&quot;, status_code=303)
+
+    registrar_auditoria_coordenacao(
+        evento_id=int(evento_id),
+        usuario_fiscal=request.session.get(&quot;fiscal_nome&quot;, &quot;Usuário não identificado&quot;),
+        acao=&quot;Ticket criado&quot;,
+        valor_anterior=None,
+        valor_novo=(
+            f&quot;Ticket #{ticket_id}; emissões: {&#x27;, &#x27;.join(f&#x27;#{item}&#x27; for item in ocorrencia_ids) or &#x27;nenhuma&#x27;}; &quot;
+            f&quot;incidentes: {&#x27;, &#x27;.join(f&#x27;#{item}&#x27; for item in incidente_ids) or &#x27;nenhum&#x27;}; &quot;
+            f&quot;prioridade: {prioridade}; fiscais: {&#x27;, &#x27;.join(f&#x27;#{item}&#x27; for item in fiscais) or &#x27;nenhum&#x27;}; &quot;
+            f&quot;observações: {observacoes or &#x27;nenhuma&#x27;}&quot;
+        ),
+    )
+    request.session[&quot;flash_success&quot;] = (
+        &quot;Ticket salvo e atribuído aos fiscais selecionados.&quot;
+    )
+    return RedirectResponse(&quot;/coordenacao&quot;, status_code=303)</code></pre></details><details><summary>app/services/postgres.py — salvar_ticket_evento()</summary><p>Trecho real, a partir da linha 822. <a href="../app/services/postgres.py">Abrir arquivo do projeto</a>.</p><pre><code>def salvar_ticket_evento(
+    evento_id: int,
+    ocorrencia_ids: list[int],
+    incidente_ids: list[int] | None = None,
+    prioridade: str = &quot;normal&quot;,
+    observacoes: str | None = None,
+    fiscal_ids: list[int] | None = None,
+    usuario_fiscal: str = USR_FISCAL_ANATEL,
+) -&gt; int:
+    &quot;&quot;&quot;Cria um ticket para emissões e/ou incidentes selecionados.&quot;&quot;&quot;
+    with get_engine().begin() as conn:
+        ids = list(dict.fromkeys(int(item) for item in ocorrencia_ids))
+        incidentes = list(dict.fromkeys(int(item) for item in (incidente_ids or [])))
+        if not ids and not incidentes:
+            raise ValueError(
+                &quot;Selecione ao menos uma emissão ou incidente para abrir o ticket.&quot;
+            )
+
+        emissoes = (
+            conn.execute(
+                text(&quot;&quot;&quot;
+                    SELECT id, situacao, concluida_por, submetida_coordenador_em
+                    FROM ocorrencias
+                    WHERE evento_id = :evento_id
+                      AND id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
+                    FOR UPDATE
+                &quot;&quot;&quot;),
+                {&quot;evento_id&quot;: int(evento_id), &quot;ocorrencia_ids&quot;: ids},
+            )
+            .mappings()
+            .all()
+        )
+        emissoes_validas = [
+            emissao
+            for emissao in emissoes
+            if (
+                str(emissao[&quot;situacao&quot;] or &quot;&quot;).strip().casefold()
+                == SITUACAO_PENDENTE.casefold()
+                or (
+                    emissao[&quot;submetida_coordenador_em&quot;] is not None
+                    and (
+                        str(emissao[&quot;situacao&quot;] or &quot;&quot;).strip().casefold()
+                        in {
+                            &quot;concluído&quot;,
+                            &quot;concluido&quot;,
+                            SITUACAO_CONCLUIDA_FISCAL.casefold(),
+                        }
+                        and (emissao[&quot;concluida_por&quot;] or &quot;Fiscal&quot;) == &quot;Fiscal&quot;
+                    )
+                )
+            )
+        ]
+        if len(emissoes_validas) != len(ids):
+            raise ValueError(
+                &quot;Somente emissões pendentes ou emissões submetidas e concluídas pelo fiscal podem receber tickets.&quot;
+            )
+
+        emissao_ja_vinculada = conn.execute(
+            text(&quot;&quot;&quot;
+                SELECT count(*)
+                FROM ocorrencias o
+                WHERE o.evento_id = :evento_id
+                  AND o.id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
+                  AND EXISTS (
+                      SELECT 1
+                      FROM ticket_ocorrencias toco
+                      JOIN tickets t ON t.id = toco.ticket_id
+                      WHERE toco.ocorrencia_id = o.id
+                        AND t.evento_id = :evento_id
+                  )
+            &quot;&quot;&quot;),
+            {&quot;evento_id&quot;: int(evento_id), &quot;ocorrencia_ids&quot;: ids},
+        ).scalar_one()
+        if int(emissao_ja_vinculada) &gt; 0:
+            raise ValueError(
+                &quot;Uma ou mais emissões selecionadas já estão vinculadas a ticket.&quot;
+            )
+
+        if incidentes:
+            incidentes_validos = (
+                conn.execute(
+                    text(&quot;&quot;&quot;
+                    SELECT id
+                    FROM bsr_erb
+                    WHERE evento_id = :evento_id
+                      AND id = ANY(CAST(:incidente_ids AS BIGINT[]))
+                      AND excluido_em IS NULL
+                      AND submetido_coordenador_em IS NOT NULL
+                &quot;&quot;&quot;),
+                    {&quot;evento_id&quot;: int(evento_id), &quot;incidente_ids&quot;: incidentes},
+                )
+                .scalars()
+                .all()
+            )
+            if set(incidentes_validos) != set(incidentes):
+                raise ValueError(
+                    &quot;Um ou mais incidentes não pertencem ao evento ou ainda não foram submetidos ao coordenador.&quot;
+                )
+            incidente_ja_vinculado = conn.execute(
+                text(&quot;&quot;&quot;
+                    SELECT COUNT(*)
+                    FROM ticket_incidentes vinculacao
+                    JOIN tickets t ON t.id = vinculacao.ticket_id
+                    WHERE vinculacao.incidente_id = ANY(CAST(:incidente_ids AS BIGINT[]))
+                      AND t.evento_id = :evento_id
+                &quot;&quot;&quot;),
+                {&quot;evento_id&quot;: int(evento_id), &quot;incidente_ids&quot;: incidentes},
+            ).scalar_one()
+            if int(incidente_ja_vinculado) &gt; 0:
+                raise ValueError(
+                    &quot;Um ou mais incidentes selecionados já estão vinculados a ticket.&quot;
+                )
+
+        ticket_id = conn.execute(
+            text(&quot;&quot;&quot;
+                INSERT INTO tickets (evento_id, prioridade, observacoes)
+                VALUES (:evento_id, :prioridade, :observacoes)
+                RETURNING id
+            &quot;&quot;&quot;),
+            {
+                &quot;evento_id&quot;: int(evento_id),
+                &quot;prioridade&quot;: prioridade,
+                &quot;observacoes&quot;: observacoes,
+            },
+        ).scalar_one()
+
+        conn.execute(
+            text(&quot;&quot;&quot;
+                INSERT INTO ticket_ocorrencias (ticket_id, ocorrencia_id)
+                SELECT :ticket_id, unnest(CAST(:ocorrencia_ids AS BIGINT[]))
+            &quot;&quot;&quot;),
+            {&quot;ticket_id&quot;: int(ticket_id), &quot;ocorrencia_ids&quot;: ids},
+        )
+
+        # Marca as emissões como submetidas ao coordenador
+        conn.execute(
+            text(&quot;&quot;&quot;
+                UPDATE ocorrencias
+                SET submetida_coordenador_em = COALESCE(submetida_coordenador_em, now())
+                WHERE id = ANY(CAST(:ocorrencia_ids AS BIGINT[]))
+                  AND evento_id = :evento_id
+            &quot;&quot;&quot;),
+            {&quot;ocorrencia_ids&quot;: ids, &quot;evento_id&quot;: int(evento_id)},
+        )
+
+        (
+            conn.execute(
+                text(&quot;&quot;&quot;
+                INSERT INTO ticket_incidentes (ticket_id, incidente_id)
+                SELECT :ticket_id, unnest(CAST(:incidente_ids AS BIGINT[]))
+            &quot;&quot;&quot;),
+                {&quot;ticket_id&quot;: int(ticket_id), &quot;incidente_ids&quot;: incidentes},
+            )
+            if incidentes
+            else None
+        )
+
+        if incidentes:
+            conn.execute(
+                text(&quot;&quot;&quot;
+                    UPDATE bsr_erb
+                    SET situacao = &#x27;Pendente&#x27;, concluida_por = NULL
+                    WHERE evento_id = :evento_id
+                      AND id = ANY(CAST(:incidente_ids AS BIGINT[]))
+                &quot;&quot;&quot;),
+                {&quot;evento_id&quot;: int(evento_id), &quot;incidente_ids&quot;: incidentes},
+            )
+
+        for emissao in emissoes_validas:
+            situacao_anterior = emissao[&quot;situacao&quot;]
+            conclusao_anterior = emissao[&quot;concluida_por&quot;]
+            conn.execute(
+                text(&quot;&quot;&quot;
+                    INSERT INTO auditoria_ocorrencias (
+                        ocorrencia_id, evento_id, usuario_fiscal, campo,
+                        valor_anterior, valor_novo
+                    ) VALUES (
+                        :ocorrencia_id, :evento_id, :usuario_fiscal,
+                        &#x27;Ticket vinculado&#x27;, NULL, :valor_novo
+                    )
+                &quot;&quot;&quot;),
+                {
+                    &quot;ocorrencia_id&quot;: int(emissao[&quot;id&quot;]),
+                    &quot;evento_id&quot;: int(evento_id),
+                    &quot;usuario_fiscal&quot;: usuario_fiscal,
+                    &quot;valor_novo&quot;: f&quot;Ticket #{ticket_id}&quot;,
+                },
+            )
+            if situacao_anterior == &quot;Pendente&quot; and conclusao_anterior is None:
+                continue
+            conn.execute(
+                text(&quot;&quot;&quot;
+                    UPDATE ocorrencias
+                    SET situacao = &#x27;Pendente&#x27;,
+                        concluida_por = NULL,
+                        atualizado_em = now()
+                    WHERE evento_id = :evento_id AND id = :ocorrencia_id
+                &quot;&quot;&quot;),
+                {
+                    &quot;evento_id&quot;: int(evento_id),
+                    &quot;ocorrencia_id&quot;: int(emissao[&quot;id&quot;]),
+                },
+            )
+            if situacao_anterior != &quot;Pendente&quot;:
+                conn.execute(
+                    text(&quot;&quot;&quot;
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            &#x27;Situação&#x27;, :valor_anterior, &#x27;Pendente&#x27;
+                        )
+                    &quot;&quot;&quot;),
+                    {
+                        &quot;ocorrencia_id&quot;: int(emissao[&quot;id&quot;]),
+                        &quot;evento_id&quot;: int(evento_id),
+                        &quot;usuario_fiscal&quot;: usuario_fiscal,
+                        &quot;valor_anterior&quot;: situacao_anterior,
+                    },
+                )
+            if conclusao_anterior is not None:
+                conn.execute(
+                    text(&quot;&quot;&quot;
+                        INSERT INTO auditoria_ocorrencias (
+                            ocorrencia_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :ocorrencia_id, :evento_id, :usuario_fiscal,
+                            &#x27;Concluída por&#x27;, :valor_anterior, NULL
+                        )
+                    &quot;&quot;&quot;),
+                    {
+                        &quot;ocorrencia_id&quot;: int(emissao[&quot;id&quot;]),
+                        &quot;evento_id&quot;: int(evento_id),
+                        &quot;usuario_fiscal&quot;: usuario_fiscal,
+                        &quot;valor_anterior&quot;: conclusao_anterior,
+                    },
+                )
+
+        conn.execute(
+            text(&quot;DELETE FROM ticket_fiscais WHERE ticket_id = :ticket_id&quot;),
+            {&quot;ticket_id&quot;: int(ticket_id)},
+        )
+        for fiscal_id in list(dict.fromkeys(int(item) for item in (fiscal_ids or []))):
+            conn.execute(
+                text(&quot;&quot;&quot;
+                    INSERT INTO ticket_fiscais (ticket_id, fiscal_id)
+                    VALUES (:ticket_id, :fiscal_id)
+                    ON CONFLICT DO NOTHING
+                &quot;&quot;&quot;),
+                {&quot;ticket_id&quot;: int(ticket_id), &quot;fiscal_id&quot;: int(fiscal_id)},
+            )
+        return int(ticket_id)</code></pre></details><details><summary>app/routers/consultar.py — get_consultar()</summary><p>Trecho real, a partir da linha 194. <a href="../app/routers/consultar.py">Abrir arquivo do projeto</a>.</p><pre><code>@router.get(&quot;/consultar&quot;, response_class=HTMLResponse)
+async def get_consultar(request: Request, key: str = &quot;&quot;, emissao_id: int | None = None):
+    sp_id = request.session.get(&quot;spreadsheet_id&quot;)
+    if not sp_id:
+        return RedirectResponse(&quot;/&quot;, status_code=302)
+
+    df = _load_pendencias(request, sp_id)
+    estacoes = listar_estacoes_evento(evento_id=sp_id)
+
+    pendencias = []
+    selected_row = None
+    selected_key = key
+
+    if not df.empty:
+        for _, row in df.iterrows():
+            rk = _make_row_key(row)
+            pendencias.append({&quot;row_key&quot;: rk, &quot;label&quot;: _make_label(row)})
+            if (key and rk == key) or (
+                emissao_id is not None and str(row[&quot;ID&quot;]) == str(emissao_id)
+            ):
+                selected_key = rk
+                selected_row = row.to_dict()
+
+    return templates.TemplateResponse(
+        request,
+        &quot;consultar.html&quot;,
+        _ctx(
+            request,
+            pendencias=pendencias,
+            selected_key=selected_key,
+            selected_row=selected_row,
+            estacoes=estacoes,
+            origens_campo=ORIGENS_CAMPO,
+            eh_coordenador=_usuario_e_coordenador(request, int(sp_id)),
+            flash_success=request.session.pop(&quot;flash_success&quot;, None),
+            flash_error=request.session.pop(&quot;flash_error&quot;, None),
+        ),
+    )</code></pre></details></section>
+<p class="footer">Guia baseado nos arquivos locais do projeto. Exemplos didáticos estão identificados; diagramas são simplificados. Este HTML não altera o banco nem as rotas da aplicação. Você pode ler sem conexão com a internet.</p>
+</main>
+<script>
+document.querySelectorAll('[data-step]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-step]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));document.querySelectorAll('.step').forEach((panel,i)=>panel.classList.toggle('active',i===Number(button.dataset.step)));}));
+if('IntersectionObserver' in window){const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){document.querySelectorAll('aside a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+entry.target.id));}});},{rootMargin:'-10% 0px -65% 0px'});document.querySelectorAll('main section').forEach(s=>observer.observe(s));}
+</script>
+</body>
+</html>

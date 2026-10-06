@@ -79,7 +79,7 @@ function preencherForm(row) {
   camposEditaveis.forEach((campo) => { campo.disabled = somenteLeitura || campo.disabled; });
   document.querySelectorAll("#form-consultar .consultar-acoes button").forEach((botao) => {
     botao.disabled = somenteLeitura;
-    botao.hidden = somenteLeitura;
+    botao.hidden = somenteLeitura || (new URLSearchParams(window.location.search).get("popup") === "1" && botao.value === "salvar_proxima");
   });
   document.getElementById("f-imagens-excluir").value = "";
   carregarImagensOcorrencia(row.id, somenteLeitura);
@@ -336,8 +336,11 @@ function popularTabela(lista) {
   const parametros = new URLSearchParams(window.location.search);
   const selectedKey = parametros.get("key") || "";
   const emissaoId = parametros.get("emissao_id") || "";
+  if (parametros.get("popup") === "1") {
+    lista = lista.filter((item) => String(item.id) === emissaoId);
+  }
   paginaAtual = 1;
-  document.getElementById("bloco-select").style.display = lista.length ? "block" : "none";
+  document.getElementById("bloco-select").style.display = lista.length && parametros.get("popup") !== "1" ? "block" : "none";
   document.getElementById("msg-vazio").style.display = lista.length ? "none" : "block";
   document.getElementById("consultar-voltar").style.display = "block";
   if (!lista.length) return;
@@ -354,7 +357,7 @@ function popularTabela(lista) {
 
 async function carregarPendencias() {
   try {
-    const resp = await fetch(`/api/pendencias?_=${Date.now()}`, {
+    const resp = await fetch(`/api/pendencias?${new URLSearchParams(window.location.search)}&_=${Date.now()}`, {
       cache: "no-store",
       headers: { Accept: "application/json" },
     });
@@ -365,7 +368,9 @@ async function carregarPendencias() {
     if (!resp.ok) throw new Error(`Falha HTTP ${resp.status}`);
     const dados = await resp.json();
     pendencias = dados;
-    await AppOffline.salvarTodos(STORE, dados);
+    if (new URLSearchParams(window.location.search).get("popup") !== "1") {
+      await AppOffline.salvarTodos(STORE, dados);
+    }
     document.getElementById("offline-aviso").style.display = "none";
   } catch (e) {
     console.warn("Falha ao buscar online, usando cache:", e);

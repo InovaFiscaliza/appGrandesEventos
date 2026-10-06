@@ -143,9 +143,19 @@ def _load_pendencias(request: Request, sp_id) -> pd.DataFrame:
         pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
         == "pendente"
     )
+    ticket_param = request.query_params.get("ticket_id", "")
+    ids_ticket = set()
+    if ticket_param.isdigit() and pode_identificar_fiscal:
+        for ticket in listar_tickets_evento(int(sp_id)):
+            if (int(ticket["id"]) == int(ticket_param)
+                    and ticket.get("status") == "pendente"
+                    and int(fiscal_id) in ticket.get("fiscal_ids", [])):
+                ids_ticket = {parte.strip() for parte in str(ticket.get("ocorrencia_ids") or "").split(",") if parte.strip()}
+                break
     pendencias_visiveis = pendencias.copy()
     pendencias_visiveis["PodeEditar"] = (
-        criada_pelo_fiscal & ~submetida & situacao_pendente
+        (criada_pelo_fiscal & ~submetida & situacao_pendente)
+        | pendencias["ID"].astype(str).isin(ids_ticket)
     )
     return pendencias_visiveis
 
@@ -317,7 +327,7 @@ async def post_consultar_salvar(request: Request):
         request.session["flash_error"] = (
             "Você não tem permissão para alterar esta emissão."
         )
-        return RedirectResponse("/consultar", status_code=303)
+        return RedirectResponse("/consultar" + ("?" + str(request.query_params) if request.query_params.get("popup") == "1" else ""), status_code=303)
 
     erros = list(erros_imagens)
     if not ident_edit:
@@ -332,7 +342,7 @@ async def post_consultar_salvar(request: Request):
 
     if erros:
         request.session["flash_error"] = "Faltam dados: " + ", ".join(erros)
-        return RedirectResponse(f"/consultar?key={quote(row_key)}", status_code=303)
+        return RedirectResponse(f"/consultar?key={quote(row_key)}" + (f"&popup=1&emissao_id={quote(str(id_val))}&ticket_id={quote(request.query_params.get('ticket_id', ''))}" if request.query_params.get("popup") == "1" else ""), status_code=303)
 
     pac = {
         "Identificação": ident_edit,
@@ -391,6 +401,9 @@ async def post_consultar_salvar(request: Request):
         request.session["flash_error"] = res
     else:
         request.session["flash_success"] = res
+    if request.query_params.get("popup") == "1":
+        destino = f"/consultar?emissao_id={quote(str(id_val))}&ticket_id={quote(request.query_params.get('ticket_id', ''))}&popup=1"
+        return RedirectResponse(destino, status_code=303)
     if acao == "salvar_proxima":
         proximas = _load_pendencias(request, sp_id)
         proxima_key = ""
@@ -416,6 +429,9 @@ async def api_pendencias(request: Request):
     df = _load_pendencias(request, sp_id)
     if df.empty:
         return JSONResponse([])
+    if request.query_params.get("popup") == "1":
+        selected_id = request.query_params.get("emissao_id", "")
+        df = df[df["ID"].astype(str) == selected_id]
     records = []
     for _, row in df.iterrows():
         id_ocorrencia = _texto_json(row.get("ID"))

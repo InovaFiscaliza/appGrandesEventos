@@ -71,7 +71,7 @@
     <div class="card background-neutral-0 padding-l border-radius-m coordenacao-lista-card">
         <h2 class="font-semi-bold margin-bottom-m">Emissões para inspeção</h2>
         <p class="font-size-s text-neutral-6" style="margin:0 0 .75rem 0;">
-            Emissões pendentes não submetidas podem ser consultadas, mas só podem gerar tickets depois que o fiscal as submeter. Linhas em cinza já estão vinculadas a ticket.
+            Emissões pendentes podem gerar tickets. Emissões concluídas pelo fiscal precisam ser submetidas à coordenação. Linhas em cinza já estão vinculadas a ticket.
         </p>
         <div class="table-scroll" role="region" aria-label="Emissões submetidas para inspeção" tabindex="0" style="margin-bottom:1rem;">
             <table class="ute-table" data-paginacao="10">
@@ -94,7 +94,7 @@
                     {% for emissao in emissões %}
                     <tr{% if emissao.ja_possui_ticket %} class="emissao-ja-vinculada"{% endif %}>
                         <td>
-                            <input type="checkbox" name="ocorrencia_ids" value="{{ emissao.id }}" form="ticket-form" aria-label="Selecionar emissão {{ emissao.id }}" {% if emissao.ja_possui_ticket %}disabled title="Emissão já vinculada ao ticket #{{ emissao.ticket_id_vinculado }}"{% elif not emissao.submetida_coordenador_em %}disabled title="Aguardando submissão do fiscal"{% endif %}>
+                            <input type="checkbox" name="ocorrencia_ids" value="{{ emissao.id }}" form="ticket-form" aria-label="Selecionar emissão {{ emissao.id }}" {% if emissao.ja_possui_ticket %}disabled title="Emissão já vinculada ao ticket #{{ emissao.ticket_id_vinculado }}"{% elif not emissao.submetida_coordenador_em and emissao.situacao|trim|lower != 'pendente' %}disabled title="Aguardando submissão do fiscal"{% endif %}>
                         </td>
                         <td>
                             <button type="button" class="emissao-id-btn" data-emissao-id="{{ emissao.id }}">{{ emissao.id_exibicao or emissao.id }}</button>
@@ -115,6 +115,8 @@
                         <td class="ticket-acoes">
                             {% if emissao.submetida_coordenador_em %}
                             <a class="btn-ticket-mini" href="/consultar?emissao_id={{ emissao.id }}">Editar</a>
+                            {% elif emissao.situacao|trim|lower == 'pendente' %}
+                            <span class="font-size-s text-neutral-6">Pendente</span>
                             {% else %}
                             <span class="font-size-s text-neutral-6">Aguardando submissão</span>
                             {% endif %}
@@ -129,9 +131,13 @@
             </table>
         </div>
         <nav class="pendencias-pagination" aria-label="Paginação das emissões submetidas"></nav>
+
+        <button type="button" id="abrir-popup-ticket" class="btn btn-primary" data-sem-confirmacao aria-haspopup="dialog" aria-controls="popup-criar-ticket">Criar novo ticket</button>
     </div>
     </div>
-    
+
+
+
     <div class="coordenacao-listas-grupo">
     <div class="card background-neutral-0 padding-l border-radius-m" style="overflow:hidden; border:1px solid #e5e7eb;">
         <h2 class="font-semi-bold margin-bottom-m">Tickets pendentes</h2>
@@ -394,6 +400,50 @@
                 </details>
 
             </div>
+        </div>
+    </div>
+
+    <div id="popup-criar-ticket" class="popup-ticket" hidden>
+        <div class="popup-ticket-conteudo" role="dialog" aria-modal="true" aria-labelledby="popup-criar-ticket-titulo">
+            <div class="popup-ticket-cabecalho">
+                <h2 id="popup-criar-ticket-titulo">Criar ticket</h2>
+                <button type="button" class="popup-ticket-fechar" id="fechar-popup-ticket" aria-label="Fechar criação de ticket">&times;</button>
+            </div>
+    <form id="ticket-form" method="post" action="/coordenacao/ticket" data-confirmacao-msg="Confirma a criação do ticket para os registros selecionados?">
+        <div class="ticket-edicao-campos">
+            <div class="ticket-edicao-item">
+                <label for="novo_ticket_prioridade">Prioridade</label>
+                <select id="novo_ticket_prioridade" name="prioridade" class="ticket-status-select" required>
+                    <option value="alta">Alta</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="baixa">Baixa</option>
+                </select>
+            </div>
+
+            <div class="ticket-edicao-item ticket-edicao-observacoes">
+                <label for="novo_ticket_observacoes">Observações</label>
+                <textarea id="novo_ticket_observacoes" name="observacoes" rows="3" class="form-control"></textarea>
+            </div>
+
+            <div class="ticket-edicao-item ticket-edicao-fiscais">
+                <span>Fiscais atribuídos</span>
+                <div class="ticket-fiscais-grid">
+                    {% for fiscal in fiscais %}
+                    <label>
+                        <input type="checkbox" name="fiscais" value="{{ fiscal.id }}">
+                        <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }} - {{ fiscal.funcao_evento }}</span>
+                    </label>
+                    {% else %}
+                    <span class="fiscais-vazio">Nenhum fiscal do evento cadastrado.</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="ticket-edicao-acoes">
+            <button type="submit" class="btn btn-primary">📋 Criar ticket</button>
+            <button type="button" class="btn-ticket-mini" id="cancelar-popup-ticket" data-sem-confirmacao>Cancelar</button>
+        </div>
+    </form>
         </div>
     </div>
 

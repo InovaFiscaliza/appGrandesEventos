@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-{% include "partials/header.html" %}
+{% set edicao_popup = request.query_params.get("popup") == "1" %}
+{% if not edicao_popup %}{% include "partials/header.html" %}{% endif %}
 
-<h5 class="consultar-orientacao">Consulte as emissões do evento e o histórico de modificações.</h5>
+<h5 {% if edicao_popup %}hidden{% endif %} class="consultar-orientacao">Consulte as emissões do evento e o histórico de modificações.</h5>
 
 {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
 {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
@@ -41,7 +42,7 @@
 <div id="bloco-form" class="font-semi-bold" data-somente-leitura="false" style="display:none">
 <h5 style="margin:0.75rem 0 0.5rem">Editar emissão</h5>
 <div class="form-card rf-entry-card font-semi-bold">
-    <form method="post" action="/consultar/salvar" id="form-consultar" class="rf-entry-form" enctype="multipart/form-data">
+    <form method="post" action="/consultar/salvar{% if edicao_popup %}?popup=1&amp;emissao_id={{ request.query_params.get('emissao_id', '') }}&amp;ticket_id={{ request.query_params.get('ticket_id', '') }}{% endif %}" id="form-consultar" class="rf-entry-form" enctype="multipart/form-data">
         <input type="hidden" name="row_key" id="f-row_key">
         <input type="hidden" name="fonte" id="f-fonte">
         <input type="hidden" name="id_val" id="f-id_val">
@@ -153,10 +154,10 @@
             <ul id="lista-imagens-edicao" class="lista-imagens" aria-live="polite"></ul>
         </div>
         <div class="btn-col consultar-acoes">
-            <a href="/consultar" id="btn-consultar-historico" class="btn consultar-historico" aria-label="Consultar histórico de modificações">Consultar histórico de modificações</a>
-            {% if not eh_coordenador %}<button type="button" id="btn-submeter-ticket" class="btn btn-submeter-ticket">📋 Submeter ao Coordenador</button>{% endif %}
+            <a {% if edicao_popup %}hidden{% endif %} href="/consultar" id="btn-consultar-historico" class="btn consultar-historico" aria-label="Consultar histórico de modificações">Consultar histórico de modificações</a>
+            {% if not eh_coordenador and not edicao_popup %}<button type="button" id="btn-submeter-ticket" class="btn btn-submeter-ticket">📋 Submeter ao Coordenador</button>{% endif %}
             <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
-            <button type="submit" class="btn" name="acao" value="salvar_proxima">Salvar e próxima</button>
+            <button type="submit" class="btn" name="acao" value="salvar_proxima" {% if edicao_popup %}hidden{% endif %}>Salvar e próxima</button>
         </div>
     </form>
 </div>
@@ -170,7 +171,7 @@
 {% if offline_salvo %}
 <script type="application/json" id="offline-edicao-data">{{ offline_dados|tojson }}</script>
 {% endif %}
-<script src="/static/consultar.js?v=24"></script>
+<script src="/static/consultar.js?v=25"></script>
 <script src="/static/upload-imagens.js?v=4"></script>
 {% endblock %}
 

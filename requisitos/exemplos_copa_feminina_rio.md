@@ -1,0 +1,95 @@
+# Exemplos fictícios — Copa do Mundo Feminina no Rio de Janeiro
+
+Este material contém **dados inteiramente fictícios**, criados apenas para praticar o cadastro no AppGrandesEventos. As datas, horários, frequências, entidades, relatos e situações não representam medições, autorizações, incidentes reais nem a tabela oficial de jogos. As coordenadas são aproximadas e servem somente para demonstrar o preenchimento do mapa.
+
+Os cenários consideram uma operação hipotética no Rio durante julho e agosto de 2027. Não implicam que todos os locais listados sediarão partidas ou atividades do torneio.
+
+## Antes de cadastrar
+
+- Use os valores de **Fiscal** e **Captura realizada por** disponíveis no evento aberto; não copie nomes ou IDs deste arquivo.
+- Frequências são valores sintéticos para treinamento. Verifique os alertas de frequência e os registros já existentes no evento. Não os trate como autorização de uso ou indicação de interferência real.
+- Para emissões, selecione `UTE? = Não` nos exemplos; não há processos SEI ou atos reais associados.
+- Todos os registros usam `Pendente`, exceto onde indicado `Concluída Pelo Fiscal`.
+- Latitude e longitude estão em graus decimais, no formato aceito pelo formulário.
+
+## Incidentes
+
+Preencha **Tipo**, **Local**, **Latitude**, **Longitude**, **Observações** e **Status**. O cadastro de incidente não solicita data e hora separadas; os períodos abaixo aparecem apenas no texto das observações.
+
+| # | Tipo | Local | Latitude | Longitude | Observações fictícias para o campo | Status |
+|---:|---|---|---:|---:|---|---|
+| 1 | Reclamação de interferência | Entorno do Maracanã, portão leste | -22.9122 | -43.2302 | Simulação: equipe relata áudio com ruído em receptor portátil durante teste de comunicação, às 08:20 de 24/07/2027. Sem identificação de fonte; verificar em campo. | Pendente |
+| 2 | Falha de rede | Estação Maracanã do Metrô, acesso principal | -22.9109 | -43.2350 | Simulação: usuário informa lentidão intermitente de dados móveis às 09:10 de 24/07/2027. Relato não confirmado por medição. | Pendente |
+| 3 | Problemas com equipamentos da agência | Área externa do Maracanãzinho | -22.9113 | -43.2292 | Simulação: suporte relata bateria com autonomia abaixo do esperado no receptor de monitoração, às 10:00 de 24/07/2027. Solicitar substituição e registrar teste. | Concluída Pelo Fiscal |
+| 4 | Outra situação relevante | Quinta da Boa Vista, acesso pela Av. Pedro II | -22.9068 | -43.2212 | Simulação: equipe encontra cabo de alimentação solto no ponto temporário de apoio, às 11:35 de 24/07/2027. Isolar o equipamento até inspeção. | Pendente |
+| 5 | Reclamação de interferência | Rua Mata Machado, proximidades do estádio | -22.9142 | -43.2281 | Simulação: operador relata recepção irregular em rádio de serviço às 13:05 de 24/07/2027. Ainda não há frequência ou emissor confirmados. | Pendente |
+| 6 | Falha de Wi-Fi | Praça Saens Peña, Tijuca | -22.9248 | -43.2329 | Simulação: equipe de apoio relata indisponibilidade do Wi-Fi local às 14:15 de 24/07/2027. Confirmar se a falha é restrita ao ponto de acesso. | Pendente |
+| 7 | Incidente crítico | Praça da Bandeira, acesso viário | -22.9078 | -43.2141 | Simulação: alerta de prioridade operacional por perda simultânea de comunicação de duas equipes às 15:40 de 24/07/2027. Acionar coordenação e validar os terminais. | Pendente |
+| 8 | Reclamação externa | Boulevard Olímpico, Praça Mauá | -22.8974 | -43.1805 | Simulação: comerciante relata chiado em equipamento de áudio às 16:20 de 25/07/2027. Registrar como relato de terceiro; fonte e horário devem ser confirmados. | Pendente |
+| 9 | Falha de rede | Aeroporto Santos Dumont, área pública de acesso | -22.9105 | -43.1631 | Simulação: equipe relata dificuldade para carregar uma página de consulta em rede móvel às 07:50 de 26/07/2027. Não foi medida falha de RF. | Pendente |
+| 10 | Outra situação relevante | Aterro do Flamengo, altura do Museu de Arte Moderna | -22.9134 | -43.1668 | Simulação: chuva molha a cobertura do ponto temporário de apoio às 08:30 de 26/07/2027. Inspecionar conectores e manter o equipamento protegido. | Concluída Pelo Fiscal |
+| 11 | Reclamação de interferência | Copacabana, altura da Rua Siqueira Campos | -22.9678 | -43.1864 | Simulação: visitante relata cortes em chamada de voz às 10:05 de 27/07/2027. Não há evidência de interferência; registrar local e horário para eventual verificação. | Pendente |
+| 12 | Falha de Wi-Fi | Copacabana, altura da Rua Constante Ramos | -22.9712 | -43.1851 | Simulação: ponto de acesso de apoio não aparece na lista de redes às 10:45 de 27/07/2027. Verificar energia e configuração local. | Pendente |
+| 13 | Problemas com equipamentos da agência | Acesso ao Parque Olímpico, Barra da Tijuca | -22.9757 | -43.3953 | Simulação: conector de antena apresenta folga durante conferência preventiva às 09:00 de 28/07/2027. Substituir o cabo e repetir a leitura. | Concluída Pelo Fiscal |
+| 14 | Falha de rede | Riocentro, entrada principal | -22.9758 | -43.3959 | Simulação: equipe relata demora na sincronização do aplicativo às 11:20 de 28/07/2027. Conferir conectividade IP antes de atribuir a causa ao espectro. | Pendente |
+| 15 | Reclamação de interferência | Estádio Nilton Santos, entorno da Rua José dos Reis | -22.8938 | -43.2936 | Simulação: receptor portátil apresenta ruído em teste de rotina às 07:45 de 02/08/2027. Comparar com leitura de outro equipamento no mesmo local. | Pendente |
+| 16 | Outra situação relevante | Engenho de Dentro, acesso à estação ferroviária | -22.8960 | -43.2946 | Simulação: sinalização temporária do ponto de monitoração foi deslocada às 08:10 de 02/08/2027. Reposicionar sem obstruir a circulação. | Pendente |
+| 17 | ERB Fake | Entorno do Maracanã, Rua Professor Eurico Rabelo | -22.9114 | -43.2291 | Simulação didática: relato de telefone exibindo mudança inesperada de identificação de rede às 12:30 de 03/08/2027. Não classificar como ERB falsa sem análise técnica e evidências. | Pendente |
+| 18 | Bloqueador de sinal (BSR) | Quinta da Boa Vista, área próxima ao portão principal | -22.9062 | -43.2206 | Simulação didática: usuário relata perda de serviço móvel por alguns minutos às 13:15 de 03/08/2027. A causa não foi determinada; não afirmar presença de bloqueador sem medição. | Pendente |
+| 19 | Falha de rede | Central do Brasil, área externa | -22.9035 | -43.1907 | Simulação: equipe relata interrupção de sincronização às 06:55 de 04/08/2027 durante troca entre redes. Validar no aplicativo e no equipamento de acesso. | Concluída Pelo Fiscal |
+| 20 | Incidente crítico | Sambódromo, setor de acesso pela Rua Salvador de Sá | -22.9098 | -43.1964 | Simulação: perda de comunicação entre equipe de campo e apoio por cerca de três minutos às 17:05 de 04/08/2027. Coordenar retorno por canal alternativo e documentar a verificação. | Pendente |
+
+## Emissões
+
+Preencha **Data**, **Hora**, **Fiscal**, **Local/Região**, **Captura realizada por**, **Frequência**, **Largura de banda**, **Faixa relacionada**, **Identificação**, **Interferente?**, **UTE?**, **Observações** e **Status**. Escolha o fiscal e a estação/origem existentes na sessão. Frequências e classificações abaixo são apenas combinações de exemplo, não declarações sobre ocupação real ou serviço autorizado.
+
+| # | Data | Hora | Local/Região | Frequência (MHz) | Largura (kHz) | Faixa | Identificação | Interferente? | UTE? | Observações fictícias para o campo | Status |
+|---:|---|---|---|---:|---:|---|---|---|---|---|---|
+| 1 | 2027-07-24 | 08:05 | Entorno do Maracanã, portão leste | 98.700 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Sinal recebido em varredura de referência. Emissora e autorização não verificadas; exemplo sem valor probatório. | Pendente |
+| 2 | 2027-07-24 | 08:18 | Maracanãzinho, área externa | 433.925 | 10 | Radiação Restrita | Sinal de dados | Indefinido | Não | Leitura sintética em teste de bancada levado a campo; confirmar equipamento, largura real e eventual sobreposição antes de qualquer conclusão. | Pendente |
+| 3 | 2027-07-24 | 08:42 | Rua Mata Machado, proximidades do estádio | 450.125 | 25 | Outros | Comunicação relacionada ao evento | Não | Não | Portadora simulada para treinamento de preenchimento; usuário e autorização não identificados. Não associar a equipe real. | Pendente |
+| 4 | 2027-07-24 | 09:05 | Estação Maracanã do Metrô | 700.500 | 10000 | SMP | Sinal de dados | Não | Não | Exemplo sintético de sinal móvel observado em exercício; operadora, canal e autorização não verificados. | Pendente |
+| 5 | 2027-07-24 | 09:28 | Quinta da Boa Vista, portão principal | 915.000 | 200 | Radiação Restrita | Sinal de dados | Indefinido | Não | Valor fictício para exercitar o cadastro de um sinal de dados. Não atribuir dispositivo ou entidade sem identificação técnica. | Pendente |
+| 6 | 2027-07-24 | 10:12 | Praça Saens Peña, Tijuca | 2400.000 | 20000 | Radiação Restrita | Sinal de dados | Não | Não | Exemplo de leitura em faixa de uso compartilhado, sem identificação do ponto de acesso ou confirmação de interferência. | Pendente |
+| 7 | 2027-07-24 | 10:40 | Praça da Bandeira, acesso viário | 850.500 | 10000 | SMP | Comunicação não relacionada ao evento | Não | Não | Registro didático de sinal móvel fora da área imediata do estádio; entidade e situação regulatória não verificadas. | Pendente |
+| 8 | 2027-07-24 | 11:15 | Entorno do Maracanã, portão oeste | 101.500 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Sinal fictício usado para demonstrar identificação de radiodifusão; não corresponde a uma medição ou emissora confirmada. | Concluída Pelo Fiscal |
+| 9 | 2027-07-24 | 12:05 | Boulevard Olímpico, Praça Mauá | 5800.000 | 80000 | Radiação Restrita | Sinal de dados | Indefinido | Não | Leitura sintética de exercício em faixa de 5 GHz; equipamento transmissor e largura ocupada não confirmados. | Pendente |
+| 10 | 2027-07-24 | 13:22 | Aterro do Flamengo, próximo ao MAM | 1800.000 | 15000 | SMP | Comunicação relacionada ao evento | Não | Não | Exemplo sintético de sinal móvel em atividade simulada de apoio; não identifica operadora ou autorização. | Pendente |
+| 11 | 2027-07-25 | 07:55 | Aeroporto Santos Dumont, área pública | 93.300 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Sinal de referência fictício anotado durante teste de rotina; sem correlação com operação aeroportuária. | Pendente |
+| 12 | 2027-07-25 | 08:30 | Copacabana, altura da Rua Siqueira Campos | 433.100 | 25 | Radiação Restrita | Não identificado | Indefinido | Não | Exemplo de sinal sem identificação; frequência e largura são dados de treinamento e não devem ser tratados como leitura real. | Pendente |
+| 13 | 2027-07-25 | 09:10 | Copacabana, altura da Rua Constante Ramos | 2100.000 | 15000 | SMP | Sinal de dados | Não | Não | Registro fictício para exercitar campos de sinal móvel e localidade; entidade não identificada. | Pendente |
+| 14 | 2027-07-25 | 10:00 | Copacabana, altura da Av. Atlântica | 2450.000 | 20000 | Radiação Restrita | Sinal de dados | Indefinido | Não | Exemplo didático em faixa de 2,4 GHz; não atribuir a rede específica nem concluir interferência sem análise. | Pendente |
+| 15 | 2027-07-25 | 10:48 | Praça Mauá, proximidades do Museu do Amanhã | 470.000 | 25 | Outros | Ruído | Sim | Não | Ruído sintético do cenário; verificar cabos, pré-amplificador e equipamento antes de atribuir origem externa. | Pendente |
+| 16 | 2027-07-25 | 11:35 | Maracanãzinho, área externa | 763.500 | 10000 | SMP | Comunicação relacionada ao evento | Não | Não | Exemplo sintético de sinal móvel durante atividade fictícia; não representa frequência atribuída a equipe ou operadora. | Pendente |
+| 17 | 2027-07-26 | 07:40 | Quinta da Boa Vista, alameda central | 902.500 | 200 | Radiação Restrita | Sinal de dados | Indefinido | Não | Valor fictício para praticar classificação de sinal em faixa de uso compartilhado; fonte desconhecida. | Pendente |
+| 18 | 2027-07-26 | 08:15 | Estação Central do Brasil, área externa | 98.700 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Registro de exemplo sem emissora confirmada; usar apenas para praticar o preenchimento. | Concluída Pelo Fiscal |
+| 19 | 2027-07-26 | 09:25 | Sambódromo, acesso pela Rua Salvador de Sá | 2600.000 | 20000 | SMP | Sinal de dados | Não | Não | Leitura móvel sintética em exercício de cobertura; operadora e autorização não verificadas. | Pendente |
+| 20 | 2027-07-26 | 10:05 | Praça da Bandeira, entorno | 915.500 | 200 | Radiação Restrita | Espúrio ou Produto de Intermodulação | Indefinido | Não | Exemplo para registrar hipótese de produto espúrio; confirmar com análise, atenuação e comparação entre antenas. | Pendente |
+| 21 | 2027-07-27 | 08:00 | Parque Olímpico, Barra da Tijuca | 2400.000 | 40000 | Radiação Restrita | Sinal de dados | Não | Não | Cenário fictício de canal largo em faixa de 2,4 GHz. A largura é ilustrativa; não implica interferência ou uso irregular. | Pendente |
+| 22 | 2027-07-27 | 08:50 | Riocentro, entrada principal | 5800.000 | 40000 | Radiação Restrita | Sinal de dados | Indefinido | Não | Exemplo sintético de sinal em 5 GHz nas proximidades; identificar o equipamento somente com evidência. | Pendente |
+| 23 | 2027-07-27 | 09:35 | Barra da Tijuca, Av. Embaixador Abelardo Bueno | 850.000 | 10000 | SMP | Comunicação não relacionada ao evento | Não | Não | Registro fictício de sinal móvel em via pública; serviço e entidade não verificados. | Pendente |
+| 24 | 2027-07-27 | 10:20 | Jardim Oceânico, acesso ao metrô | 88.500 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Exemplo de sinal de radiodifusão; não corresponde a estação ou medição confirmada. | Pendente |
+| 25 | 2027-08-02 | 07:30 | Estádio Nilton Santos, Rua José dos Reis | 433.925 | 10 | Radiação Restrita | Comunicação relacionada ao evento | Indefinido | Não | Portadora fictícia incluída apenas para treinamento; não usar para configurar rádios ou afirmar canal operacional. | Pendente |
+| 26 | 2027-08-02 | 08:10 | Engenho de Dentro, acesso à estação ferroviária | 700.000 | 10000 | SMP | Sinal de dados | Não | Não | Exemplo sintético para registro de sinal móvel; leitura e entidade não reais. | Pendente |
+| 27 | 2027-08-02 | 09:00 | Méier, entorno da estação ferroviária | 101.500 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Registro didático de sinal FM sem emissora identificada ou autorização verificada. | Pendente |
+| 28 | 2027-08-02 | 09:45 | Engenho de Dentro, Rua Arquias Cordeiro | 915.000 | 500 | Radiação Restrita | Espúrio ou Produto de Intermodulação | Sim | Não | Cenário sintético de produto espúrio; confirmar se a observação persiste com pré-seletor e mudança de posição da antena. | Pendente |
+| 29 | 2027-08-03 | 08:25 | Entorno do Maracanã, Rua Professor Eurico Rabelo | 1800.000 | 15000 | SMP | Comunicação relacionada ao evento | Não | Não | Exemplo fictício para relacionar uma leitura a atividade simulada; não identifica usuário, operadora ou autorização. | Pendente |
+| 30 | 2027-08-03 | 09:15 | Quinta da Boa Vista, proximidades do portão | 2450.000 | 20000 | Radiação Restrita | Ruído | Indefinido | Não | Ruído hipotético para treinamento. Comparar nível de fundo, largura observada e condição do conjunto de medição. | Pendente |
+| 31 | 2027-08-03 | 10:10 | São Cristóvão, Campo de São Cristóvão | 93.300 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Sinal fictício em varredura de referência; estação e ocupação não verificadas. | Concluída Pelo Fiscal |
+| 32 | 2027-08-04 | 06:40 | Central do Brasil, área externa | 2100.000 | 15000 | SMP | Sinal de dados | Não | Não | Registro sintético de sinal móvel; usar apenas como exemplo de preenchimento. | Pendente |
+| 33 | 2027-08-04 | 07:25 | Sambódromo, setor de acesso | 450.500 | 25 | Outros | Não identificado | Indefinido | Não | Exemplo com fonte não identificada; frequência e largura não indicam atribuição ou transmissão real. | Pendente |
+| 34 | 2027-08-04 | 08:15 | Praça Onze, proximidades da estação | 5800.000 | 80000 | Radiação Restrita | Sinal de dados | Não | Não | Leitura sintética usada para treinamento de registro em banda larga; não associada a rede específica. | Pendente |
+| 35 | 2027-08-05 | 09:05 | Lapa, Arcos da Lapa | 98.700 | 200 | FM | Comunicação não relacionada ao evento | Não | Não | Exemplo de referência de radiodifusão em local urbano; sinal, entidade e horário não foram medidos. | Pendente |
+| 36 | 2027-08-05 | 10:30 | Glória, proximidades da estação do metrô | 850.500 | 10000 | SMP | Espúrio ou Produto de Intermodulação | Indefinido | Não | Hipótese fictícia de produto de intermodulação; exigir confirmação técnica antes de registrar conclusão sobre a fonte. | Pendente |
+
+## Referência de tipos de incidente
+
+Os tipos usados acima correspondem às opções disponíveis no cadastro: `Bloqueador de sinal (BSR)`, `ERB Fake`, `Reclamação de interferência`, `Falha de rede`, `Incidente crítico`, `Problemas com equipamentos da agência`, `Outra situação relevante`, `Reclamação externa` e `Falha de Wi-Fi`.
+
+## Conferência rápida
+
+- Incidentes: 20 exemplos.
+- Emissões: 36 exemplos.
+- Status usados: `Pendente` e `Concluída Pelo Fiscal`.
+- Categorias de faixa usadas: `FM`, `SMP`, `Radiação Restrita` e `Outros`.
+- Valores de identificação usados conforme as opções padrão da aplicação.

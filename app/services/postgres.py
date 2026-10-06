@@ -854,24 +854,26 @@ def salvar_ticket_evento(
         emissoes_validas = [
             emissao
             for emissao in emissoes
-            if emissao["submetida_coordenador_em"] is not None
-            and (
+            if (
                 str(emissao["situacao"] or "").strip().casefold()
                 == SITUACAO_PENDENTE.casefold()
                 or (
-                    str(emissao["situacao"] or "").strip().casefold()
-                    in {
-                        "concluído",
-                        "concluido",
-                        SITUACAO_CONCLUIDA_FISCAL.casefold(),
-                    }
-                    and (emissao["concluida_por"] or "Fiscal") == "Fiscal"
+                    emissao["submetida_coordenador_em"] is not None
+                    and (
+                        str(emissao["situacao"] or "").strip().casefold()
+                        in {
+                            "concluído",
+                            "concluido",
+                            SITUACAO_CONCLUIDA_FISCAL.casefold(),
+                        }
+                        and (emissao["concluida_por"] or "Fiscal") == "Fiscal"
+                    )
                 )
             )
         ]
         if len(emissoes_validas) != len(ids):
             raise ValueError(
-                "Somente emissões submetidas, pendentes ou concluídas pelo fiscal podem receber tickets."
+                "Somente emissões pendentes ou emissões submetidas e concluídas pelo fiscal podem receber tickets."
             )
 
         emissao_ja_vinculada = conn.execute(

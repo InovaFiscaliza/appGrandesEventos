@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Laboratório — Gestão de tarefas</title><link rel="stylesheet" href="/static/tarefas.css"></head>
+<body>
+<header><span class="brand">APP GRANDES EVENTOS / LABORATÓRIO</span><a href="/docs">Rotas da demonstração</a></header>
+<main>
+<div class="heading"><div><p class="eyebrow">EXEMPLO COMPLETO · FASTAPI + JINJA2 + SQL</p><h1>Gestão de tarefas</h1><p class="muted">Cadastro, busca, permissões e edição em popup.</p></div><button type="button" id="nova-tarefa">+ Nova tarefa</button></div>
+<div class="notice">Ambiente didático independente. Os dados ficam no PostgreSQL, no schema <code>guia_programacao</code>, usando a conexão de <code>app/services/db.py</code>. A troca de perfil abaixo simula usuários e não é um login real.</div>
+{% if mensagem %}<div class="message {{ 'error' if mensagem.erro else 'success' }}" role="status">{{ mensagem.texto }}</div>{% endif %}
+<div class="stats"><article><span>Total de tarefas</span><strong>{{ total }}</strong></article><article><span>Pendentes</span><strong>{{ pendentes }}</strong></article><article><span>Concluídas</span><strong>{{ total - pendentes }}</strong></article></div>
+<section class="panel"><div class="toolbar"><div><h2>Tarefas do evento de exemplo</h2><label for="busca">Buscar por título ou descrição</label><input id="busca" type="search" placeholder="Digite para filtrar…"></div><form method="post" action="/perfil"><label for="perfil">Perfil de demonstração</label><select id="perfil" name="perfil"><option value="fiscal_1" {% if session.papel == 'fiscal' and session.fiscal_id == 1 %}selected{% endif %}>Ana — Fiscal</option><option value="fiscal_2" {% if session.papel == 'fiscal' and session.fiscal_id == 2 %}selected{% endif %}>Bruno — Fiscal</option><option value="coordenacao" {% if session.papel == 'coordenacao' %}selected{% endif %}>Coordenação</option></select><button type="submit" class="secondary">Trocar perfil</button></form></div>
+<div class="table-scroll"><table><thead><tr><th>ID / tarefa</th><th>Fiscal</th><th>Prioridade</th><th>Status</th><th>Ações</th></tr></thead><tbody>
+{% for tarefa in tarefas %}
+<tr data-search="{{ (tarefa.titulo ~ ' ' ~ tarefa.descricao)|lower }}"><td><strong>#{{ tarefa.id }} · {{ tarefa.titulo }}</strong><small>{{ tarefa.descricao or 'Sem descrição' }}</small></td><td>{{ fiscais[tarefa.fiscal_id] }}</td><td><span class="badge {{ tarefa.prioridade }}">{{ tarefa.prioridade|capitalize }}</span></td><td>{{ 'Pendente' if tarefa.status == 'pendente' else 'Concluída' }}</td><td class="actions">
+{% if tarefa.pode_editar %}<button type="button" class="secondary editar" data-id="{{ tarefa.id }}">Editar</button>{% else %}<span class="muted">Somente leitura</span>{% endif %}
+{% if session.papel == 'coordenacao' %}<form method="post" action="/tarefas/{{ tarefa.id }}/excluir" class="excluir"><button class="danger" type="submit">Excluir</button></form>{% endif %}
+</td></tr>
+{% endfor %}
+</tbody></table></div><p id="vazio" {% if tarefas %}hidden{% endif %}>Nenhuma tarefa encontrada. Use “Nova tarefa” para cadastrar.</p></section>
+<section class="explanation"><h2>O que acontece ao salvar?</h2><ol><li>O formulário envia um POST ao FastAPI.</li><li>A rota lê os campos, verifica o perfil e chama o serviço.</li><li>O serviço valida os valores e grava no PostgreSQL com SQLAlchemy e parâmetros nomeados.</li><li>Um redirecionamento 303 abre a listagem atualizada.</li></ol><p>Leia <code>laboratorio.py</code>, <code>dados_exemplo.py</code>, <code>templates/tarefas.html</code> e <code>static/tarefas.js</code> nessa ordem.</p></section>
+</main>
+<dialog id="editor" aria-labelledby="titulo-editor"><form id="form-tarefa" method="post" action="/tarefas"><div class="dialog-heading"><div><p class="eyebrow">FORMULÁRIO DE TAREFA</p><h2 id="titulo-editor">Nova tarefa</h2></div><button type="button" class="secondary fechar" aria-label="Fechar edição">×</button></div>
+<label for="titulo">Título *</label><input id="titulo" name="titulo" required minlength="3" maxlength="100" placeholder="Ex.: Verificar emissão na entrada norte">
+<label for="descricao">Descrição</label><textarea id="descricao" name="descricao" rows="4" maxlength="2000" placeholder="Descreva o que precisa ser feito…"></textarea>
+<div class="fields"><div><label for="prioridade">Prioridade *</label><select id="prioridade" name="prioridade" required><option value="baixa">Baixa</option><option value="normal" selected>Normal</option><option value="alta">Alta</option></select></div><div><label for="status">Status *</label><select id="status" name="status" required><option value="pendente">Pendente</option><option value="concluida">Concluída</option></select></div></div>
+<label for="fiscal_id">Fiscal responsável *</label><select id="fiscal_id" name="fiscal_id" required>{% for id, nome in fiscais.items() if session.papel == 'coordenacao' or id == session.fiscal_id %}<option value="{{ id }}">{{ nome }}</option>{% endfor %}</select>
+<p class="muted">* Campo obrigatório. Os valores também são validados no servidor.</p><div class="dialog-actions"><button type="button" class="secondary fechar">Cancelar</button><button type="submit">Salvar tarefa</button></div></form></dialog>
+<script id="tarefas-data" type="application/json">{{ tarefas|tojson }}</script>
+<script src="/static/tarefas.js"></script>
+</body></html>
