@@ -1,34 +1,86 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.services.postgres import (
-    carregar_pendencias_painel_mapeadas,
-    carregar_pendencias_todas_estacoes,
-    get_city_map_url,
-    listar_coordenadores_evento,
-    listar_tickets_evento,
-)
-from app.utils.formatters import _img_b64
 from app.config import (
     STATUS_TICKET_CONCLUIDO_COORDENADOR,
     STATUS_TICKET_CONCLUIDO_FISCAIS,
     TITULO_PRINCIPAL,
 )
+from app.domain.emissao.service import EmissaoService
+from app.infrastructure.persistence.postgres.emissao_repository import (
+    PostgresEmissaoRepository,
+)
+from app.services.postgres import (
+    get_city_map_url,
+    listar_tickets_evento,
+)
+from app.utils.formatters import _img_b64
+
+
+def get_emissao_service() -> EmissaoService:
+    repo = PostgresEmissaoRepository()
+    return EmissaoService(repo)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/menu", response_class=HTMLResponse)
-async def get_menu(request: Request):
+async def get_menu(
+    request: Request,
+    emissao_service: EmissaoService = Depends(get_emissao_service),
+):
     sp_id = request.session.get("spreadsheet_id")
     if not sp_id:
         return RedirectResponse("/", status_code=302)
 
-    df_painel = carregar_pendencias_painel_mapeadas(evento_id=sp_id)
-    df_estac = carregar_pendencias_todas_estacoes(evento_id=sp_id)
-    link_mapa = get_city_map_url(evento_id=sp_id)
+    sp_id_int = int(sp_id)
+
+    # Use EmissaoService to get all emissions for the event (incluir_todas=True)
+    emissoes = emissao_service.listar_por_evento(sp_id_int, incluir_todas=True)
+    
+    # Convert to DataFrame for existing logic
+    import pandas as pd
+    if not emissoes:
+        df = pd.DataFrame()
+    else:
+        data = []
+        for e in emissoes:
+            data.append({
+                "Local": e.local_regiao,
+                "EstacaoRaw": e.equipamento or "",
+                "EstacaoID": str(e.id),
+                "OrigemCaptura": e.fonte,
+                "CriadorFiscalID": e.fiscal_id,
+                "CadastradoPor": e.fiscal_nome or "Não informado",
+                "SubmetidaCoordenadorEm": None,  # TODO: add this field
+                "ID": str(e.id),
+                "IDExibicao": e.id_exibicao,
+                "Fiscal": e.fiscal_nome or "",
+                "Data": e.data,
+                "HH:mm": e.hora.strftime("%H:%M") if e.hora else "",
+                "Frequência (MHz)": str(e.frequencia_mhz),
+                "Largura (kHz)": str(e.largura_khz),
+                "Faixa de Frequência Envolvida": e.faixa,
+                "Identificação": e.identificacao,
+                "Autorizado?": "Sim" if e.autorizado else ("Não" if e.autorizado is False else "Indefinido"),
+                "UTE?": "Sim" if e.ute else "Não",
+                "Processo SEI UTE": e.processo_sei_ute or "",
+                "Ato UTE": e.ato_ute or "",
+                "Ocorrência (observações)": e.observacoes,
+                "Alguém mais ciente?": e.alguem_ciente,
+                "Interferente?": "Sim" if e.interferente else "Não",
+                "Situação": e.situacao,
+                "Fonte": e.fonte,
+            })
+        df = pd.DataFrame(data)
+    
+    # Filter by source like the old functions did
+    df_painel = df[df["Fonte"] == "PAINEL"] if not df.empty else pd.DataFrame()
+    df_estac = df[df["Fonte"] == "ESTACAO"] if not df.empty else pd.DataFrame()
+    
+    link_mapa = get_city_map_url(evento_id=sp_id_int)
 
     fiscal_id = request.session.get("fiscal_id")
     coordenador = (

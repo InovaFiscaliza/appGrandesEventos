@@ -12,9 +12,8 @@ import base64
 import hashlib
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Dict, List, Optional
 
 import pandas as pd
 from sqlalchemy import text
@@ -43,7 +42,7 @@ class FrequenciaOcupadaError(Exception):
 
 def _codigo_id_exibicao(instante, registro_id: int, tamanho: int = 4) -> str:
     """Gera o trecho alfanumérico compacto do ID a partir da data e hora."""
-    semente = f"{instante.isoformat()}:{registro_id}".encode("utf-8")
+    semente = f"{instante.isoformat()}:{registro_id}".encode()
     return hashlib.sha256(semente).hexdigest().upper()[:tamanho]
 
 
@@ -109,7 +108,7 @@ def _nome_imagem_bsr_erb(
         valor = re.sub(r"[^A-Za-z0-9]+", "_", str(valor or "")).strip("_")
         return valor or "SEM_VALOR"
 
-    instante_local = instante.astimezone(timezone.utc)
+    instante_local = instante.astimezone(UTC)
     return (
         f"{limpar(nome_evento)}_{limpar(tipo)}_ID_{registro_id}_"
         f"{instante_local:%Y%m%d}_{instante_local:%H%M%S}_"
@@ -1902,7 +1901,7 @@ def obter_fuso_horario_evento(_client=None, evento_id=None) -> str:
 
 def verificar_frequencia_existente(
     _client=None, evento_id=None, freq_digitada=None
-) -> Optional[str]:
+) -> str | None:
     """Verifica se a frequência já existe (ocorrências ou UTE)."""
     if not freq_digitada or freq_digitada <= 0 or evento_id is None:
         return None
@@ -1929,7 +1928,7 @@ def verificar_frequencia_existente(
 
 def _largura_frequencia_etiqueta(valor: str) -> float:
     """Extrai a largura em kHz de uma frequência salva na etiqueta."""
-    correspondencia = re.search(r"⌂\s*([\d.,]+)\s*kHz", str(valor or ""), re.I)
+    correspondencia = re.search(r"⌂\s*([\d.,]+)\s*kHz", str(valor or ""), re.IGNORECASE)
     if not correspondencia:
         return 0.0
     numero = correspondencia.group(1).replace(".", "").replace(",", ".")
@@ -2069,7 +2068,7 @@ def consultar_conflitos_frequencia(
 
 def verificar_frequencia_global(
     _client=None, evento_id=None, freq_digitada=None, largura_khz=0, localidade=None
-) -> Optional[str]:
+) -> str | None:
     """Retorna uma descrição curta do primeiro conflito de frequência."""
     conflitos = consultar_conflitos_frequencia(
         evento_id=evento_id,
@@ -2088,7 +2087,7 @@ def verificar_frequencia_global(
 
 def verificar_equipamento_frequencia(
     _client=None, evento_id=None, freq_digitada=None, largura_khz=0, localidade=None
-) -> Optional[str]:
+) -> str | None:
     """Retorna apenas o alerta de equipamento do teste de etiquetagem."""
     conflitos = consultar_conflitos_frequencia(
         evento_id=evento_id,
@@ -2458,7 +2457,7 @@ def faixa_numeracao_disponivel(
 
 def proximo_numero_etiqueta_disponivel(
     _client=None, evento_id=None, permissao=None, excluir_id=None
-) -> Optional[int]:
+) -> int | None:
     """Sugere o próximo número livre dentro das faixas cadastradas para o
     evento e o tipo de etiqueta, pulando números já usados por outros
     registros (considerando o intervalo de cada lote de equipamentos).
@@ -2565,7 +2564,7 @@ def verificar_etiqueta_existente(
     excluir_id=None,
     permissao=None,
     evento_id=None,
-) -> Optional[dict]:
+) -> dict | None:
     """Retorna o primeiro cadastro que sobrepõe a faixa de etiquetas informada.
 
     A checagem de duplicidade respeita o tipo da etiqueta: uma etiqueta
@@ -2642,7 +2641,7 @@ def verificar_frequencia_etiquetagem(
     largura_khz=0,
     localidade=None,
     excluir_id=None,
-) -> Optional[str]:
+) -> str | None:
     """Retorna a descrição do primeiro conflito de frequência."""
     conflitos = consultar_conflitos_frequencia(
         evento_id=evento_id,
@@ -2788,7 +2787,7 @@ def _salvar_imagens_teste_etiquetagem(
         )
 
 
-def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict = None) -> str:
+def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict | None = None) -> str:
     """Insere um teste de etiquetagem vinculado ao evento selecionado."""
     if evento_id is None or dados is None:
         return "ERRO: parâmetros insuficientes."
@@ -2919,7 +2918,7 @@ def obter_teste_etiquetagem(
 
 
 def atualizar_teste_etiquetagem(
-    _client=None, evento_id=None, registro_id=None, dados: dict = None
+    _client=None, evento_id=None, registro_id=None, dados: dict | None = None
 ) -> str:
     """Atualiza um teste de etiquetagem pertencente ao evento selecionado."""
     if evento_id is None or registro_id is None or dados is None:
@@ -3028,7 +3027,7 @@ def excluir_teste_etiquetagem(_client=None, evento_id=None, registro_id=None) ->
 def inserir_emissao_I_W(
     _client=None,
     evento_id=None,
-    dados_formulario: dict = None,
+    dados_formulario: dict | None = None,
     imagens: list[dict] | None = None,
 ) -> int | bool:
     """Insere nova ocorrência (emissão) no banco."""
@@ -3366,7 +3365,7 @@ def inserir_bsr_erb(
                 text("SELECT nome FROM eventos WHERE id = :evento_id"),
                 {"evento_id": int(evento_id)},
             ).scalar_one_or_none()
-            instante_imagens = datetime.now(timezone.utc)
+            instante_imagens = datetime.now(UTC)
             conn.execute(
                 text("""
                     INSERT INTO auditoria_bsr_erb (
@@ -3672,7 +3671,7 @@ def atualizar_bsr_erb(
                 text("SELECT nome FROM eventos WHERE id = :evento_id"),
                 {"evento_id": int(evento_id)},
             ).scalar_one_or_none()
-            instante_imagens = datetime.now(timezone.utc)
+            instante_imagens = datetime.now(UTC)
             quantidade_imagens = conn.execute(
                 text(
                     "SELECT COUNT(*) FROM bsr_erb_imagens WHERE bsr_erb_id = :registro_id"
@@ -4065,7 +4064,7 @@ def atualizar_campos_na_aba_mae(
     _client=None,
     evento_id=None,
     id_ocorrencia="",
-    novos_valores: dict = None,
+    novos_valores: dict | None = None,
     usuario_fiscal: str = USR_FISCAL_ANATEL,
     imagens: list[dict] | None = None,
     imagens_excluir: list[int] | None = None,
@@ -4626,7 +4625,7 @@ def _buscar_por_texto_livre(
     _client=None,
     evento_id=None,
     termos: str = "",
-    abas: list = None,
+    abas: list | None = None,
     fiscal_id: int | None = None,
     somente_submetidas: bool = True,
 ) -> pd.DataFrame:
@@ -4639,7 +4638,7 @@ def _buscar_por_texto_livre(
         try:
             frequencia = Decimal(termo.replace(",", "."))
         except (InvalidOperation, ValueError):
-            frequencia = Decimal("-1")
+            frequencia = Decimal(-1)
         sql = text("""
             SELECT
                 o.id::text AS "ID",
@@ -4729,7 +4728,7 @@ def sugerir_busca_emissoes(
         try:
             frequencia = Decimal(termo.replace(",", "."))
         except (InvalidOperation, ValueError):
-            frequencia = Decimal("-1")
+            frequencia = Decimal(-1)
         with get_engine().connect() as conn:
             rows = (
                 conn.execute(

@@ -126,7 +126,7 @@ def backup_database(
         "--no-privileges",  # evita erros de permissao
     ]
 
-    print(f"Executando pg_dump no container...")
+    print("Executando pg_dump no container...")
     print(f"  Host: {host}:{porta}")
     print(f"  Banco: {banco}")
     print(f"  Usuario: {usuario}")
