@@ -7,27 +7,38 @@ param(
     [string]$Database = 'appeventos',
     [ValidatePattern('^[a-zA-Z_][a-zA-Z0-9_]*$')]
     [string]$DatabaseUser = 'appeventos',
-    [string]$OutputDirectory
+    [string]$OutputDirectory,
+    [switch]$CodeOnly
 )
 . (Join-Path $PSScriptRoot 'comum.ps1')
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $projectRoot '.deploy' }
-Assert-PodmanReady
 if (-not (Get-Command tar -ErrorAction SilentlyContinue)) { throw 'tar.exe nao encontrado.' }
+$snapshotStarted = [DateTime]::UtcNow.ToString('o')
+$databaseContainer = $null
+if (-not $CodeOnly) {
+    Assert-PodmanReady
 if (-not $SourceContainer) {
-    $candidates = @('postgres-appeventos', 'postgres_appeventos') | Where-Object {
+    $candidates = @('postgres-appeventos', 'postgres_appeventos', 'appeventos-db') | Where-Object {
         if (Test-PodmanResource 'container' $_) {
             $candidate = @(Invoke-Podman -Arguments @('container', 'inspect', $_) | ConvertFrom-Json)[0]
             $candidate.State.Running
         }
     }
     if (@($candidates).Count -ne 1) {
-        throw 'Informe -SourceContainer com o nome do container do banco local.'
+        $runningContainers = @(Invoke-Podman -Arguments @('ps', '--format', '{{.Names}}'))
+        $names = if ($runningContainers.Count) { $runningContainers -join ', ' } else { '(nenhum)' }
+        throw "Nao foi possivel identificar um unico banco local. Containers em execucao: $names. Configure CONTAINER_BANCO no atualiza_serv.bat ou informe -SourceContainer. O container do banco deve estar rodando."
     }
     $SourceContainer = @($candidates)[0]
 }
 if (-not (Test-PodmanResource 'container' $SourceContainer)) {
-    throw "Container de origem '$SourceContainer' nao encontrado. Use -SourceContainer."
+    Write-Host "O Podman local nao encontrou '$SourceContainer' nesta conexao."
+    Write-Host 'Containers visiveis neste computador (incluindo parados):'
+    Invoke-Podman -Arguments @('ps', '-a', '--format', '{{.Names}} | {{.Image}} | {{.Status}}') | ForEach-Object { Write-Host $_ }
+    Write-Host 'Conexoes Podman configuradas (nome e indicador de padrao):'
+    Invoke-Podman -Arguments @('system', 'connection', 'list', '--format', '{{.Name}} | padrao={{.Default}}') | ForEach-Object { Write-Host $_ }
+    throw "Container de origem '$SourceContainer' nao encontrado no computador de origem. Confira CONTAINER_BANCO e a conexao padrao do Podman neste usuario. Os containers do servidor de destino nao sao a origem do backup."
 }
 $databaseContainer = @(Invoke-Podman -Arguments @('container', 'inspect', $SourceContainer) | ConvertFrom-Json)[0]
 if (-not $databaseContainer.State.Running) {
@@ -41,12 +52,14 @@ if ([int]($version | Select-Object -Last 1) -lt 160000 -or
     throw 'Este pacote espera PostgreSQL 16 na origem e no destino.'
 }
 
+}
 $release = 'appeventos-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
 $bundle = Join-Path ([IO.Path]::GetFullPath($OutputDirectory)) $release
 $source = Join-Path $bundle 'project'
 New-Item -ItemType Directory -Path $source -Force | Out-Null
 $dump = Join-Path $bundle 'database.dump'
 $containerDump = "/tmp/$release.dump"
+if (-not $CodeOnly) {
 Write-Host 'Exportando uma copia consistente do banco local (sem alterar registros)...'
 try {
     Invoke-Podman -Arguments @('exec', $SourceContainer, 'pg_dump', '--username', $DatabaseUser,
@@ -59,6 +72,8 @@ try {
     if ($LASTEXITCODE -ne 0) { Write-Warning "Remova manualmente o temporario $containerDump na origem." }
 }
 if ((Get-Item -LiteralPath $dump).Length -eq 0) { throw 'O backup esta vazio.' }
+
+}
 
 # Explicitly include only runtime files; never copy .git, .venv or credentials.
 $sourceHashes = [ordered]@{}
@@ -99,11 +114,12 @@ $manifest = [ordered]@{
     postgres_major = 16
     database_update_mode = 'preserve_data_with_migrations'
     source_container = $SourceContainer
-    source_container_id = $databaseContainer.Id
+    source_container_id = $(if ($databaseContainer) { $databaseContainer.Id } else { $null })
     source_database = $Database
     source_directory = $projectRoot
     source_files_sha256 = $sourceHashes
-    dump_sha256 = (Get-FileHash -LiteralPath $dump -Algorithm SHA256).Hash
+    code_only = [bool]$CodeOnly
+    dump_sha256 = $(if (-not $CodeOnly) { (Get-FileHash -LiteralPath $dump -Algorithm SHA256).Hash } else { $null })
 }
 [IO.File]::WriteAllText((Join-Path $bundle 'manifest.json'),
     ($manifest | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
@@ -111,5 +127,5 @@ $archive = "$bundle.tar.gz"
 & tar -czf $archive -C $bundle .
 if ($LASTEXITCODE -ne 0) { throw 'Falha ao compactar o pacote.' }
 Write-Host "Pacote pronto: $archive"
-Write-Host 'O pacote contem uma copia completa dos dados; mantenha-o em local restrito.'
+if (-not $CodeOnly) { Write-Host 'O pacote contem uma copia completa dos dados; mantenha-o em local restrito.' }
 Write-Output $archive

@@ -14,10 +14,11 @@ if (-not ($manifest.PSObject.Properties.Name -contains 'database_update_mode') -
     $manifest.database_update_mode -ne 'preserve_data_with_migrations') {
     throw 'Pacote antigo: gere um novo pacote com o envio atual, que preserva os dados do servidor.'
 }
+$codeOnly = ($manifest.PSObject.Properties.Name -contains 'code_only') -and $manifest.code_only
 $dump = Join-Path $bundle 'database.dump'
 if ($manifest.postgres_major -ne 16) { throw 'Versao de PostgreSQL incompativel.' }
 if ($manifest.release -notmatch '^appeventos-[0-9]{8}-[0-9]{6}-[a-f0-9]{8}$') { throw 'Identificador de pacote invalido.' }
-if ((Get-FileHash -LiteralPath $dump -Algorithm SHA256).Hash -ne $manifest.dump_sha256) {
+if (-not $codeOnly -and (Get-FileHash -LiteralPath $dump -Algorithm SHA256).Hash -ne $manifest.dump_sha256) {
     throw 'O backup nao confere com o SHA256 do pacote. Transfira o pacote novamente.'
 }
 # This Windows lock also covers the interval when the database container is
@@ -51,6 +52,9 @@ try {
     $hasUrl = Test-PodmanResource 'secret' $urlSecret
     if ($hasPassword -ne $hasUrl -or ($hasVolume -and -not $hasPassword)) {
         throw 'Segredos ausentes ou incompletos. Recupere os segredos desta instalacao antes de continuar.'
+    }
+    if ($codeOnly -and (-not $hasVolume -or -not $hasPassword -or -not (Test-PodmanResource 'container' $databaseContainer))) {
+        throw 'Atualizacao somente de codigo exige uma instalacao remota existente com banco, volume e segredos. Nada foi parado.'
     }
     & (Join-Path $PSScriptRoot 'configurar-rede.ps1') -WebPort $WebPort
 
@@ -122,6 +126,9 @@ try {
             '-v', 'ON_ERROR_STOP=1', '-U', 'appeventos', '-d', 'appeventos', '-c',
             "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('r', 'p', 'S', 'v', 'm', 'f') AND n.nspname <> 'information_schema' AND n.nspname !~ '^pg_'")
         $firstInstallation = [int]($objectCount | Select-Object -Last 1) -eq 0
+        if ($codeOnly -and $firstInstallation) {
+            throw 'O banco remoto esta vazio. Este pacote nao contem dados locais para uma primeira instalacao.'
+        }
         # Pause writers before cloning, so writes made on the server are retained.
         if (Test-PodmanResource 'container' $webContainer) {
             Write-Host "Parando o container web remoto: $webContainer"

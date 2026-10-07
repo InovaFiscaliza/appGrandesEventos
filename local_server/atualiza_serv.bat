@@ -13,6 +13,11 @@ REM Chave privada SSH deste computador. A chave publica deve estar no servidor.
 set "CHAVE_SSH=%USERPROFILE%\.ssh\id_ed25519_appgrandeseventos"
 REM Pasta onde cada execucao salva seu log completo.
 set "PASTA_LOG=%~dp0logs"
+REM Container do banco local. Vazio detecta os nomes padrao automaticamente.
+set "CONTAINER_BANCO="
+REM Nome do banco e usuario PostgreSQL locais.
+set "BANCO_LOCAL=appeventos"
+set "USUARIO_BANCO_LOCAL=appeventos"
 REM ===== FIM DOS PARAMETROS =====
 
 REM O auxiliar registra a saida e os erros sem esconder as mensagens da janela.

@@ -8,7 +8,8 @@ param(
     [ValidatePattern('^[a-zA-Z0-9][a-zA-Z0-9_.-]*$')][string]$SourceContainer,
     [ValidatePattern('^[a-zA-Z_][a-zA-Z0-9_]*$')][string]$Database = 'appeventos',
     [ValidatePattern('^[a-zA-Z_][a-zA-Z0-9_]*$')][string]$DatabaseUser = 'appeventos',
-    [string]$OutputDirectory
+    [string]$OutputDirectory,
+    [switch]$CodeOnly
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -53,10 +54,11 @@ if ($SshKeyPath) {
 }
 # Every transfer starts with a new dump and a new source snapshot.
 # Deliberately accept no prebuilt package, which could contain stale data.
-$prepareOptions = @{ Database = $Database; DatabaseUser = $DatabaseUser }
+$prepareOptions = @{ Database = $Database; DatabaseUser = $DatabaseUser; CodeOnly = $CodeOnly }
 if ($SourceContainer) { $prepareOptions.SourceContainer = $SourceContainer }
 if ($OutputDirectory) { $prepareOptions.OutputDirectory = $OutputDirectory }
-Write-Host 'Gerando uma copia nova do banco e do codigo antes do envio...'
+if ($CodeOnly) { Write-Host 'Preparando o codigo atual; o banco existente no servidor sera usado.' }
+else { Write-Host 'Gerando uma copia nova do banco e do codigo antes do envio...' }
 $packagePath = & (Join-Path $PSScriptRoot 'preparar.ps1') @prepareOptions
 $packagePath = (Resolve-Path -LiteralPath $packagePath).Path
 $filename = Split-Path $packagePath -Leaf

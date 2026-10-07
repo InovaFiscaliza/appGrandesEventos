@@ -55,7 +55,7 @@ Python ou Git instalados no destino. O Podman constrói a imagem com Python
 ## 1. Preparar os computadores
 
 - Origem: Podman funcionando, com o banco atual no contêiner
-  `postgres-appeventos` ou `postgres_appeventos`, banco/usuário `appeventos`.
+  `postgres-appeventos`, `postgres_appeventos` ou `appeventos-db`, banco/usuário `appeventos`.
   O script detecta o nome quando encontra apenas um desses contêineres.
 - Fontes: os arquivos atuais desta pasta do projeto, usada pelo VS Code,
   incluindo alterações ainda sem commit. Salve suas alterações antes do envio.
@@ -84,7 +84,13 @@ fonte mudar durante a cópia, o script para e solicita uma nova execução.
 O pacote leva os arquivos salvos no disco; ele não extrai módulos antigos
 que possam continuar carregados na memória de um processo Python sem reload.
 
-Se os nomes locais forem diferentes:
+Se usar `atualiza_serv.bat` e os nomes locais forem diferentes, configure
+`CONTAINER_BANCO`, `BANCO_LOCAL` e `USUARIO_BANCO_LOCAL` no início do arquivo.
+Use `podman ps --format "{{.Names}}"` para consultar os nomes em execução.
+Com `CONTAINER_BANCO` vazio, a detecção automática exige exatamente um dos
+contêineres padrão em execução.
+
+Para a preparação manual com nomes locais diferentes:
 
 ```powershell
 .\local_server\preparar.ps1 -SourceContainer meu_postgres -Database meu_banco -DatabaseUser meu_usuario
@@ -355,3 +361,12 @@ proteção de recursos existentes e validação de integridade na transferência
 - [Troca de nomes e controle de conexões dos bancos](https://www.postgresql.org/docs/16/sql-alterdatabase.html)
 - [Criação de uma cópia do banco PostgreSQL](https://www.postgresql.org/docs/16/sql-createdatabase.html)
 - [Compatibilidade entre atualizações menores do PostgreSQL](https://www.postgresql.org/docs/16/upgrading.html)
+
+## Atualizar o servidor sem banco local
+
+`atualiza_serv.bat` envia somente o código atual, usando `enviar.ps1 -CodeOnly`.
+Não exige Podman nem PostgreSQL no computador de origem. O banco remoto
+é preservado e as migrações são aplicadas a uma cópia dos dados do servidor.
+Esse modo exige uma instalação remota existente; não serve para importar
+dados locais nem inicializar um banco remoto vazio. Para uma primeira
+instalação com dados locais, execute `enviar.ps1` sem `-CodeOnly`.
