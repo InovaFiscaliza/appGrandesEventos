@@ -35,17 +35,29 @@ try {
         $result = 2
         throw 'Edite atualiza_serv.bat e preencha SERVIDOR_IP, USUARIO_SERVIDOR e PORTA_WEB antes de executar.'
     }
-    Write-DeploymentLog 'Atualizando o servidor com o codigo e o backup local atuais...'
+    Write-DeploymentLog 'Atualizando o servidor com o codigo local atual e o banco remoto existente...'
     Write-DeploymentLog 'Os dados existentes no servidor serao preservados.'
     Write-DeploymentLog 'Os containers web e PostgreSQL 16 remotos serao parados e recriados automaticamente.'
     Write-DeploymentLog 'A conexao SSH usara a chave configurada em CHAVE_SSH.'
+
+    $sourceOptions = @()
+    if (-not [string]::IsNullOrWhiteSpace($env:CONTAINER_BANCO)) {
+        $sourceOptions += @('-SourceContainer', $env:CONTAINER_BANCO)
+        Write-DeploymentLog "Container do banco local: $env:CONTAINER_BANCO"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:BANCO_LOCAL)) {
+        $sourceOptions += @('-Database', $env:BANCO_LOCAL)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:USUARIO_BANCO_LOCAL)) {
+        $sourceOptions += @('-DatabaseUser', $env:USUARIO_BANCO_LOCAL)
+    }
 
     # PS 5.1 wraps native stderr as ErrorRecord objects. Continue here so that
     # normal SSH/Podman stderr is logged; the child retains its own Stop policy.
     $ErrorActionPreference = 'Continue'
     & "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass `
         -File (Join-Path $PSScriptRoot 'enviar.ps1') -ServerAddress $env:SERVIDOR_IP `
-        -WindowsUser $env:USUARIO_SERVIDOR -WebPort $env:PORTA_WEB -SshKeyPath $env:CHAVE_SSH 2>&1 |
+        -WindowsUser $env:USUARIO_SERVIDOR -WebPort $env:PORTA_WEB -SshKeyPath $env:CHAVE_SSH -CodeOnly @sourceOptions 2>&1 |
         ForEach-Object -ErrorAction Stop { Write-DeploymentLog $_.ToString() }
     $result = $LASTEXITCODE
 } catch {

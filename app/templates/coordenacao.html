@@ -816,10 +816,25 @@
                 botao.addEventListener('click', () => abrirPopupEscala(botao.dataset.data));
             });
 
-            const escalasSemana = escalas.filter((escala) => {
+            // Cada trecho fica no dia em que ocorre, inclusive após a meia-noite.
+            const trechosEscalas = escalas.flatMap((escala) => {
                 const data = String(escala.data || '').slice(0, 10);
-                return data >= dataChave(inicioSemana) && data <= dataChave(fimSemana);
+                const inicioMinutos = minutos(escala.inicio, 0);
+                const fimMinutos = minutos(escala.fim, 1440);
+                if (fimMinutos >= inicioMinutos) {
+                    return [{ escala, data, inicioMinutos, fimMinutos }];
+                }
+                const [ano, mes, dia] = data.split('-').map(Number);
+                const diaSeguinte = new Date(ano, mes - 1, dia + 1);
+                const trechos = [{ escala, data, inicioMinutos, fimMinutos: 1440 }];
+                if (fimMinutos > 0) {
+                    trechos.push({ escala, data: dataChave(diaSeguinte), inicioMinutos: 0, fimMinutos });
+                }
+                return trechos;
             });
+            const escalasSemana = trechosEscalas.filter((trecho) =>
+                trecho.data >= dataChave(inicioSemana) && trecho.data <= dataChave(fimSemana)
+            );
             const paletaCores = ['#e8eef5', '#e8f5e9', '#fff3e0', '#f3e8ff', '#fce4ec', '#e0f7fa', '#f1f8e9', '#ede7f6'];
             const obterCorEscala = (indice) => paletaCores[indice % paletaCores.length];
             vazio.hidden = escalasSemana.length > 0 || escalas.length === 0;
@@ -845,12 +860,8 @@
                 coluna.style.height = `${alturaGrade}px`;
                 coluna.style.setProperty('--escala-altura-passo', `${alturaPasso}px`);
                 const eventosDia = escalasSemana
-                    .filter((escala) => String(escala.data || '').slice(0, 10) === chave)
-                    .map((escala) => ({
-                        escala,
-                        inicioMinutos: minutos(escala.inicio, 0),
-                        fimMinutos: minutos(escala.fim, 1440),
-                    }))
+                    .filter((trecho) => trecho.data === chave)
+                    .map((trecho) => ({ ...trecho }))
                     .sort((primeiro, segundo) => primeiro.inicioMinutos - segundo.inicioMinutos);
                 const finaisPorFaixa = [];
                 eventosDia.forEach((evento) => {
