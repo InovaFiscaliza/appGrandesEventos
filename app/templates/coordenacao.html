@@ -86,6 +86,7 @@
                         <th>Cadastrado por</th>
                         <th>Local</th>
                         <th>Status</th>
+                        <th>Acompanhamento</th>
                         <th>Concluída por</th>
                         <th>Ação</th>
                     </tr>
@@ -111,6 +112,7 @@
                         <td>{{ emissao.cadastrado_por or 'Não informado' }}</td>
                         <td>{{ emissao.local_regiao or 'Não informado' }}</td>
                         <td>{{ emissao.situacao or '-' }}</td>
+                        <td>{{ emissao.acompanhamento }}</td>
                         <td>{{ emissao.concluida_por or '-' }}</td>
                         <td class="ticket-acoes">
                             {% if emissao.submetida_coordenador_em %}
@@ -124,7 +126,7 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="11">Nenhuma emissão aguardando inspeção da coordenação.</td>
+                        <td colspan="12">Nenhuma emissão aguardando inspeção da coordenação.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -321,6 +323,34 @@
         <div id="tab-escala" class="tab-panel" role="tabpanel" aria-label="Escala de trabalho" hidden>
             <div class="card background-neutral-0 padding-l border-radius-m" style="border:1px solid #e5e7eb;">
                 <h2 class="font-semi-bold margin-bottom-m">Escala de trabalho</h2>
+
+                <h3 class="font-semi-bold">Horas alocadas por fiscal no mês</h3>
+                <p class="font-size-s text-neutral-6">Turnos incompletos não entram no total; turnos noturnos contam no mês da data cadastrada.</p>
+                <div class="table-scroll" role="region" aria-label="Totais mensais de horas por fiscal" tabindex="0">
+                    <table class="ute-table" data-paginacao="10">
+                        <thead>
+                            <tr>
+                                <th>Mês</th>
+                                <th>Fiscal</th>
+                                <th>Total alocado</th>
+                                <th>Turnos incompletos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for total in resumo_horas_escalas %}
+                            <tr>
+                                <td>{{ total.mes }}</td>
+                                <td>{{ total.fiscal_nome }}</td>
+                                <td>{{ total.total_minutos // 60 }}h {{ "%02d"|format(total.total_minutos % 60) }}min</td>
+                                <td>{{ total.turnos_incompletos }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4">Nenhuma escala cadastrada.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <nav class="pendencias-pagination" aria-label="Paginação dos totais mensais de horas"></nav>
 
                 <form method="post" action="/coordenacao/escala" class="coordenacao-escala-form">
                     <div class="coordenacao-escala-form-grid">

@@ -31,6 +31,7 @@ from app.services.postgres import (
     salvar_escala_evento,
     salvar_ticket_evento,
 )
+from app.utils.escalas import resumir_horas_escalas
 from app.utils.formatters import _img_b64
 
 router = APIRouter()
@@ -105,7 +106,36 @@ async def get_coordenacao(request: Request):
         for ticket in todos_tickets
         if ticket.get("status") == STATUS_TICKET_CONCLUIDO_COORDENADOR
     ]
+    emissoes = listar_emissoes_evento(int(evento_id))
+    tickets_por_id = {int(ticket["id"]): ticket for ticket in todos_tickets}
+    for emissao in emissoes:
+        ticket_id = emissao.get("ticket_id_vinculado")
+        ticket = tickets_por_id.get(int(ticket_id)) if ticket_id is not None else None
+        if ticket is not None:
+            fiscais_ticket = str(ticket.get("fiscais") or "").strip()
+            if ticket.get("status") == STATUS_TICKET_PENDENTE:
+                emissao["acompanhamento"] = (
+                    f"Em tratamento no ticket #{ticket_id} por {fiscais_ticket}"
+                    if fiscais_ticket
+                    else f"Ticket #{ticket_id} aberto; aguardando atribuição de fiscal"
+                )
+            elif ticket.get("status") == STATUS_TICKET_CONCLUIDO_FISCAIS:
+                emissao["acompanhamento"] = (
+                    f"Fiscal concluiu no ticket #{ticket_id}; aguardando coordenação"
+                )
+            else:
+                emissao["acompanhamento"] = (
+                    f"{STATUS_TICKET_ROTULOS.get(ticket.get('status'), 'Em ticket')} "
+                    f"(ticket #{ticket_id})"
+                )
+        elif emissao.get("submetida_coordenador_em") is not None:
+            emissao["acompanhamento"] = "Submetida à coordenação"
+        else:
+            emissao["acompanhamento"] = (
+                "Em atendimento pelo fiscal, antes da submissão à coordenação"
+            )
 
+    escalas = listar_escalas_evento(int(evento_id))
     return templates.TemplateResponse(
         request,
         "coordenacao.html",
@@ -115,9 +145,10 @@ async def get_coordenacao(request: Request):
             tickets_concluidos_fiscais=tickets_concluidos_fiscais,
             tickets_concluidos_coordenador=tickets_concluidos_coordenador,
             status_ticket_rotulos=STATUS_TICKET_ROTULOS,
-            emissões=listar_emissoes_evento(int(evento_id)),
+            emissões=emissoes,
             incidentes=listar_bsr_erb(int(evento_id), somente_submetidos=True),
-            escalas=listar_escalas_evento(int(evento_id)),
+            escalas=escalas,
+            resumo_horas_escalas=resumir_horas_escalas(escalas),
             fiscais=fiscais_evento,
             flash_success=request.session.pop("flash_success", None),
             flash_error=request.session.pop("flash_error", None),

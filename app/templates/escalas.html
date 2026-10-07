@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+
+<section class="module-section" aria-labelledby="escalas-titulo">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">OPERAÇÃO</span>
+            <h1 id="escalas-titulo" class="wf-screen-title margin-bottom-l">Escalas dos fiscais</h1>
+        </div>
+        <span class="module-count">{{ escalas|length }} escala(s)</span>
+    </div>
+
+    <form method="get" action="/escalas" class="form-cols">
+        <div class="form-group">
+            <label for="filtro-visualizacao-escalas">Fiscal</label>
+            <div class="select-shell">
+                <select id="filtro-visualizacao-escalas" class="form-control" name="visualizacao">
+                    <option value="todas" {% if visualizacao == "todas" %}selected{% endif %}>Todos os fiscais</option>
+                    <option value="proprias" {% if visualizacao == "proprias" %}selected{% endif %}>Minha escala</option>
+                    <option value="outros" {% if visualizacao == "outros" %}selected{% endif %}>Outros fiscais</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+        </div>
+    </form>
+
+    <h2 class="font-semi-bold">Horas alocadas por fiscal no mês</h2>
+    <p class="font-size-s text-neutral-6">Turnos incompletos não entram no total; turnos noturnos contam no mês da data cadastrada.</p>
+    <div class="table-scroll" role="region" aria-label="Totais mensais de horas por fiscal" tabindex="0">
+        <table class="ute-table">
+            <thead>
+                <tr>
+                    <th>Mês</th>
+                    <th>Fiscal</th>
+                    <th>Total alocado</th>
+                    <th>Turnos incompletos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for total in resumo_horas %}
+                <tr>
+                    <td>{{ total.mes }}</td>
+                    <td>{{ total.fiscal_nome }}</td>
+                    <td>{{ total.total_minutos // 60 }}h {{ "%02d"|format(total.total_minutos % 60) }}min</td>
+                    <td>{{ total.turnos_incompletos }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4">Nenhuma escala cadastrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-scroll" role="region" aria-label="Escalas de trabalho do evento" tabindex="0">
+        <table class="ute-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Turno</th>
+                    <th>Fiscal</th>
+                    <th>Observações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for escala in escalas %}
+                <tr>
+                    <td>{{ escala.data_trabalho.strftime("%d/%m/%Y") if escala.data_trabalho else "-" }}</td>
+                    <td>
+                        {% if escala.turno_inicio and escala.turno_fim %}
+                        {{ escala.turno_inicio.strftime("%H:%M") }} às {{ escala.turno_fim.strftime("%H:%M") }}
+                        {% elif escala.turno_inicio %}
+                        A partir de {{ escala.turno_inicio.strftime("%H:%M") }}
+                        {% elif escala.turno_fim %}
+                        Até {{ escala.turno_fim.strftime("%H:%M") }}
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>
+                        {{ escala.fiscal_nome }}
+                        {% if escala.fiscal_id == fiscal_id_atual %}
+                        <span class="font-size-s text-neutral-6">(Minha escala)</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ escala.observacoes or "-" }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4">Nenhuma escala encontrada para este filtro.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

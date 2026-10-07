@@ -7,6 +7,8 @@ Executar com:
     uv run uvicorn main:app --reload --port 8501
   ou:
     uvicorn main:app --reload --port 8501
+
+    commit push e merge com main detalhado conforme o .vscode/settings.json manda e retorne ao dev_andre
 """
 
 import secrets
@@ -24,6 +26,7 @@ from app.routers import (
     consultar,
     coordenacao,
     criar_evento,
+    escalas,
     estacoes,
     inserir,
     menu,
@@ -64,9 +67,7 @@ async def carregar_eventos_no_request(request: Request, call_next):
     inicio_requisicao = time.perf_counter()
     caminho = request.url.path
 
-    if (
-        caminho.startswith(("/static/", "/api/")) or caminho == "/sw.js"
-    ):
+    if caminho.startswith(("/static/", "/api/")) or caminho == "/sw.js":
         resposta = await call_next(request)
         return resposta
 
@@ -136,6 +137,7 @@ app.include_router(inserir.router)
 app.include_router(consultar.router)
 app.include_router(coordenacao.router)
 app.include_router(criar_evento.router)
+app.include_router(escalas.router)
 app.include_router(estacoes.router)
 app.include_router(bsr_erb.router)
 app.include_router(busca.router)
