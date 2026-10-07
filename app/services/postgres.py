@@ -3969,7 +3969,13 @@ def listar_bsr_erb(
                                         )
                                     )
                                     AND (:ocultar_vinculados = false OR vinculacao.ticket_id IS NULL)
-                                    AND (:somente_submetidos = false OR b.submetido_coordenador_em IS NOT NULL)
+                                    AND (
+                                        :somente_submetidos = false
+                                        OR (
+                                            b.submetido_coordenador_em IS NOT NULL
+                                            AND b.situacao IS DISTINCT FROM :situacao_concluida_coordenador
+                                        )
+                                    )
                 GROUP BY b.id, b.id_exibicao, b.criado_por_fiscal_id, b.tipo, b.regiao, b.latitude, b.longitude,
                          b.observacoes, b.cadastrado_por, b.situacao, b.concluida_por,
                         b.criado_em, vinculacao.ticket_id, i.id, i.nome_arquivo, i.tipo_mime,
@@ -3980,6 +3986,7 @@ def listar_bsr_erb(
                     "evento_id": int(evento_id),
                     "ocultar_vinculados": ocultar_vinculados,
                     "somente_submetidos": somente_submetidos,
+                    "situacao_concluida_coordenador": SITUACAO_CONCLUIDA_COORDENADOR,
                     "fiscal_id": int(fiscal_id) if fiscal_id is not None else None,
                 },
             )
