@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AppEventos</title>
-    <link rel="stylesheet" href="/static/style.css?v=137">
+    <link rel="stylesheet" href="/static/style.css?v=141">
 
     <!-- PWA: identidade do app -->
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
@@ -28,12 +28,77 @@
 </div>
 </div>
 
+<div id="popups-sucesso" class="flash-toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+
+<div id="popup-erro-global" class="flash-error-overlay" role="presentation" hidden>
+    <section class="flash-error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="popup-erro-global-titulo" aria-describedby="popup-erro-global-mensagem" tabindex="-1">
+        <div class="flash-error-cabecalho">
+            <h2 id="popup-erro-global-titulo">Não foi possível concluir</h2>
+            <button type="button" id="fechar-popup-erro-global" class="flash-error-fechar" aria-label="Fechar aviso">×</button>
+        </div>
+        <p id="popup-erro-global-mensagem"></p>
+        <div class="flash-error-acoes">
+            <button type="button" id="confirmar-popup-erro-global" class="btn">Entendi</button>
+        </div>
+    </section>
+</div>
+<script>
+(() => {
+    const popupsSucesso = document.getElementById('popups-sucesso');
+    const mostrarPopupSucesso = (texto) => {
+        const toast = document.createElement('div');
+        toast.className = 'flash flash-success flash-toast';
+        toast.textContent = String(texto);
+        popupsSucesso.appendChild(toast);
+        window.setTimeout(() => {
+            toast.classList.add('flash-toast-saindo');
+            window.setTimeout(() => toast.remove(), 500);
+        }, 10000);
+    };
+    document.querySelectorAll('.flash-success.flash-toast').forEach((toast) => {
+        mostrarPopupSucesso(toast.textContent);
+        toast.remove();
+    });
+
+    const popup = document.getElementById('popup-erro-global');
+    const fechar = document.getElementById('fechar-popup-erro-global');
+    const confirmar = document.getElementById('confirmar-popup-erro-global');
+    const mensagem = document.getElementById('popup-erro-global-mensagem');
+    const focoAnterior = document.activeElement;
+    const fecharPopup = () => {
+        popup.hidden = true;
+        document.body.classList.remove('flash-error-popup-open');
+        focoAnterior?.focus();
+    };
+    const mostrarPopup = (texto) => {
+        mensagem.textContent = String(texto || 'Ocorreu um erro.');
+        popup.hidden = false;
+        document.body.classList.add('flash-error-popup-open');
+        confirmar.focus();
+    };
+    fechar.addEventListener('click', fecharPopup);
+    confirmar.addEventListener('click', fecharPopup);
+    popup.addEventListener('click', (evento) => {
+        if (evento.target === popup) fecharPopup();
+    });
+    document.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape' && !popup.hidden) fecharPopup();
+    });
+    window.AppEventosUI = window.AppEventosUI || {};
+    window.AppEventosUI.mostrarPopupSucesso = mostrarPopupSucesso;
+    window.AppEventosUI.mostrarPopupErro = mostrarPopup;
+    {% if flash_error|default('') %}
+    mostrarPopup({{ flash_error|tojson }});
+    {% endif %}
+})();
+</script>
+
 <!-- Compatibilidade: db.js e sync.js (código legado) -->
 <script src="/static/db.js"></script>
 <script src="/static/sync.js"></script>
 
 <!-- PWA: registrar o Service Worker (com auto-atualização) -->
-<script src="/static/sw-register.js?v=65"></script>
+<script src="/static/sw-register.js?v=70"></script>
 <script src="/static/header.js?v=6"></script>
 </body>
 </html>

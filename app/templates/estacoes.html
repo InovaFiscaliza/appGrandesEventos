@@ -4,9 +4,7 @@
 <link rel="stylesheet" href="/static/rf-fusion/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-{% if flash_success %}<div class="flash flash-success estacoes-mensagem">{{ flash_success }}</div>{% endif %}
-{% if flash_error %}<div class="flash flash-error estacoes-mensagem">{{ flash_error }}</div>{% endif %}
-
+{% if flash_success %}<div class="flash flash-success flash-toast estacoes-mensagem" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
 <div class="form-card rf-entry-card estacoes-cadastro-card font-semi-bold">
     <h5 class="teq-title">Cadastro de Estações</h5>
     <form method="get" action="/estacoes" class="rf-entry-form">

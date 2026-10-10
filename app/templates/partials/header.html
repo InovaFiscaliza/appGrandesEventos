@@ -19,6 +19,9 @@
 </div>
 <nav class="rf-nav" aria-label="Navegação estrutural">
     {% set caminho_atual = request.url.path %}
+    {% if request.session.get('criacao_evento') %}
+    <span aria-current="page">Coordenação · Criar novo evento</span>
+    {% else %}
     <a href="/menu">Início</a>
     {% if caminho_atual == '/menu' %}
 
@@ -48,6 +51,7 @@
     <span aria-current="page">Pesquisar</span>
     {% elif caminho_atual.startswith('/ute') %}
     <span aria-current="page">UTE</span>
+    {% endif %}
     {% endif %}
     <a class="rf-nav-sair" href="/logout" data-confirmacao-msg="Deseja sair da aplicação?">Sair</a>
 </nav>

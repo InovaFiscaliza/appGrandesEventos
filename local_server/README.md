@@ -23,6 +23,16 @@ remove somente os contêineres antigos, preservando o volume e os segredos.
 Todas essas etapas aparecem no log. Uma trava no Windows impede atualizações
 simultâneas durante a parada e a recriação do contêiner do banco.
 
+**Banco legado sem rótulo:** versões anteriores podem ter deixado somente
+`appeventos-db` sem `io.appgrandeseventos.managed=true`. O instalador aceita
+esse caso apenas se a imagem for `postgres:16-bookworm`, o volume de dados
+for `appeventos-pgdata`, a única rede for `appeventos-network`, e o contêiner
+usar o segredo `appeventos-db-password`. Volume, rede e aplicação web devem
+ter o rótulo de gerenciamento, e os dois segredos da instalação precisam
+existir. A verificação não altera recursos; o novo contêiner recebe o rótulo
+ao ser criado com o mesmo volume. Um rótulo explícito `false` ou vínculos
+incompatíveis continuam interrompendo a atualização antes de parar serviços.
+
 **Rede WSL:** o instalador identifica a máquina da conexão ativa do Podman e
 configura o encaminhamento TCP da porta web no Windows para o IPv4 atual do
 WSL. A regra de firewall permite essa porta apenas para a sub-rede local,
@@ -259,7 +269,11 @@ vazio, restaura o backup local. Nas atualizações, pausa a aplicação e cria
 uma cópia do **banco do servidor**, mantendo seus registros, imagens e
 sequências. Aplica as migrações nessa cópia, verifica o novo código e a
 coloca em uso. O banco anterior permanece guardado para recuperação.
-Somente a porta web é publicada; o PostgreSQL não ocupa a porta 5432 do Windows.
+A porta web é publicada para acesso pela rede. O PostgreSQL publica
+`127.0.0.1:5432:5432` somente no localhost da Podman Machine, tanto na criação
+inicial quanto nas recriações. Isso não configura encaminhamento da porta
+5432 no Windows nem acesso ao banco pela rede local. O volume persistente,
+os segredos, o usuário e o banco existentes são preservados.
 
 ## 4. Permitir acesso pela rede local
 

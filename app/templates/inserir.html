@@ -2,9 +2,7 @@
 {% block content %}
 {% include "partials/header.html" %}
 
-{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
-
+{% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
 <div class="form-card inserir-form rf-entry-card font-semi-bold">
     <h5 class="teq-title">Inserir emissão</h5>
     <form method="post" action="/inserir" id="form-inserir" class="rf-entry-form font-semi-bold" enctype="multipart/form-data" data-confirmacao-msg="Confirma a submissão desta emissão ao coordenador?">

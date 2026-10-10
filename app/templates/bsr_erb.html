@@ -5,9 +5,7 @@
 <link rel="stylesheet" href="/static/rf-fusion/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
-
+{% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
 {% if mostrar_form %}
 <div class="form-card rf-entry-card font-semi-bold">
     {% if not edicao_popup %}<h5 style="margin-bottom:0.75rem">Registrar incidente</h5>{% endif %}

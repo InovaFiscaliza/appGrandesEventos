@@ -25,7 +25,9 @@
   fiscalSelect.addEventListener('change', () => {
     const fiscal = fiscaisAtuais.find((item) => String(item.id) === fiscalSelect.value);
     papelSelect.replaceChildren(new Option('Selecione...', ''));
-    (fiscal?.papeis || []).forEach((papel) => papelSelect.appendChild(new Option(papel, papel)));
+    const papeis = (fiscal?.papeis || []).filter((papel) => eventoSelect.value !== '__novo__' || papel === 'Coordenação');
+    papeis.forEach((papel) => papelSelect.appendChild(new Option(papel, papel)));
+    if (eventoSelect.value === '__novo__' && fiscal) papelSelect.value = 'Coordenação';
     papelSelect.disabled = !fiscal;
   });
 
@@ -33,6 +35,21 @@
 
   eventoSelect.addEventListener('change', async () => {
     const eventoKey = eventoSelect.value;
+    fiscaisAtuais = [];
+    const descricao = document.querySelector('#usuarios-login-descricao');
+    if (descricao) descricao.textContent = eventoKey === '__novo__'
+      ? 'Lista exibida somente com coordenadores cadastrados.'
+      : 'Lista exibida com os fiscais vinculados ao evento.';
+    if (eventoKey === '__novo__') {
+      fiscaisAtuais = JSON.parse(document.querySelector('#coordenadores-login').textContent);
+      if (fiscaisAtuais.length === 0) {
+        resetFiscais('Nenhum coordenador cadastrado');
+        return;
+      }
+      resetFiscais('Selecione um coordenador');
+      popularFiscais(fiscaisAtuais);
+      return;
+    }
     if (!eventoKey || !eventoKey.includes('|||')) {
       resetFiscais('Selecione um evento primeiro');
       return;
@@ -47,6 +64,7 @@
       });
       if (!response.ok) throw new Error('Falha ao carregar usuários');
       const fiscais = await response.json();
+      if (eventoSelect.value !== eventoKey) return;
 
       if (!Array.isArray(fiscais) || fiscais.length === 0) {
         resetFiscais('Nenhum usuário vinculado ao evento');
@@ -56,6 +74,7 @@
       fiscaisAtuais = fiscais;
       popularFiscais(fiscais);
     } catch {
+      if (eventoSelect.value !== eventoKey) return;
       resetFiscais('Não foi possível carregar os usuários');
     }
   });

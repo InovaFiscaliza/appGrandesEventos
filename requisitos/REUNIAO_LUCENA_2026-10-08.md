@@ -1,100 +1,5 @@
-
 ---------------------------------------------------------------
 REUNIÃO LUCENA
-
-Modificações solicitadas — Sistema de Grandes Eventos
-
-**Reunião:** 17/09/2026.  
-**Fonte:** `Grandes eventos-20260917_140850-Gravação de Reunião.mp4`.  
-**Duração da gravação:** aproximadamente 1h50min42s.
-
-Relatório organizado por assunto a partir da transcrição automática da gravação, com revisão dos pedidos e do contexto. As referências são intervalos aproximados contados desde o início do vídeo; indicam os trechos de discussão, não necessariamente apenas a frase do pedido.
-
-**Legenda:** todos os itens estão desmarcados (`[ ]`) para acompanhamento; a implementação e os testes ainda precisam ser verificados. Sugestões, pontos adiados e decisões pendentes estão identificados como tais. O conteúdo da reunião foi tratado como fonte para este relatório, sem executar as ações nele mencionadas.
-
-## 1. Acesso, usuários e perfis
-
-- [ ] Rever o fluxo inicial para permitir que o coordenador acesse o sistema e crie um evento sem precisar selecionar previamente outro evento. A escolha do evento de trabalho deve ocorrer em uma etapa compatível com esse fluxo; foi sugerido disponibilizar o cadastro de evento na entrada do sistema. **Referência: 00:03:45–00:06:50.**
-
-## 2. Cadastro, localidades e encerramento dos eventos
-
-- [ ] Atender eventos realizados em várias sedes, preservando a operação própria de cada local: coordenador, equipe, escala e etiquetagem. Foram citados os estádios de diferentes cidades e o IBC como locais com dinâmicas distintas. **Referência: 00:14:24–00:20:47.**
-- [ ] Permitir consultas tanto por sede/local quanto abrangendo o conjunto de um grande evento, como a Copa do Mundo. As etiquetas válidas para várias sedes precisam poder ser localizadas pelas equipes dessas sedes. **Referência: 00:16:26–00:23:18.**
-- [ ] Disponibilizar filtros na consulta para selecionar os locais/eventos abrangidos e, quando pertinente, o tipo de etiqueta. **Solução técnica em aberto:** discutiram-se agrupamento de eventos e agregação na consulta; não ficou estabelecida a necessidade de duplicar registros entre sedes. **Referência: 00:19:19–00:23:18.**
-- [ ] Criar um estado de encerramento do evento, acionado pelo coordenador, que impeça novos cadastros e alterações nos dados daquele evento. **Referência: 00:46:48–00:47:57.**
-- [ ] Permitir que o coordenador reabra um evento encerrado para corrigir informações, mantendo registro em auditoria dessa reabertura e das alterações realizadas. **Referência: 00:47:57–00:48:35.**
-
-## 3. Escalas e jornadas dos fiscais
-
-- [ ] Alertar quando uma jornada for cadastrada fora do período do evento, solicitando confirmação em vez de bloquear a operação. Foi lembrado que a fiscalização pode envolver montagem ou retirada de equipamentos antes ou depois do evento. **Referência: 00:25:57–00:27:35.**
-- [ ] Preservar e exibir horários com minutos, sem limitar ou arredondar as jornadas às divisões de hora da grade. Manter a indicação do horário exato quando a representação visual não for suficiente. **Referência: 00:29:10–00:30:16.**
-- [ ] Exibir o total de horas atribuídas a cada fiscal, permitindo ao coordenador acompanhar a distribuição da carga de trabalho; a soma semanal foi citada como exemplo. **Referência: 00:30:16–00:30:45.**
-- [ ] Disponibilizar a consulta da escala também aos fiscais, para que possam verificar os dias e horários em que trabalharão. **Referência: 00:30:45–00:31:15.**
-
-**Ponto adiado:** a inclusão de motoristas e informações de veículos na escala foi discutida, inclusive para consulta e impressão, mas ficou para depois por depender da gestão e das mudanças feitas por outra equipe. **Referência: 00:31:32–00:34:12.**
-
-## 4. Cadastro de estações
-
-
-## 5. Formulário de teste e etiquetagem
-
-
-## 6. Tipos, numeração e disponibilidade das etiquetas
-
-
-## 7. Frequências, largura de banda e conflitos
-
-- [ ] Corrigir a validação para detectar a **sobreposição das faixas ocupadas**, considerando frequência central e largura de banda, em vez de comparar somente frequências centrais idênticas. Calcular os limites inferior e superior com metade da largura de banda para cada lado da frequência central. **Referência: 01:05:55–01:10:11.**
-- [ ] Tratar a sobreposição como aviso, permitindo prosseguir quando ela fizer sentido na programação dos canais; a existência de sobreposição não deve, por si só, impedir o cadastro. **Referência: 01:08:25–01:09:33.**
-- [ ] Ordenar automaticamente a lista de frequências pela frequência central a cada inclusão, facilitando a leitura e a identificação dos canais. **Referência: 01:10:11–01:10:47.**
-- [ ] Colocar **frequência**, **largura de banda** e **faixa** na mesma linha, aproveitando melhor o espaço e reduzindo a altura do formulário. **Referência: 01:10:47–01:11:57.**
-- [ ] Revisar e completar a lista padronizada de larguras de banda, mantendo a seleção controlada, sem entrada livre indiscriminada. Foram citados **12,5 kHz e 8 kHz**, além de **6, 10 e 20 MHz**; também foi mencionada a cobertura da lista até **100 MHz** para possíveis sistemas de maior largura de banda. Conferir os valores já existentes e acrescentar os que faltarem. **Referência: 01:03:32–01:04:46; 01:11:57–01:13:42.**
-
-## 8. Tipos de equipamento e uso em campo
-
-
-## 9. Reaproveitamento de cadastros e integração com UTE
-
-- [x] Sugerir entidades já cadastradas enquanto o usuário digita o nome e, após a seleção, preencher os dados disponíveis. Permitir reaproveitar entidades de outros eventos, inclusive anteriores. **Referência: 01:16:42–01:17:38.**
-- [ ] Levar a escolha de **UTE/outorga** para o início do formulário, de modo que ela possa orientar o preenchimento dos demais campos. **Referência: 01:17:38–01:19:18.**
-- [ ] Incluir um campo para o **número do ato de UTE** e consultar esse ato para preencher os dados disponíveis, evitando selecionar automaticamente um ato qualquer quando a entidade tiver vários. **Referência: 01:19:18–01:21:48.**
-- [ ] Integrar o sistema a uma base de atos atualizada por rotina noturna, com informação em **D-1**, conforme a estratégia discutida para disponibilizar esses dados ao aplicativo. **Dependência:** disponibilização da rotina e da base pela equipe responsável. **Referência: 01:19:49–01:21:48.**
-- [ ] Permitir selecionar quais equipamentos e frequências do ato serão aproveitados no cadastro, em vez de importar indiscriminadamente todos os itens autorizados. Foi sugerida uma janela de seleção. **Referência: 01:21:48–01:22:47.**
-- [ ] Possibilitar a pesquisa de atos pelo nome completo ou parcial da entidade quando o usuário não souber o número do ato. Abranger também observações e outros campos pertinentes, pois atos solicitados pela FIFA podem trazer o nome da empresa usuária fora do campo principal da entidade. **Referência: 01:23:16–01:24:47.**
-- [ ] Mostrar os atos encontrados para que o usuário escolha o correto quando houver mais de um resultado para a entidade. **Referência: 01:24:48–01:25:24.**
-- [ ] Criar a ação **Novo a partir deste registro** ou **Inserir e continuar**, reaproveitando os dados de um teste/equipamento para cadastrar outro. Permitir alterar frequência, equipamento e demais informações necessárias, sem editar o registro de origem e sem reutilizar indevidamente sua etiqueta. **Referência: 01:26:19–01:30:07.**
-
-## 10. Consultas operacionais e pesquisa rápida
-
-- [ ] Criar uma consulta orientada por frequência, ordenada pela frequência central, para facilitar a identificação do que está sendo utilizado no evento. **Referência: 01:34:12–01:36:13.**
-- [ ] Exibir uma linha por frequência, ainda que isso repita entidade, equipamento ou etiqueta. Evitar apresentar todas as frequências de um equipamento apenas lado a lado em uma única célula. **Referência: 01:34:47–01:36:13.**
-- [ ] Manter essa consulta enxuta, com **frequência, largura de banda, número da etiqueta, entidade e contato**. **Referência: 01:36:13–01:36:42; 01:38:29–01:38:57.**
-- [ ] Dar acesso à foto do equipamento na consulta, por link ou miniatura que possa ser ampliada. **Forma de apresentação a definir.** **Referência: 01:36:13–01:37:09.**
-- [ ] Disponibilizar pesquisa por texto livre para localizar rapidamente dados por nome de empresa, frequência, número ou outro termo relevante. **Referência: 01:36:42–01:38:27.**
-- [ ] Colocar essa pesquisa dentro das rotinas de **teste e etiquetagem** e **inserção de emissões**, permitindo verificar a existência de registros antes de preencher todo o formulário. Aproveitar o comportamento de busca genérica demonstrado, adaptando sua disponibilidade e apresentação às telas usadas pelos fiscais. **Referência: 01:47:46–01:49:25.**
-- [ ] Permitir exportar e imprimir o resultado da consulta por frequência. O pedido foi mencionado como uma ampliação da consulta, sem detalhamento do formato de exportação. **Referência: 01:38:57–01:39:44.**
-
-## 11. Encaminhamentos para desenvolvimento e validação
-
-Estes itens são encaminhamentos de trabalho discutidos na reunião, e não novas funcionalidades do sistema.
-
-- [ ] Priorizar os ajustes levantados antes de disponibilizar uma nova versão para testes mais amplos. A oferta de um link de teste foi discutida, mas sua publicação foi postergada até a estabilização dessas mudanças. **Referência: 01:30:37–01:31:42; 01:39:50–01:44:22.**
-- [ ] Concentrar o desenvolvimento na branch **DevAndre**, conforme o alinhamento verbal ao final da reunião, para permitir a colaboração no código. **Referência: 01:42:05–01:46:23.**
-- [ ] Usar o evento de sorteio como oportunidade de teste do sistema, conforme mencionado no encerramento. **Referência: 01:42:35–01:44:22.**
-
-## 12. Pontos que precisam de definição complementar
-
-- **Permissões do coordenador:** confirmar se ele terá acesso operacional irrestrito ou se dependerá da atribuição dos demais perfis. **Referência: 00:38:57–00:41:39.**
-- **Eventos com várias sedes:** definir a estrutura de agrupamento e os filtros, preservando tanto a autonomia local quanto a consulta consolidada. A necessidade funcional foi discutida; a arquitetura não foi fechada. **Referência: 00:16:26–00:23:18.**
-- **Etiquetas:** confirmar o padrão final de apresentação, as faixas por local/tipo e as regras das etiquetas que podem circular entre sedes. **Referência: 00:18:20–00:23:18; 00:56:25–01:02:24.**
-- **Listas padronizadas:** consolidar os valores de largura de banda e os tipos de equipamento com a equipe. **Referência: 01:11:57–01:16:14.**
-- **Base de UTE:** confirmar os campos disponíveis e onde estará o nome da empresa usuária nos atos emitidos em nome da FIFA. **Referência: 01:18:44–01:25:24.**
-
-**Observação sobre o exemplo enviado:** os tópicos e horários do modelo fornecido pelo solicitante não foram presumidos como conteúdo desta reunião. Este relatório usa os assuntos e os intervalos identificados na gravação de 17/09/2026.
-
-
--------------------------------------------------------------------------
-#########################################################################
 
 Modificações solicitadas — Sistema de Grandes Eventos
 
@@ -108,14 +13,14 @@ Relatório organizado por assunto a partir da transcrição automática local da
 
 ## 1. Acesso, usuários e criação de eventos
 
-- [x] Disponibilizar a criação de um evento sem exigir que o coordenador entre previamente em outro evento. O problema foi retomado no início do teste e na proposta de organização das telas ao final. A discussão trata da independência em relação ao evento selecionado; não estabelece cadastro público sem autenticação. **Referência: 00:01:09–00:02:18; 01:20:05–01:20:34.**
+- [ ] Disponibilizar a criação de um evento sem exigir que o coordenador entre previamente em outro evento. O problema foi retomado no início do teste e na proposta de organização das telas ao final. A discussão trata da independência em relação ao evento selecionado; não estabelece cadastro público sem autenticação. **Referência: 00:01:09–00:02:18; 01:20:05–01:20:34.**
 - [ ] **Evolução futura mencionada:** avaliar a integração do acesso com a autenticação institucional, substituindo o acesso provisório usado na demonstração. Foi citada uma integração já utilizada em outro sistema, sem detalhamento suficiente para fixar o mecanismo ou a implementação. **Referência: 00:05:24–00:06:06.**
 
 ## 2. Cadastro de eventos e validação dos formulários
 
-- [x] Corrigir o tratamento de período inválido no cadastro do evento. No teste, a data final foi preenchida com um ano anterior à data inicial e o fluxo entrou em erro. Exibir um aviso claro para correção, mantendo o usuário no formulário. **Referência: 00:07:19–00:10:07.**
-- [x] Preservar os campos já preenchidos quando a validação falhar e apresentar a mensagem em uma janela de aviso. Na repetição do cadastro, o erro apagou os dados; o mesmo padrão foi solicitado para o cadastro de estações. O teste de etiquetagem foi citado como exemplo em que o formulário já era preservado. **Referência: 00:14:14–00:15:32; 00:21:45–00:22:15; 01:02:01–01:02:25.**
-- [x] **Investigação pendente:** verificar a interrupção e a aparente repetição do erro durante o primeiro cadastro. Foram levantadas hipóteses envolvendo o formulário, a conexão e a configuração do nome de acesso ao servidor. A gravação não confirma uma causa única. **Referência: 00:07:19–00:13:37.**
+- [ ] Corrigir o tratamento de período inválido no cadastro do evento. No teste, a data final foi preenchida com um ano anterior à data inicial e o fluxo entrou em erro. Exibir um aviso claro para correção, mantendo o usuário no formulário. **Referência: 00:07:19–00:10:07.**
+- [ ] Preservar os campos já preenchidos quando a validação falhar e apresentar a mensagem em uma janela de aviso. Na repetição do cadastro, o erro apagou os dados; o mesmo padrão foi solicitado para o cadastro de estações. O teste de etiquetagem foi citado como exemplo em que o formulário já era preservado. **Referência: 00:14:14–00:15:32; 00:21:45–00:22:15; 01:02:01–01:02:25.**
+- [ ] **Investigação pendente:** verificar a interrupção e a aparente repetição do erro durante o primeiro cadastro. Foram levantadas hipóteses envolvendo o formulário, a conexão e a configuração do nome de acesso ao servidor. A gravação não confirma uma causa única. **Referência: 00:07:19–00:13:37.**
 
 ## 3. Cadastro, desativação e localização das estações
 

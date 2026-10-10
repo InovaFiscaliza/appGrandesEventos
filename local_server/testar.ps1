@@ -21,6 +21,7 @@ try {
     $global:podmanTestfailPull = $false
     $global:podmanTesthttpFailures = 0
     $global:podmanTestforeignNetwork = $false
+    $global:podmanTestinspectOverrides = @{}
     $global:podmanTestsourceRunning = $true
     $global:podmanTestdumpCount = 0
     $global:podmanTestsshReachable = $true
@@ -52,6 +53,10 @@ try {
             return
         }
         if ($Arguments[1] -eq 'inspect') {
+            $resourceKey = "${operation}:$($Arguments[2])"
+            if ($global:podmanTestinspectOverrides.ContainsKey($resourceKey)) {
+                return ($global:podmanTestinspectOverrides[$resourceKey] | ConvertTo-Json -Depth 8 -Compress)
+            }
             $managed = if ($global:podmanTestforeignNetwork -and $operation -eq 'network') { 'false' } else { 'true' }
             return (@{ Id = 'test-container-id'; State = @{ Running = $global:podmanTestsourceRunning }; Labels = @{ 'io.appgrandeseventos.managed' = $managed }; Config = @{ Labels = @{ 'io.appgrandeseventos.managed' = $managed } } } | ConvertTo-Json -Depth 4 -Compress)
         }
@@ -153,6 +158,38 @@ try {
     function Start-Sleep { param([int]$Seconds) }
     function Assert-Test { param([bool]$Condition, [string]$Message) if (-not $Condition) { throw "FAIL: $Message" }; Write-Host "PASS: $Message" }
 
+    . (Join-Path $PSScriptRoot 'comum.ps1')
+    $legacyResources = @('volume:appeventos-pgdata', 'network:appeventos-network',
+        'container:appeventos-web', 'secret:appeventos-db-password', 'secret:appeventos-database-url')
+    foreach ($resource in $legacyResources) { $global:podmanTestresources[$resource] = $true }
+    $legacyDatabase = @{
+        Config = @{ Labels = $null; Secrets = @(@{ Name = 'appeventos-db-password' }) }
+        ImageName = 'docker.io/library/postgres:16-bookworm'
+        Mounts = @(@{ Type = 'volume'; Name = 'appeventos-pgdata'; Destination = '/var/lib/postgresql/data' })
+        NetworkSettings = @{ Networks = @{ 'appeventos-network' = @{} } }
+    }
+    $global:podmanTestinspectOverrides['container:appeventos-db'] = $legacyDatabase
+    $callsBefore = $global:podmanTestcalls.Count
+    Assert-ManagedResource 'container' 'appeventos-db'
+    Assert-Test (-not @($global:podmanTestcalls | Select-Object -Skip $callsBefore | Where-Object { $_[1] -ne 'inspect' -and $_[1] -ne 'exists' }).Count) 'Legacy recognition only inspects resources without modifying them'
+    foreach ($scenario in @('foreign-volume', 'wrong-image', 'explicit-unmanaged', 'missing-secret', 'foreign-network')) {
+        $candidate = $legacyDatabase | ConvertTo-Json -Depth 8 | ConvertFrom-Json
+        switch ($scenario) {
+            'foreign-volume' { $candidate.Mounts[0].Name = 'foreign-data' }
+            'wrong-image' { $candidate.ImageName = 'docker.io/library/postgres:17-bookworm' }
+            'explicit-unmanaged' { $candidate.Config.Labels = @{ 'io.appgrandeseventos.managed' = 'false' } }
+            'missing-secret' { $candidate.Config.Secrets = @() }
+            'foreign-network' { $global:podmanTestforeignNetwork = $true }
+        }
+        $global:podmanTestinspectOverrides['container:appeventos-db'] = $candidate
+        $failed = $false
+        try { Assert-ManagedResource 'container' 'appeventos-db' } catch { $failed = $true }
+        Assert-Test $failed "Legacy database rejected: $scenario"
+        $global:podmanTestforeignNetwork = $false
+    }
+    $global:podmanTestinspectOverrides.Clear()
+    foreach ($resource in $legacyResources) { $global:podmanTestresources.Remove($resource) }
+
     $global:podmanTestresources['container:postgres-appeventos'] = $true
     $package = & (Join-Path $PSScriptRoot 'preparar.ps1') -OutputDirectory $testRoot
     Assert-Test (Test-Path -LiteralPath $package) 'Package created with automatic source detection'
@@ -171,7 +208,8 @@ try {
     Assert-Test ($global:podmanTestmigrationCount -eq 1) 'Schema migrations run on the initial database'
     Assert-Test ($global:podmanTestresources.ContainsKey('container:appeventos-web')) 'Web container started'
     $databaseRun = @($global:podmanTestcalls | Where-Object { $_[0] -eq 'run' -and $_ -contains 'appeventos-db' })[0]
-    Assert-Test (-not ($databaseRun -contains '--publish')) 'Database port is not exposed'
+    $publishPosition = [array]::IndexOf($databaseRun, '--publish')
+    Assert-Test ($publishPosition -ge 0 -and $databaseRun[$publishPosition + 1] -eq '127.0.0.1:5432:5432') 'Database port is published only on the Podman Machine localhost'
     $global:podmanTestdatabases.appeventos = 'server-only-records'
     $oldDatabaseId = $global:podmanTestresources['container:appeventos-db']
     $oldWebId = $global:podmanTestresources['container:appeventos-web']
@@ -186,6 +224,8 @@ try {
         if ($updateCalls[$i][0] -eq 'run' -and $updateCalls[$i] -contains 'appeventos-db') {
             $databaseStart = $i
             Assert-Test ($updateCalls[$i] -contains 'appeventos-pgdata:/var/lib/postgresql/data') 'Database replacement reuses the persistent volume'
+            $publishPosition = [array]::IndexOf($updateCalls[$i], '--publish')
+            Assert-Test ($publishPosition -ge 0 -and $updateCalls[$i][$publishPosition + 1] -eq '127.0.0.1:5432:5432') 'Database replacement preserves the localhost-only port binding'
         }
     }
     Assert-Test ($webStop -ge 0 -and $databaseStop -gt $webStop -and $databaseStart -gt $databaseStop) 'Web stops before replacing the database'

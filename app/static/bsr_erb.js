@@ -110,10 +110,7 @@
 
     try {
       await AppOffline.enfileirar("fila_bsr_erb", dados);
-      const div = document.createElement("div");
-      div.className = "flash flash-success";
-      div.textContent = "📥 Salvo localmente. Será enviado ao reconectar.";
-      this.parentElement.insertBefore(div, this);
+      AppOfflineUI.mostrarSucesso(this, "📥 Salvo localmente. Será enviado ao reconectar.");
       this.reset();
       delete form.dataset.enviando;
       if (botao) botao.disabled = false;
