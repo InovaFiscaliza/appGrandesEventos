@@ -20,6 +20,7 @@ from app.services.postgres import (
 
 logger = logging.getLogger(__name__)
 
+
 class PostgresEmissaoRepository(EmissaoRepository):
     """Implementação do repositório de emissões baseado no serviço postgres.py existente."""
 
@@ -40,7 +41,11 @@ class PostgresEmissaoRepository(EmissaoRepository):
             "Largura em kHz": emissao.largura_khz,
             "Faixa de Frequência": emissao.faixa,
             "Identificação": emissao.identificacao,
-            "Autorizado? (Q)": "Sim" if emissao.autorizado else ("Não" if emissao.autorizado is False else "Indefinido"),
+            "Autorizado? (Q)": (
+                "Sim"
+                if emissao.autorizado
+                else ("Não" if emissao.autorizado is False else "Indefinido")
+            ),
             "UTE?": "Sim" if emissao.ute else "Não",
             "Processo SEI UTE": emissao.processo_sei_ute or "",
             "Ato UTE": emissao.ato_ute or "",
@@ -54,6 +59,12 @@ class PostgresEmissaoRepository(EmissaoRepository):
 
     def _dict_to_emissao(self, data: dict) -> Emissao:
         """Converte um dicionário (como retornado por obter_emissao_evento) para Emissao."""
+        data_registro = data.get("data")
+        hora_registro = data.get("hora")
+        if isinstance(data_registro, str):
+            data_registro = date.fromisoformat(data_registro)
+        if isinstance(hora_registro, str):
+            hora_registro = time.fromisoformat(hora_registro)
         # Note: obter_emissao_evento retorna um dicionário com chaves diferentes
         # Vamos mapear cuidadosamente
         return Emissao(
@@ -63,7 +74,11 @@ class PostgresEmissaoRepository(EmissaoRepository):
             largura_khz=float(data.get("largura_khz", 0.0)),
             local_regiao=str(data.get("local_regiao", "")),
             identificacao=str(data.get("identificacao", "")),
-            autorizado=data.get("autorizado") if data.get("autorizado") in [True, False] else None,
+            autorizado=(
+                data.get("autorizado")
+                if data.get("autorizado") in [True, False]
+                else None
+            ),
             ute=bool(data.get("ute", False)),
             processo_sei_ute=data.get("processo_sei_ute"),
             ato_ute=data.get("ato_ute"),
@@ -71,21 +86,24 @@ class PostgresEmissaoRepository(EmissaoRepository):
             alguem_ciente=data.get("alguem_ciente"),
             interferente=bool(data.get("interferente", False)),
             situacao=data.get("situacao", "pendente"),
-            fonte=data.get("fonte", "PAINEL"),
-            data=date.fromisoformat(data.get("data")) if data.get("data") else date.today(),
-            hora=time.fromisoformat(data.get("hora")) if data.get("hora") else time.min,
-            fiscal_id=0,  # Not available in schema, default to 0
+            fonte=str(data.get("fonte") or "PAINEL").strip().upper() or "PAINEL",
+            data=data_registro or date.today(),
+            hora=hora_registro or time.min,
+            fiscal_id=int(data.get("criado_por_fiscal_id") or 0),
             id_exibicao=data.get("id_exibicao"),
             equipamento=data.get("estacao_nome"),
             fiscal_nome=data.get("cadastrado_por"),
+            submetida_coordenador_em=data.get("submetida_coordenador_em"),
+            faixa=str(data.get("faixa") or ""),
         )
 
     def get_by_id(self, emissao_id: int) -> Emissao | None:
         """Busca uma emissão pelo ID."""
         try:
             with get_engine().connect() as conn:
-                registro = conn.execute(
-                    text("""
+                registro = (
+                    conn.execute(
+                        text("""
                         SELECT o.id, o.evento_id, o.frequencia_mhz, o.largura_khz,
                                o.local_regiao, o.identificacao, o.autorizado, o.ute,
                                o.processo_sei_ute, o.ato_ute, o.observacoes,
@@ -93,14 +111,17 @@ class PostgresEmissaoRepository(EmissaoRepository):
                                o.data, o.hora,
                                o.id_exibicao, e.nome as estacao_nome,
                                COALESCE(NULLIF(trim(criador.nome), ''), NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por,
-                               o.criado_por_fiscal_id
+                               o.criado_por_fiscal_id, o.submetida_coordenador_em, o.faixa
                         FROM ocorrencias o
                         LEFT JOIN estacoes e ON e.id = o.estacao_id
                         LEFT JOIN fiscais criador ON criador.id = o.criado_por_fiscal_id
                         WHERE o.id = :id
                     """),
-                    {"id": emissao_id},
-                ).mappings().first()
+                        {"id": emissao_id},
+                    )
+                    .mappings()
+                    .first()
+                )
             if registro:
                 return self._dict_to_emissao(dict(registro))
             return None
@@ -108,7 +129,9 @@ class PostgresEmissaoRepository(EmissaoRepository):
             logger.error(f"Erro ao buscar emissão por ID {emissao_id}: {e}")
             return None
 
-    def list_by_evento(self, evento_id: int, incluir_todas: bool = False) -> list[Emissao]:
+    def list_by_evento(
+        self, evento_id: int, incluir_todas: bool = False
+    ) -> list[Emissao]:
         """Lista todas as emissões de um evento.
 
         Args:
@@ -128,7 +151,7 @@ class PostgresEmissaoRepository(EmissaoRepository):
                               OR o.submetida_coordenador_em IS NOT NULL
                           )
                     """
-                
+
                 # Union both PAINEL and ESTACAO sources (like the old carregar_pendencias_* functions)
                 sql = text(f"""
                     SELECT o.id, o.evento_id, o.frequencia_mhz, o.largura_khz,
@@ -138,7 +161,7 @@ class PostgresEmissaoRepository(EmissaoRepository):
                            o.data, o.hora,
                            o.id_exibicao, e.nome as estacao_nome,
                            COALESCE(NULLIF(trim(criador.nome), ''), NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por,
-                           o.criado_por_fiscal_id
+                           o.criado_por_fiscal_id, o.submetida_coordenador_em, o.faixa
                     FROM ocorrencias o
                     LEFT JOIN estacoes e ON e.id = o.estacao_id
                     LEFT JOIN fiscais criador ON criador.id = o.criado_por_fiscal_id
@@ -155,22 +178,27 @@ class PostgresEmissaoRepository(EmissaoRepository):
         """Lista todas as emissões de um fiscal (filtrando pelo nome do fiscal)."""
         try:
             with get_engine().connect() as conn:
-                registros = conn.execute(
-                    text("""
+                registros = (
+                    conn.execute(
+                        text("""
                         SELECT o.id, o.evento_id, o.frequencia_mhz, o.largura_khz,
                                o.local_regiao, o.identificacao, o.autorizado, o.ute,
                                o.processo_sei_ute, o.ato_ute, o.observacoes,
                                o.alguem_ciente, o.interferente, o.situacao, o.fonte,
                                o.data, o.hora,
                                o.id_exibicao, e.nome as estacao_nome,
-                               COALESCE(NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por
+                               COALESCE(NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por,
+                               o.criado_por_fiscal_id, o.submetida_coordenador_em, o.faixa
                         FROM ocorrencias o
                         LEFT JOIN estacoes e ON e.id = o.estacao_id
                         WHERE o.fiscal = :fiscal_nome
                         ORDER BY o.data DESC, o.hora DESC, o.id DESC
                     """),
-                    {"fiscal_nome": fiscal_nome},
-                ).mappings().all()
+                        {"fiscal_nome": fiscal_nome},
+                    )
+                    .mappings()
+                    .all()
+                )
             return [self._dict_to_emissao(dict(registro)) for registro in registros]
         except Exception as e:
             logger.error(f"Erro ao listar emissões do fiscal {fiscal_nome}: {e}")
@@ -252,8 +280,12 @@ class PostgresEmissaoRepository(EmissaoRepository):
                         "interferente": emissao.interferente,
                         "situacao": emissao.situacao,
                         "fonte": emissao.fonte,
-                        "data": emissao.data.strftime("%Y-%m-%d") if emissao.data else None,
-                        "hora": emissao.hora.strftime("%H:%M") if emissao.hora else None,
+                        "data": (
+                            emissao.data.strftime("%Y-%m-%d") if emissao.data else None
+                        ),
+                        "hora": (
+                            emissao.hora.strftime("%H:%M") if emissao.hora else None
+                        ),
                         "fiscal": emissao.fiscal_nome,
                     },
                 )
@@ -297,17 +329,22 @@ class PostgresEmissaoRepository(EmissaoRepository):
                     {
                         "id": emissao_id,
                         "submetida": submetida_coordenador_em,
-                    },)
+                    },
+                )
                 # Also, if setting to True, we might want to insert an audit record?
                 # The original inserir_emissao_I_W does that, but we are replicating the behavior.
                 # For now, we just update the field.
                 # Fetch the updated emission
                 return self.get_by_id(emissao_id)
         except Exception as e:
-            logger.error(f"Erro ao atualizar submetida_coordenador_em da emissão {emissao_id}: {e}")
+            logger.error(
+                f"Erro ao atualizar submetida_coordenador_em da emissão {emissao_id}: {e}"
+            )
             return None
 
-    def add_imagens(self, emissao_id: int, imagens: list[dict], dia: date, hora: time) -> None:
+    def add_imagens(
+        self, emissao_id: int, imagens: list[dict], dia: date, hora: time
+    ) -> None:
         """Adiciona imagens associadas à emissão.
 
         Args:

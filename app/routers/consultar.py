@@ -7,7 +7,14 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.templating import Jinja2Templates
 from starlette.datastructures import UploadFile
 
-from app.config import IDENT_OPCOES, ORIGENS_CAMPO, TITULO_PRINCIPAL, USR_FISCAL_ANATEL
+from app.config import (
+    IDENT_OPCOES,
+    ORIGENS_CAMPO,
+    STATUS_TICKET_CONCLUIDO_FISCAIS,
+    STATUS_TICKET_PENDENTE,
+    TITULO_PRINCIPAL,
+    USR_FISCAL_ANATEL,
+)
 from app.domain.emissao.service import EmissaoService
 from app.infrastructure.persistence.postgres.emissao_repository import (
     PostgresEmissaoRepository,
@@ -18,6 +25,7 @@ from app.services.postgres import (
     carregar_imagens_ocorrencia,
     consultar_historico_ocorrencia,
     listar_estacoes_evento,
+    listar_tickets_evento,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
@@ -26,6 +34,7 @@ from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
 def get_emissao_service() -> EmissaoService:
     repo = PostgresEmissaoRepository()
     return EmissaoService(repo)
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -106,45 +115,87 @@ def _fiscal_pode_tratar_ocorrencia(
     return bool(fiscal_logado and fiscal_logado == fiscal_ocorrencia)
 
 
-async def _load_pendencias(request: Request, sp_id: int, emissao_service: EmissaoService) -> pd.DataFrame:
+async def _load_pendencias(
+    request: Request, sp_id: int, emissao_service: EmissaoService
+) -> pd.DataFrame:
     # Use EmissaoService to list emissions for the event
     emissoes = emissao_service.listar_por_evento(sp_id, incluir_todas=True)
-    
+
     if not emissoes:
         return pd.DataFrame()
 
     # Convert domain models to a DataFrame that mimics the previous postgres.py output
     data = []
     for e in emissoes:
-        data.append({
-            "ID": e.id,
-            "evento_id": e.evento_id,
-            "Frequência (MHz)": e.frequencia_mhz,
-            "Largura (kHz)": e.largura_khz,
-            "Local": e.local_regiao,
-            "Identificação": e.identificacao,
-            "Autorizado?": "Sim" if e.autorizado else ("Não" if e.autorizado is False else "Indefinido"),
-            "UTE?": "Sim" if e.ute else "Não",
-            "Processo SEI UTE": e.processo_sei_ute or "",
-            "Ato UTE": e.ato_ute or "",
-            "Ocorrência (observações)": e.observacoes,
-            "Alguém mais ciente?": e.alguem_ciente,
-            "Interferente?": e.interferente,
-            "Situação": e.situacao,
-            "Fonte": e.fonte,
-            "Data": e.data,
-            "HH:mm": e.hora.strftime("%H:%M") if e.hora else "",
-            "CriadorFiscalID": e.fiscal_id,
-            "Fiscal": e.fiscal_nome or "",
-            "SubmetidaCoordenadorEm": None, # To be enriched if needed
-            "IDExibicao": e.id_exibicao,
-            "EstacaoRaw": e.equipamento or "",
-            "EstacaoID": e.id,
-        })
-    
+        data.append(
+            {
+                "ID": e.id,
+                "evento_id": e.evento_id,
+                "Frequência (MHz)": e.frequencia_mhz,
+                "Largura (kHz)": e.largura_khz,
+                "Local": e.local_regiao,
+                "Identificação": e.identificacao,
+                "Autorizado?": (
+                    "Sim"
+                    if e.autorizado
+                    else ("Não" if e.autorizado is False else "Indefinido")
+                ),
+                "UTE?": "Sim" if e.ute else "Não",
+                "Processo SEI UTE": e.processo_sei_ute or "",
+                "Ato UTE": e.ato_ute or "",
+                "Ocorrência (observações)": e.observacoes,
+                "Alguém mais ciente?": e.alguem_ciente,
+                "Interferente?": e.interferente,
+                "Situação": e.situacao,
+                "Fonte": e.fonte,
+                "Data": e.data,
+                "HH:mm": e.hora.strftime("%H:%M") if e.hora else "",
+                "CriadorFiscalID": e.fiscal_id,
+                "Fiscal": e.fiscal_nome or "",
+                "CadastradoPor": e.fiscal_nome or "Não informado",
+                "SubmetidaCoordenadorEm": e.submetida_coordenador_em,
+                "IDExibicao": e.id_exibicao,
+                "EstacaoRaw": e.equipamento or "",
+                "EstacaoID": e.id,
+            }
+        )
+
     pendencias = pd.DataFrame(data)
     if pendencias.empty:
         return pendencias
+
+    ticket_id = request.query_params.get("ticket_id", "")
+    emissao_id = request.query_params.get("emissao_id", "")
+    if request.query_params.get("popup") == "1" and emissao_id:
+        if not ticket_id.isdigit() or not emissao_id.isdigit():
+            return pd.DataFrame(columns=pendencias.columns)
+        ticket = next(
+            (
+                item
+                for item in listar_tickets_evento(sp_id)
+                if int(item["id"]) == int(ticket_id)
+            ),
+            None,
+        )
+        if ticket is None:
+            return pd.DataFrame(columns=pendencias.columns)
+        vinculadas = {
+            parte.strip()
+            for parte in str(ticket.get("ocorrencia_ids") or "").split(",")
+        }
+        fiscal_id = str(request.session.get("fiscal_id", ""))
+        coordenador = _usuario_e_coordenador(request, sp_id)
+        atribuido = fiscal_id.isdigit() and int(fiscal_id) in ticket.get("fiscal_ids", [])
+        if emissao_id not in vinculadas or not (coordenador or atribuido):
+            return pd.DataFrame(columns=pendencias.columns)
+        selecionada = pendencias[
+            pendencias["ID"].astype(str).eq(emissao_id)
+            & pendencias["evento_id"].eq(sp_id)
+        ].copy()
+        selecionada["PodeEditar"] = ticket.get("status") == STATUS_TICKET_PENDENTE or (
+            coordenador and ticket.get("status") == STATUS_TICKET_CONCLUIDO_FISCAIS
+        )
+        return selecionada
 
     if _usuario_e_coordenador(request, int(sp_id)):
         if "SubmetidaCoordenadorEm" not in pendencias.columns:
@@ -168,25 +219,23 @@ async def _load_pendencias(request: Request, sp_id: int, emissao_service: Emissa
     else:
         criada_pelo_fiscal = pd.Series(False, index=pendencias.index)
 
+    fiscal_nome = str(request.session.get("fiscal_nome", "")).strip().casefold()
+    if fiscal_nome:
+        criador_ids = pd.to_numeric(pendencias["CriadorFiscalID"], errors="coerce")
+        criada_pelo_fiscal |= (criador_ids.isna() | criador_ids.eq(0)) & (
+            pendencias["Fiscal"].fillna("").astype(str).str.strip().str.casefold()
+            == fiscal_nome
+        )
+
     submetida = pendencias["SubmetidaCoordenadorEm"].notna()
     situacao_pendente = (
         pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
         == "pendente"
     )
-    ticket_param = request.query_params.get("ticket_id", "")
-    ids_ticket = set()
-    if ticket_param.isdigit() and pode_identificar_fiscal:
-        for ticket in listar_tickets_evento(int(sp_id)):
-            if (int(ticket["id"]) == int(ticket_param)
-                    and ticket.get("status") == "pendente"
-                    and int(fiscal_id) in ticket.get("fiscal_ids", [])):
-                ids_ticket = {parte.strip() for parte in str(ticket.get("ocorrencia_ids") or "").split(",") if parte.strip()}
-                break
-    pendencias_visiveis = pendencias.copy()
-    pendencias_visiveis["PodeEditar"] = (
-        (criada_pelo_fiscal & ~submetida & situacao_pendente)
-        | pendencias["ID"].astype(str).isin(ids_ticket)
-    )
+    visivel = criada_pelo_fiscal & situacao_pendente
+    pendencias_visiveis = pendencias[visivel].copy()
+    pode_editar = visivel & ~submetida
+    pendencias_visiveis["PodeEditar"] = pode_editar[visivel]
     return pendencias_visiveis
 
 
@@ -269,7 +318,7 @@ async def get_consultar(
 
 @router.get("/consultar/historico", response_class=HTMLResponse)
 async def get_historico_ocorrencia(
-    request: Request, 
+    request: Request,
     id: int | None = None,
     emissao_service: EmissaoService = Depends(get_emissao_service),
 ):
@@ -311,8 +360,8 @@ async def get_historico_ocorrencia(
 
 @router.get("/consultar/historico/imagem/{imagem_id}")
 async def get_imagem_historico(
-    request: Request, 
-    imagem_id: int, 
+    request: Request,
+    imagem_id: int,
     ocorrencia_id: int,
     emissao_service: EmissaoService = Depends(get_emissao_service),
 ):
@@ -374,7 +423,15 @@ async def post_consultar_salvar(
         request.session["flash_error"] = (
             "Você não tem permissão para alterar esta emissão."
         )
-        return RedirectResponse("/consultar" + ("?" + str(request.query_params) if request.query_params.get("popup") == "1" else ""), status_code=303)
+        return RedirectResponse(
+            "/consultar"
+            + (
+                "?" + str(request.query_params)
+                if request.query_params.get("popup") == "1"
+                else ""
+            ),
+            status_code=303,
+        )
 
     erros = list(erros_imagens)
     if not ident_edit:
@@ -389,7 +446,15 @@ async def post_consultar_salvar(
 
     if erros:
         request.session["flash_error"] = "Faltam dados: " + ", ".join(erros)
-        return RedirectResponse(f"/consultar?key={quote(row_key)}" + (f"&popup=1&emissao_id={quote(str(id_val))}&ticket_id={quote(request.query_params.get('ticket_id', ''))}" if request.query_params.get("popup") == "1" else ""), status_code=303)
+        return RedirectResponse(
+            f"/consultar?key={quote(row_key)}"
+            + (
+                f"&popup=1&emissao_id={quote(str(id_val))}&ticket_id={quote(request.query_params.get('ticket_id', ''))}"
+                if request.query_params.get("popup") == "1"
+                else ""
+            ),
+            status_code=303,
+        )
 
     pac = {
         "Identificação": ident_edit,
@@ -436,7 +501,7 @@ async def post_consultar_salvar(
                 pendencias=[],
                 selected_key=row_key,
                 selected_row=None,
-            estacoes=listar_estacoes_evento(evento_id=sp_id_int),
+                estacoes=listar_estacoes_evento(evento_id=sp_id_int),
                 origens_campo=ORIGENS_CAMPO,
                 flash_success=None,
                 flash_error=None,
@@ -530,7 +595,7 @@ async def api_pendencias(
 
 @router.get("/api/ocorrencia-imagens")
 async def api_ocorrencia_imagens(
-    request: Request, 
+    request: Request,
     id: int,
     emissao_service: EmissaoService = Depends(get_emissao_service),
 ):
@@ -620,7 +685,7 @@ async def api_consultar_salvar(
 
 @router.post("/consultar/submeter-ticket/{ocorrencia_id}")
 async def post_consultar_submeter_ticket(
-    request: Request, 
+    request: Request,
     ocorrencia_id: int,
     emissao_service: EmissaoService = Depends(get_emissao_service),
 ):
@@ -643,7 +708,7 @@ async def post_consultar_submeter_ticket(
         resultado_msg = "Emissão submetida ao coordenador com sucesso!"
     else:
         resultado_msg = "ERRO: Não foi possível submeter a emissão. Ela pode não existir ou não estar com situação 'pendente'."
-    
+
     request.session[
         "flash_error" if resultado_msg.startswith("ERRO") else "flash_success"
     ] = resultado_msg

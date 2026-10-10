@@ -28,6 +28,7 @@ from app.routers import (
     bsr_erb,
     busca,
     consultar,
+    consulta_tickets,
     coordenacao,
     criar_evento,
     escalas,
@@ -175,6 +176,7 @@ app.include_router(escalas.router)
 app.include_router(estacoes.router)
 app.include_router(bsr_erb.router)
 app.include_router(busca.router)
+app.include_router(consulta_tickets.router)
 app.include_router(tabela_ute.router)
 app.include_router(teste_etiquetagem.router)
 app.include_router(tratamento_tickets.router)

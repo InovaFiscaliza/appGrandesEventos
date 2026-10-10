@@ -4700,8 +4700,7 @@ def _buscar_por_texto_livre(
                                         )
                                     )
               )
-                        ORDER BY o.data DESC NULLS LAST, o.id DESC
-                        LIMIT CASE WHEN :listar_tratadas THEN 2147483647 ELSE 200 END
+                        ORDER BY o.id DESC
         """)
         df = pd.read_sql(
             sql,
