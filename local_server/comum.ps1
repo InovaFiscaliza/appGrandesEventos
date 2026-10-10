@@ -22,9 +22,30 @@ function Assert-ManagedResource {
     param([string]$Kind, [string]$Name)
     $item = @(Invoke-Podman -Arguments @($Kind, 'inspect', $Name) | ConvertFrom-Json)[0]
     $labels = if ($Kind -eq 'container') { $item.Config.Labels } else { $item.Labels }
-    if (-not $labels -or $labels.'io.appgrandeseventos.managed' -ne 'true') {
-        throw "O recurso '$Name' ja existe e nao pertence a estes scripts. Nada foi removido."
+    $managedLabel = if ($labels) { $labels.PSObject.Properties['io.appgrandeseventos.managed'] } else { $null }
+    if ($managedLabel -and $managedLabel.Value -eq 'true') { return }
+    if (-not $managedLabel -and $Kind -eq 'container' -and $Name -eq 'appeventos-db') {
+        $dataMounts = @($item.Mounts | Where-Object { $_.Destination -eq '/var/lib/postgresql/data' })
+        $networks = @($item.NetworkSettings.Networks.PSObject.Properties.Name)
+        $secrets = @($item.Config.Secrets | ForEach-Object { $_.Name })
+        if ($item.ImageName -match '^(docker.io/)?library/postgres:16-bookworm$' -and
+            $dataMounts.Count -eq 1 -and $dataMounts[0].Type -eq 'volume' -and
+            $dataMounts[0].Name -eq 'appeventos-pgdata' -and
+            $networks.Count -eq 1 -and $networks[0] -eq 'appeventos-network' -and
+            $secrets -contains 'appeventos-db-password' -and
+            (Test-PodmanResource 'volume' 'appeventos-pgdata') -and
+            (Test-PodmanResource 'network' 'appeventos-network') -and
+            (Test-PodmanResource 'container' 'appeventos-web') -and
+            (Test-PodmanResource 'secret' 'appeventos-db-password') -and
+            (Test-PodmanResource 'secret' 'appeventos-database-url')) {
+            Assert-ManagedResource 'volume' 'appeventos-pgdata'
+            Assert-ManagedResource 'network' 'appeventos-network'
+            Assert-ManagedResource 'container' 'appeventos-web'
+            Write-Host 'Banco legado reconhecido pelos vinculos com a instalacao gerenciada. O novo container recebera o rotulo de gerenciamento.'
+            return
+        }
     }
+    throw "O recurso '$Name' ja existe e nao pertence a estes scripts. Nada foi removido."
 }
 
 function Assert-PodmanReady {

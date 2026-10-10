@@ -263,21 +263,22 @@ const AppOfflineUI = (() => {
 
     /** Exibe mensagem flash de sucesso antes de um elemento */
     mostrarSucesso(refElement, mensagem) {
+      const mostrarPopup = window.AppEventosUI?.mostrarPopupSucesso;
+      if (mostrarPopup) {
+        mostrarPopup(mensagem);
+        return;
+      }
       const div = document.createElement('div');
       div.className = 'flash flash-success';
       div.textContent = mensagem;
       refElement.parentElement.insertBefore(div, refElement);
     },
 
-    /** Exibe mensagem flash de erro no topo da página */
+    /** Exibe erros usando o popup global da aplicação. */
     mostrarErro(mensagem) {
-      const div = document.createElement('div');
-      div.className = 'flash flash-error';
-      div.textContent = mensagem;
-      const container = document.querySelector('.container');
-      if (container) {
-        container.insertBefore(div, container.firstChild);
-      }
+      const mostrarPopup = window.AppEventosUI?.mostrarPopupErro;
+      if (mostrarPopup) mostrarPopup(mensagem);
+      else window.alert(mensagem);
     },
   };
 })();

@@ -60,6 +60,33 @@ def _ctx(request: Request, **kwargs):
     }
 
 
+def _resposta_erro_formulario_evento(
+    request: Request, mensagem: str, form_data: dict
+) -> HTMLResponse:
+    """Renderiza novamente o formulário com os dados enviados após uma falha."""
+    criacao_evento = bool(request.session.get("criacao_evento"))
+    return templates.TemplateResponse(
+        request,
+        "criar_evento.html",
+        _ctx(
+            request,
+            criacao_evento=criacao_evento,
+            evento=None,
+            mostrar_form=True,
+            estacoes=[],
+            eventos=[] if criacao_evento else listar_eventos_detalhes(),
+            municipios=listar_municipios(),
+            ufs=listar_ufs_municipios(),
+            unidades_executantes=listar_unidades_executantes(),
+            fiscais=listar_fiscais(),
+            faixas_numeracao=[],
+            form_data=form_data,
+            flash_error=mensagem,
+            flash_success=None,
+        ),
+    )
+
+
 def _papeis_por_fiscal(form) -> dict[int, list[str]]:
     """Extrai os papéis escolhidos para cada fiscal neste evento."""
     papeis_validos = {"Coordenação", "Abordagem", "Monitoração"}
@@ -80,8 +107,11 @@ async def get_criar_evento(request: Request):
     if not _usuario_e_coordenador(request):
         return _acesso_negado(request)
 
+    criacao_evento = bool(request.session.get("criacao_evento"))
     editar_id = request.query_params.get("editar")
-    mostrar_form = request.query_params.get("novo") == "1"
+    if criacao_evento and editar_id is not None:
+        return RedirectResponse("/criar-evento?novo=1", status_code=303)
+    mostrar_form = criacao_evento or request.query_params.get("novo") == "1"
     evento = None
     estacoes = []
     if editar_id and editar_id.isdigit():
@@ -101,16 +131,19 @@ async def get_criar_evento(request: Request):
         "criar_evento.html",
         _ctx(
             request,
+            criacao_evento=criacao_evento,
             evento=evento,
             mostrar_form=mostrar_form,
             estacoes=estacoes,
-            eventos=listar_eventos_detalhes(),
+            eventos=[] if criacao_evento else listar_eventos_detalhes(),
             municipios=listar_municipios(),
             ufs=listar_ufs_municipios(),
             unidades_executantes=listar_unidades_executantes(),
             fiscais=listar_fiscais(int(editar_id) if evento else None),
             faixas_numeracao=(
-                listar_faixas_numeracao_etiqueta(evento_id=int(editar_id)) if evento else []
+                listar_faixas_numeracao_etiqueta(evento_id=int(editar_id))
+                if evento
+                else []
             ),
             flash_error=request.session.pop("flash_error", None),
         ),
@@ -245,12 +278,33 @@ async def post_criar_evento(request: Request):
     observacoes = str(form.get("observacoes", "")).strip()
     latitude_texto = str(form.get("latitude", "")).strip()
     longitude_texto = str(form.get("longitude", "")).strip()
+    form_data = {
+        "nome": nome,
+        "cidade": cidade,
+        "uf": uf,
+        "acao_fiscalizacao": acao_fiscalizacao,
+        "processo_sei": processo_sei,
+        "periodo_inicio": periodo_inicio,
+        "periodo_fim": periodo_fim,
+        "teste_etiquetagem": "sim" if teste_etiquetagem else "nao",
+        "unidades_executantes": unidades_executantes,
+        "fiscais_evento": fiscais_evento,
+        "papeis_por_fiscal": {
+            str(fiscal_id): papeis for fiscal_id, papeis in papeis_por_fiscal.items()
+        },
+        "coordenador_responsavel": coordenadores_evento,
+        "observacoes": observacoes,
+        "latitude": latitude_texto,
+        "longitude": longitude_texto,
+    }
     if not nome:
-        request.session["flash_error"] = "Informe o nome do evento."
-        return RedirectResponse("/criar-evento?novo=1", status_code=303)
+        return _resposta_erro_formulario_evento(
+            request, "Informe o nome do evento.", form_data
+        )
     if cidade and uf and not cidade_pertence_uf(cidade, uf):
-        request.session["flash_error"] = "Selecione uma cidade e UF válidas."
-        return RedirectResponse("/criar-evento?novo=1", status_code=303)
+        return _resposta_erro_formulario_evento(
+            request, "Selecione uma cidade e UF válidas.", form_data
+        )
 
     try:
         latitude = float(latitude_texto) if latitude_texto else None
@@ -281,18 +335,21 @@ async def post_criar_evento(request: Request):
             observacoes=observacoes or None,
         )
     except ValueError:
-        request.session["flash_error"] = (
-            "Informe um período válido (o fim não pode ser anterior ao início)."
+        return _resposta_erro_formulario_evento(
+            request,
+            "Informe um período válido (o fim não pode ser anterior ao início).",
+            form_data,
         )
-        return RedirectResponse("/criar-evento?novo=1", status_code=303)
     except IntegrityError:
-        request.session["flash_error"] = "Já existe um evento com esse nome."
-        return RedirectResponse("/criar-evento?novo=1", status_code=303)
+        return _resposta_erro_formulario_evento(
+            request, "Já existe um evento com esse nome.", form_data
+        )
 
     request.session["evento_nome"] = nome
     request.session["spreadsheet_id"] = str(evento_id)
     evento_novo = obter_snapshot_auditoria_evento(evento_id)
     registrar_auditoria_evento(evento_id, {}, evento_novo)
+    request.session.pop("criacao_evento", None)
     request.session["flash_success"] = "Evento criado com sucesso."
     return RedirectResponse("/menu", status_code=303)
 

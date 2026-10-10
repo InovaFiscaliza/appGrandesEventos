@@ -19,7 +19,7 @@ import secrets
 import time
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -70,6 +70,36 @@ async def carregar_eventos_no_request(request: Request, call_next):
     """Disponibiliza a lista de eventos para o cabeçalho compartilhado."""
     inicio_requisicao = time.perf_counter()
     caminho = request.url.path
+
+    if request.session.get("criacao_evento"):
+        if (
+            not request.session.get("fiscal_id")
+            or request.session.get("tipo_usuario") != "coordenação"
+        ):
+            request.session.clear()
+            return RedirectResponse("/", status_code=302)
+        rotas_criacao = {
+            ("GET", "/"),
+            ("POST", "/"),
+            ("GET", "/logout"),
+            ("GET", "/criar-evento"),
+            ("POST", "/criar-evento"),
+            ("POST", "/fiscais"),
+            ("GET", "/sw.js"),
+        }
+        if (
+            not caminho.startswith("/static/")
+            and (request.method, caminho) not in rotas_criacao
+        ):
+            if caminho.startswith("/api/") or request.method != "GET":
+                return JSONResponse(
+                    {"detail": "Acesso restrito à criação de novo evento."},
+                    status_code=403,
+                )
+            return RedirectResponse("/criar-evento?novo=1", status_code=302)
+        request.state.eventos = {}
+        request.state.permissoes = {}
+        return await call_next(request)
 
     if caminho.startswith(("/static/", "/api/")) or caminho == "/sw.js":
         resposta = await call_next(request)

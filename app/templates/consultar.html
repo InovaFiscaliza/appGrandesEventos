@@ -5,9 +5,7 @@
 
 <h5 {% if edicao_popup %}hidden{% endif %} class="consultar-orientacao">Consulte as emissões do evento e o histórico de modificações.</h5>
 
-{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
-
+{% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
 <div id="offline-aviso" class="flash flash-error" style="display:none">
   ⚠️ Você está offline — exibindo dados do último acesso.
 </div>

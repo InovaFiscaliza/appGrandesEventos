@@ -2,9 +2,7 @@
 {% block content %}
 {% include "partials/header.html" %}
 
-{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
-
+{% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
 <section class="module-section coordenacao-tela">
     <div class="section-heading">
         <div>

@@ -5,22 +5,7 @@
 <div class="form-card teq-card font-semi-bold">
     <h5 class="teq-title">{% if modo_consulta %}Consultar registros de teste e etiquetagem{% else %}Teste e etiquetagem{% endif %}</h5>
 
-    {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-    {% if flash_error %}
-    <div id="popup-erro-teste-etiquetagem" class="popup-mapa-estacao popup-frequencia" role="alertdialog" aria-modal="true" aria-labelledby="titulo-popup-erro-teste-etiquetagem">
-        <div class="popup-mapa-estacao-conteudo popup-frequencia-conteudo">
-            <div class="popup-mapa-estacao-cabecalho">
-                <h2 id="titulo-popup-erro-teste-etiquetagem">Não foi possível salvar</h2>
-                <button type="button" id="fechar-popup-erro-teste-etiquetagem" class="popup-mapa-estacao-fechar" aria-label="Fechar">×</button>
-            </div>
-            <div class="flash flash-error" role="alert">{{ flash_error }}</div>
-            <div class="popup-frequencia-acoes">
-                <button type="button" id="confirmar-popup-erro-teste-etiquetagem" class="btn teq-btn">Fechar</button>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
+    {% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
     {% if modo_consulta %}
     {% set registros = registros | default([]) %}
     {% if registros %}

@@ -79,6 +79,7 @@ try {
     function Start-NewDatabaseContainer {
         Invoke-Podman -Arguments @('run', '-d', '--name', $databaseContainer, '--label', $label,
             '--network', $network, '--restart=unless-stopped',
+            '--publish', '127.0.0.1:5432:5432',
             '--env', 'POSTGRES_USER=appeventos', '--env', 'POSTGRES_DB=appeventos',
             '--env', 'POSTGRES_PASSWORD_FILE=/run/secrets/db-password',
             '--secret', "${passwordSecret},target=db-password",
@@ -250,5 +251,5 @@ try {
     Write-Host "Estrutura atualizada com dados preservados. Banco anterior: $previousDatabase"
     Write-Host "Aplicacao pronta no servidor. Endereco na rede: http://${ServerAddress}:$WebPort"
     Write-Host 'Se o acesso pela rede falhar, execute liberar-porta.ps1 no servidor como Administrador.'
-    Write-Host 'O banco usa o volume appeventos-pgdata e nao publica a porta 5432.'
+    Write-Host 'O banco usa o volume appeventos-pgdata e publica 127.0.0.1:5432 somente no localhost da Podman Machine.'
 } finally { $installationLock.Dispose() }

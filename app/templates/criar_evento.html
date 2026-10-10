@@ -4,9 +4,14 @@
 <link rel="stylesheet" href="/static/rf-fusion/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-{% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
-{% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
+{% set dados = form_data|default({}) %}
+{% set uf_atual = dados.get('uf', evento.uf if evento else '') %}
+{% set cidade_atual = dados.get('cidade', evento.cidade if evento else '') %}
+{% set unidades_selecionadas = dados.get('unidades_executantes', evento.unidades_executantes if evento else []) %}
+{% set fiscais_selecionados = dados.get('fiscais_evento', evento.fiscais if evento else []) %}
+{% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
 
+{% if not criacao_evento %}
 <section class="form-card font-semi-bold eventos-lista">
     <div class="section-heading">
         <h5 class="teq-title">Eventos existentes</h5>
@@ -43,16 +48,17 @@
     </div>
     {% else %}<p>Nenhum evento cadastrado.</p>{% endif %}
 </section>
+{% endif %}
 
 <div class="form-card rf-entry-card font-semi-bold">
     <div class="evento-form-titulo">
-        <h5 class="teq-title">Gerenciar Eventos</h5>
+        <h5 class="teq-title">{{ "Criar novo evento" if criacao_evento else "Gerenciar Eventos" }}</h5>
     </div>
     {% if mostrar_form %}
     <form method="post" action="{{ "/criar-evento/" ~ evento.id ~ "/editar" if evento else "/criar-evento" }}" class="rf-entry-form">
         <div class="form-group">
             <label for="nome-evento">Nome do evento <span class="required">*</span></label>
-            <input class="form-control" id="nome-evento" type="text" name="nome" value="{{ evento.nome if evento else '' }}" required autofocus>
+            <input class="form-control" id="nome-evento" type="text" name="nome" value="{{ dados.get('nome', evento.nome if evento else '') }}" required autofocus>
         </div>
         <div class="form-cols">
             <div class="form-group">
@@ -60,11 +66,11 @@
                     <label for="latitude-evento">Latitude</label>
                     <button type="button" id="abrir-mapa-evento" class="teq-list-btn mapa-estacao-abrir" data-sem-confirmacao aria-label="Selecionar coordenadas no mapa" title="Selecionar coordenadas no mapa">+</button>
                 </div>
-                <input class="form-control" id="latitude-evento" type="number" name="latitude" value="{{ evento.latitude if evento and evento.latitude is not none else '' }}" step="any" min="-90" max="90">
+                <input class="form-control" id="latitude-evento" type="number" name="latitude" value="{{ dados.get('latitude', evento.latitude if evento and evento.latitude is not none else '') }}" step="any" min="-90" max="90">
             </div>
             <div class="form-group">
                 <label for="longitude-evento">Longitude</label>
-                <input class="form-control" id="longitude-evento" type="number" name="longitude" value="{{ evento.longitude if evento and evento.longitude is not none else '' }}" step="any" min="-180" max="180">
+                <input class="form-control" id="longitude-evento" type="number" name="longitude" value="{{ dados.get('longitude', evento.longitude if evento and evento.longitude is not none else '') }}" step="any" min="-180" max="180">
             </div>
         </div>
         <div class="form-cols">
@@ -73,7 +79,7 @@
                 <select class="form-control" id="uf-evento" name="uf">
                     <option value="">Selecione a UF</option>
                     {% for sigla in ufs %}
-                    <option value="{{ sigla }}"{% if evento and evento.uf == sigla %} selected{% endif %}>{{ sigla }}</option>
+                    <option value="{{ sigla }}"{% if uf_atual == sigla %} selected{% endif %}>{{ sigla }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -82,21 +88,21 @@
                 <select class="form-control" id="cidade-evento" name="cidade" disabled>
                     <option value="">Selecione primeiro a UF</option>
                     {% for municipio in municipios %}
-                    <option value="{{ municipio.nome }}" data-uf="{{ municipio.uf }}"{% if evento and evento.cidade == municipio.nome %} selected{% endif %}>{{ municipio.nome }}</option>
+                    <option value="{{ municipio.nome }}" data-uf="{{ municipio.uf }}"{% if cidade_atual == municipio.nome %} selected{% endif %}>{{ municipio.nome }}</option>
                     {% endfor %}
                 </select>
             </div>
         </div>
         <div class="form-group">
             <label for="acao-fiscalizacao-evento">Ação de Fiscalização</label>
-            <input class="form-control" id="acao-fiscalizacao-evento" type="text" name="acao_fiscalizacao" value="{{ evento.acao_fiscalizacao if evento and evento.acao_fiscalizacao else '' }}">
+            <input class="form-control" id="acao-fiscalizacao-evento" type="text" name="acao_fiscalizacao" value="{{ dados.get('acao_fiscalizacao', evento.acao_fiscalizacao if evento and evento.acao_fiscalizacao else '') }}">
         </div>
         <div class="form-group">
             <span class="form-label">Unidades Executantes</span>
             <div class="unidades-checkboxes" id="unidades-executantes-evento">
                 {% for unidade in unidades_executantes %}
                 <label class="unidade-checkbox">
-                    <input type="checkbox" name="unidades_executantes" value="{{ unidade.sigla }}"{% if evento and unidade.sigla in evento.unidades_executantes %} checked{% endif %}>
+                    <input type="checkbox" name="unidades_executantes" value="{{ unidade.sigla }}"{% if unidade.sigla in unidades_selecionadas %} checked{% endif %}>
                     <span class="unidade-checkbox-mark" aria-hidden="true"></span>
                     <span>{{ unidade.sigla }} - {{ unidade.nome }}</span>
                 </label>
@@ -112,13 +118,13 @@
                 {% for fiscal in fiscais %}
                 <div class="fiscal-evento-item" data-fiscal-id="{{ fiscal.id }}">
                     <label class="unidade-checkbox">
-                        <input type="checkbox" name="fiscais_evento" value="{{ fiscal.id }}" data-fiscal-nome="{{ fiscal.nome }}" data-fiscal-papeis="{{ (fiscal.papeis or [])|join(',') }}"{% if evento and fiscal.id in evento.fiscais %} checked{% endif %}>
+                        <input type="checkbox" name="fiscais_evento" value="{{ fiscal.id }}" data-fiscal-nome="{{ fiscal.nome }}" data-fiscal-papeis="{{ (fiscal.papeis or [])|join(',') }}"{% if fiscal.id in fiscais_selecionados or fiscal.id|string in fiscais_selecionados %} checked{% endif %}>
                         <span class="unidade-checkbox-mark" aria-hidden="true"></span>
                         <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }}</span>
                     </label>
                     <div class="fiscal-papeis-evento" aria-label="Papéis de {{ fiscal.nome }}">
                         {% for papel in ["Coordenação", "Abordagem", "Monitoração"] %}
-                        <label><input type="checkbox" name="papeis_fiscal_{{ fiscal.id }}" value="{{ papel }}"{% if papel in (fiscal.papeis or []) %} checked{% endif %}> {{ papel }}</label>
+                        <label><input type="checkbox" name="papeis_fiscal_{{ fiscal.id }}" value="{{ papel }}"{% if (dados and papel in dados.get('papeis_por_fiscal', {}).get(fiscal.id|string, [])) or (not dados and papel in (fiscal.papeis or [])) %} checked{% endif %}> {{ papel }}</label>
                         {% endfor %}
                     </div>
                 </div>
@@ -129,14 +135,14 @@
         </div>
         <div class="form-group">
             <label for="processo-sei-evento">Processo SEI</label>
-            <input class="form-control" id="processo-sei-evento" type="text" name="processo_sei" value="{{ evento.processo_sei if evento and evento.processo_sei else '' }}">
+            <input class="form-control" id="processo-sei-evento" type="text" name="processo_sei" value="{{ dados.get('processo_sei', evento.processo_sei if evento and evento.processo_sei else '') }}">
         </div>
         <div class="form-group">
             <span class="form-label">Coordenador Responsável</span>
             <div class="unidades-checkboxes fiscais-checkboxes" id="coordenadores-evento">
-                {% for fiscal in fiscais if "Coordenação" in (fiscal.papeis or []) and evento and fiscal.id in evento.fiscais %}
+                {% for fiscal in fiscais if "Coordenação" in (fiscal.papeis or []) and (fiscal.id in fiscais_selecionados or fiscal.id|string in fiscais_selecionados) %}
                 <label class="unidade-checkbox">
-                    <input type="checkbox" name="coordenador_responsavel" value="{{ fiscal.id }}"{% if evento and fiscal.id in evento.coordenadores %} checked{% endif %}>
+                    <input type="checkbox" name="coordenador_responsavel" value="{{ fiscal.id }}"{% if fiscal.id|string in dados.get('coordenador_responsavel', []) or (not dados and evento and fiscal.id in evento.coordenadores) %} checked{% endif %}>
                     <span class="unidade-checkbox-mark" aria-hidden="true"></span>
                     <span>{{ fiscal.nome }} - {{ fiscal.local_anatel }}</span>
                 </label>
@@ -149,18 +155,18 @@
         <div class="form-cols">
             <div class="form-group">
                 <label for="periodo-inicio-evento">Período de realização: início</label>
-                <input class="form-control" id="periodo-inicio-evento" type="date" name="periodo_inicio" value="{{ evento.periodo_inicio if evento and evento.periodo_inicio else '' }}">
+                <input class="form-control" id="periodo-inicio-evento" type="date" name="periodo_inicio" value="{{ dados.get('periodo_inicio', evento.periodo_inicio if evento and evento.periodo_inicio else '') }}">
             </div>
             <div class="form-group">
                 <label for="periodo-fim-evento">Período de realização: fim</label>
-                <input class="form-control" id="periodo-fim-evento" type="date" name="periodo_fim" value="{{ evento.periodo_fim if evento and evento.periodo_fim else '' }}">
+                <input class="form-control" id="periodo-fim-evento" type="date" name="periodo_fim" value="{{ dados.get('periodo_fim', evento.periodo_fim if evento and evento.periodo_fim else '') }}">
             </div>
         </div>
         <div class="form-group">
             <label for="teste-etiquetagem-evento">Este evento possui teste de etiquetagem?</label>
             <select class="form-control" id="teste-etiquetagem-evento" name="teste_etiquetagem">
-                <option value="sim"{% if not evento or evento.teste_etiquetagem %} selected{% endif %}>Sim</option>
-                <option value="nao"{% if evento and not evento.teste_etiquetagem %} selected{% endif %}>Não</option>
+                <option value="sim"{% if dados.get('teste_etiquetagem', 'sim' if not evento or evento.teste_etiquetagem else 'nao') == 'sim' %} selected{% endif %}>Sim</option>
+                <option value="nao"{% if dados.get('teste_etiquetagem', 'sim' if not evento or evento.teste_etiquetagem else 'nao') == 'nao' %} selected{% endif %}>Não</option>
             </select>
         </div>
         {% if evento and evento.teste_etiquetagem %}
@@ -170,7 +176,7 @@
         {% endif %}
         <div class="form-group">
             <label for="observacoes-evento">Observações</label>
-            <textarea class="form-control" id="observacoes-evento" name="observacoes" rows="4">{{ evento.observacoes if evento and evento.observacoes else '' }}</textarea>
+            <textarea class="form-control" id="observacoes-evento" name="observacoes" rows="4">{{ dados.get('observacoes', evento.observacoes if evento and evento.observacoes else '') }}</textarea>
         </div>
         <div class="inserir-acoes">
             <button type="submit" class="btn btn-submit font-semi-bold">{{ "Salvar alterações" if evento else "Criar Evento" }}</button>
@@ -189,8 +195,7 @@
             <button type="button" id="fechar-faixas-etiqueta" class="popup-mapa-estacao-fechar" aria-label="Fechar">×</button>
         </div>
         <p class="form-help">Faixas de números disponíveis para etiquetagem neste evento/local, por tipo de etiqueta.</p>
-        {% if flash_success %}<div class="flash flash-success">{{ flash_success }}</div>{% endif %}
-        {% if flash_error %}<div class="flash flash-error">{{ flash_error }}</div>{% endif %}
+        {% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
         {% if faixas_numeracao %}
         <div class="table-scroll">
             <table class="ute-table">
@@ -481,7 +486,7 @@
                 <button type="submit" class="btn btn-submit">Cadastrar fiscal</button>
             </div>
         </form>
-        <div class="fiscais-lista-wrap">
+        <div class="fiscais-lista-wrap"{% if criacao_evento %} hidden{% endif %}>
             <h3>Lista global de fiscais</h3>
             <table class="ute-table fiscais-tabela">
                 <thead><tr><th>Nome</th><th>Local Anatel</th><th>Função no evento</th><th>Ação</th></tr></thead>
