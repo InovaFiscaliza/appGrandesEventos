@@ -38,6 +38,7 @@
             <thead>
                 <tr>
                     <th>ID</th>
+                    <th>Cadastrado por</th>
                     <th>Local</th>
                     <th>Data</th>
                     <th>Frequência (MHz)</th>
@@ -50,6 +51,7 @@
                 {% for row in resultados %}
                 <tr>
                     <td>{{ row.id_exibicao or row.id }}</td>
+                    <td>{{ row.cadastrado_por }}</td>
                     <td>{{ row.local }}</td>
                     <td>{{ row.data }}</td>
                     <td>{{ row.frequencia }}</td>

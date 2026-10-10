@@ -92,7 +92,9 @@ async function carregarImagensOcorrencia(id, somenteLeitura = false) {
   if (!lista) return;
   lista.replaceChildren();
   try {
-    const resposta = await fetch(`/api/ocorrencia-imagens?id=${encodeURIComponent(id)}`);
+    const parametros = new URLSearchParams(window.location.search);
+    parametros.set("id", id);
+    const resposta = await fetch(`/api/ocorrencia-imagens?${parametros}`);
     if (!resposta.ok) throw new Error(`Falha HTTP ${resposta.status}`);
     const imagens = await resposta.json();
     imagens.forEach((imagem) => {

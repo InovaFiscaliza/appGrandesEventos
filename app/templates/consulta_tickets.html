@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+{% include "partials/header.html" %}
+<section class="module-section">
+    <h1 class="wf-screen-title margin-bottom-l">{% if ticket %}Ticket #{{ ticket.id }}{% else %}Consultar tickets{% endif %}</h1>
+    {% if not ticket %}
+    <div class="table-scroll" role="region" aria-label="Tickets do evento" tabindex="0">
+        <table class="ute-table">
+            <thead><tr><th>Ticket</th><th>Situação</th><th>Prioridade</th><th>Fiscais</th><th>Atualizado em</th><th>Emissões</th><th>Incidentes</th></tr></thead>
+            <tbody>
+                {% for item in tickets %}
+                <tr>
+                    <td><a href="/tickets/{{ item.id }}">#{{ item.id }}</a></td>
+                    <td>{{ status_ticket_rotulos.get(item.status, item.status) }}</td>
+                    <td>{{ item.prioridade }}</td>
+                    <td>{{ item.fiscais or 'Não atribuídos' }}</td>
+                    <td>{{ item.atualizado_em or '-' }}</td>
+                    <td>{% for identificador in (item.ocorrencia_ids or '').split(',') if identificador.strip() %}<a href="/tickets/{{ item.id }}?registro=emissao-{{ identificador.strip() }}#emissao-{{ identificador.strip() }}">{{ identificador.strip() }}</a>{% if not loop.last %}, {% endif %}{% else %}-{% endfor %}</td>
+                    <td>{% for identificador in (item.incidente_ids or '').split(',') if identificador.strip() %}<a href="/tickets/{{ item.id }}?registro=incidente-{{ identificador.strip() }}#incidente-{{ identificador.strip() }}">{{ identificador.strip() }}</a>{% if not loop.last %}, {% endif %}{% else %}-{% endfor %}</td>
+                </tr>
+                {% else %}<tr><td colspan="7">Nenhum ticket cadastrado neste evento.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <a href="/tickets">Voltar aos tickets</a>
+    <dl class="readonly-grid">
+        <div class="readonly-field"><dt>Situação</dt><dd>{{ status_ticket_rotulos.get(ticket.status, ticket.status) }}</dd></div>
+        <div class="readonly-field"><dt>Prioridade</dt><dd>{{ ticket.prioridade }}</dd></div>
+        <div class="readonly-field"><dt>Criado em</dt><dd>{{ ticket.criado_em or '-' }}</dd></div>
+        <div class="readonly-field"><dt>Atualizado em</dt><dd>{{ ticket.atualizado_em or '-' }}</dd></div>
+        <div class="readonly-field"><dt>Observações da coordenação</dt><dd>{{ ticket.observacoes or '-' }}</dd></div>
+        <div class="readonly-field"><dt>Providências tomadas</dt><dd>{{ ticket.providencias or '-' }}</dd></div>
+        <div class="readonly-field"><dt>Motivo da devolução</dt><dd>{{ ticket.motivo_devolucao or '-' }}</dd></div>
+    </dl>
+    {% for tipo, registros in [('emissao', ticket.emissoes), ('incidente', ticket.incidentes)] %}
+    <h2 class="wf-screen-title">{% if tipo == 'emissao' %}Emissões vinculadas{% else %}Incidentes vinculados{% endif %}</h2>
+    {% for registro in registros %}
+    {% set ancora = tipo ~ '-' ~ registro.id %}
+    <details id="{{ ancora }}" class="busca-detalhes" {% if request.query_params.get('registro') == ancora %}open{% endif %}>
+        <summary>{{ registro.id_exibicao or registro.id }} - {{ registro.identificacao if tipo == 'emissao' else registro.tipo }} - {{ registro.situacao }}</summary>
+        <div class="details-body">
+            <dl class="readonly-grid">
+                <div class="readonly-field"><dt>Cadastrado por</dt><dd>{{ registro.cadastrado_por or 'Não informado' }}</dd></div>
+                <div class="readonly-field"><dt>Local</dt><dd>{{ registro.local_regiao if tipo == 'emissao' else registro.regiao }}</dd></div>
+                <div class="readonly-field"><dt>Observações do cadastrador</dt><dd>{{ registro.observacoes or '-' }}</dd></div>
+                {% if tipo == 'emissao' %}
+                <div class="readonly-field"><dt>Fiscal</dt><dd>{{ registro.fiscal or '-' }}</dd></div>
+                <div class="readonly-field"><dt>Data e hora</dt><dd>{{ registro.data or '-' }} {{ registro.hora or '' }}</dd></div>
+                <div class="readonly-field"><dt>Frequência</dt><dd>{{ registro.frequencia_mhz }} MHz</dd></div>
+                <div class="readonly-field"><dt>Largura de banda</dt><dd>{{ registro.largura_khz }} kHz</dd></div>
+                {% endif %}
+            </dl>
+            <div class="lista-imagens">
+                {% for imagem in registro.imagens if imagem.url %}
+                <span class="imagem-preview-item"><img class="historico-imagem" src="{{ imagem.url }}" alt="Foto do registro {{ registro.id }}" onclick="abrirZoomImagem(this.src, {{ imagem.nome_arquivo|tojson|forceescape }})"></span>
+                {% endfor %}
+            </div>
+        </div>
+    </details>
+    {% else %}<p>Nenhum registro vinculado.</p>{% endfor %}
+    {% endfor %}
+    {% endif %}
+</section>
+<script src="/static/upload-imagens.js?v=4"></script>
+{% endblock %}

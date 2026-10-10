@@ -9,7 +9,7 @@ comportamentos intrínsecos ao conceito de emissão no domínio da fiscalizaçã
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, time
+from datetime import date, datetime, time
 
 
 @dataclass
@@ -62,6 +62,8 @@ class Emissao:
     id_exibicao: str | None = None
     equipamento: str | None = None
     fiscal_nome: str | None = None
+    submetida_coordenador_em: datetime | None = None
+    faixa: str = ""
 
     def __post_init__(self) -> None:
         """Validações básicas de consistência após a inicialização."""

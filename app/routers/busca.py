@@ -14,29 +14,18 @@ router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
-def _filtros_visibilidade_busca(request: Request) -> tuple[int | None, bool]:
-    coordenador = (
-        str(request.session.get("tipo_usuario", "")).strip().casefold() == "coordenação"
-    )
-    if coordenador:
-        return None, True
-    fiscal_id = request.session.get("fiscal_id")
-    return (int(fiscal_id) if fiscal_id and str(fiscal_id).isdigit() else -1), False
-
-
 @router.get("/api/busca/sugestoes")
 async def get_sugestoes_busca(request: Request, termo: str = ""):
     """Retorna sugestões de emissões do evento selecionado."""
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return JSONResponse({"erro": "Sessão expirada"}, status_code=401)
-    fiscal_id, somente_submetidas = _filtros_visibilidade_busca(request)
     return JSONResponse(
         sugerir_busca_emissoes(
             evento_id=evento_id,
             termo=termo,
-            fiscal_id=fiscal_id,
-            somente_submetidas=somente_submetidas,
+            fiscal_id=None,
+            somente_submetidas=False,
         )
     )
 
@@ -79,11 +68,15 @@ def _row_to_display(row, i: int, imagens_por_ocorrencia: dict | None = None) -> 
     titulo = " | ".join(partes) if partes else f"Resultado #{i}"
 
     campos = [(col, str(row.get(col, "")).strip() or "(vazio)") for col in row.index]
+    cadastrado_por = str(row.get("Cadastrado por") or "").strip()
+    if cadastrado_por.casefold() in {"", "nan", "none", "null"}:
+        cadastrado_por = "Não informado"
 
     return {
         "titulo": titulo,
         "id": id_val,
         "id_exibicao": id_exibicao,
+        "cadastrado_por": cadastrado_por,
         "local": loc,
         "data": dt,
         "frequencia": fr,
@@ -94,6 +87,25 @@ def _row_to_display(row, i: int, imagens_por_ocorrencia: dict | None = None) -> 
         "fonte": str(row.get("Fonte", "N/A")),
         "aba_origem": aba_origem or "N/A",
     }
+
+
+def _resultados_busca(request: Request, termo: str = "") -> list[dict]:
+    """Carrega todas as emissoes pesquisadas e fotos do evento da sessao."""
+    sp_id = request.session["spreadsheet_id"]
+    res = _buscar_por_texto_livre(
+        evento_id=sp_id,
+        termos=termo,
+        fiscal_id=None,
+        somente_submetidas=False,
+    )
+    imagens_por_ocorrencia = carregar_imagens_ocorrencias(
+        evento_id=sp_id,
+        ocorrencia_ids=res["ID"].tolist() if not res.empty else [],
+    )
+    return [
+        _row_to_display(row, indice, imagens_por_ocorrencia)
+        for indice, (_, row) in enumerate(res.iterrows(), start=1)
+    ]
 
 
 @router.get("/busca", response_class=HTMLResponse)
@@ -108,7 +120,7 @@ async def get_busca(request: Request):
         _ctx(
             request,
             termo="",
-            resultados=None,
+            resultados=_resultados_busca(request),
             flash_warning=None,
         ),
     )
@@ -134,25 +146,7 @@ async def post_busca(request: Request):
             ),
         )
 
-    fiscal_id, somente_submetidas = _filtros_visibilidade_busca(request)
-    res = _buscar_por_texto_livre(
-        evento_id=sp_id,
-        termos=termo,
-        fiscal_id=fiscal_id,
-        somente_submetidas=somente_submetidas,
-    )
-    imagens_por_ocorrencia = carregar_imagens_ocorrencias(
-        evento_id=sp_id,
-        ocorrencia_ids=res["ID"].tolist() if not res.empty else [],
-    )
-    resultados = (
-        []
-        if res.empty
-        else [
-            _row_to_display(row, i, imagens_por_ocorrencia)
-            for i, (_, row) in enumerate(res.iterrows(), start=1)
-        ]
-    )
+    resultados = _resultados_busca(request, termo)
 
     return templates.TemplateResponse(
         request,
