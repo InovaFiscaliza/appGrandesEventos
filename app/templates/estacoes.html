@@ -5,6 +5,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 {% if flash_success %}<div class="flash flash-success flash-toast estacoes-mensagem" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error flash-toast estacoes-mensagem" role="alert">{{ flash_error }}</div>{% endif %}
 <div class="form-card rf-entry-card estacoes-cadastro-card font-semi-bold">
     <h5 class="teq-title">Cadastro de Estações</h5>
     <form method="get" action="/estacoes" class="rf-entry-form">
@@ -136,22 +137,30 @@
     {% if estacoes %}
     <div class="table-scroll">
         <table class="ute-table estacoes-evento-table">
-            <thead><tr><th>Identificação</th><th>Modelo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Ação</th></tr></thead>
+            <thead><tr><th>Identificação</th><th>Estado</th><th>Modelo</th><th>Local</th><th>Latitude</th><th>Longitude</th><th>Ação</th></tr></thead>
             <tbody>
             {% for estacao in estacoes %}
-            <tr>
+            <tr id="estacao-{{ estacao.id }}" {% if estacao_reativacao and estacao_reativacao.id == estacao.id %}class="pendencia-selecionada"{% endif %}>
                 <td>{{ estacao.nome }}</td>
+                <td>{{ 'Ativa' if estacao.ativa else 'Inativa' }}</td>
                 <td>{{ estacao.modelo_equipamento }}</td>
                 <td>{{ estacao.local or '' }}</td>
                 <td>{{ estacao.latitude or '' }}</td>
                 <td>{{ estacao.longitude or '' }}</td>
                 <td class="estacao-acao">
                     <div class="estacao-acoes">
+                        {% if estacao.ativa %}
                         <a class="btn btn-submit font-semi-bold" href="/estacoes?evento_id={{ evento_id }}&editar={{ estacao.id }}">Editar</a>
                         <form method="post" action="/estacoes/{{ estacao.id }}/excluir" data-confirmacao-msg="Confirma a desativação desta estação? Os registros históricos serão preservados.">
                             <input type="hidden" name="evento_id" value="{{ evento_id }}">
-                            <button type="submit" class="btn btn-red">Excluir</button>
+                            <button type="submit" class="btn btn-red">Desativar</button>
                         </form>
+                        {% else %}
+                        <form method="post" action="/estacoes/{{ estacao.id }}/reativar" data-confirmacao-msg="{% if estacao.colisoes_ativas %}Reativar a estação {{ estacao.nome }}? A(s) estação(ões) ativa(s) {{ estacao.colisoes_ativas_ids }} será(ão) desativada(s), sem apagar IDs ou referências históricas.{% else %}Reativar a estação {{ estacao.nome }}? O mesmo ID e as referências aos registros anteriores serão mantidos; modelo e local atuais não serão alterados.{% endif %}">
+                            <input type="hidden" name="evento_id" value="{{ evento_id }}">
+                            <button type="submit" class="btn btn-submit" {% if estacao.colisoes_ativas %}title="Substitui a estação ativa com a mesma identificação"{% endif %}>Reativar</button>
+                        </form>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
