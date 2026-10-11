@@ -171,6 +171,7 @@ function renderizarTabela(lista) {
       textoSeguro(row.largura),
       textoSeguro(row.faixa),
       textoSeguro(row.situacao) || "Pendente",
+      textoSeguro(row.acompanhamento),
     ];
     // Coluna: botão expandir
     const acao = document.createElement("td");

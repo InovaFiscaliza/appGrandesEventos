@@ -45,13 +45,11 @@ class EmissaoService:
             return None
 
         # Regra de negócio: apenas emissões pendentes podem ser submetidas
-        if emissao.situacao != "pendente":
+        if emissao.situacao.strip().casefold() != "pendente":
             return None
 
         # Atualiza o flag de submissão à coordenação
-        return self._repository.update_submetida_coordenador_em(
-            emissao_id, True
-        )
+        return self._repository.update_submetida_coordenador_em(emissao_id, True)
 
     def validar_conflitos(self, emissao_id: int) -> bool:
         """Verifica se há conflitos de frequência para a emissão dada.
@@ -131,7 +129,9 @@ class EmissaoService:
         emissao.situacao = "cancelado"
         return self._repository.update(emissao)
 
-    def listar_por_evento(self, evento_id: int, incluir_todas: bool = False) -> list[Emissao]:
+    def listar_por_evento(
+        self, evento_id: int, incluir_todas: bool = False
+    ) -> list[Emissao]:
         """Lista todas as emissões de um determinado evento.
 
         Args:

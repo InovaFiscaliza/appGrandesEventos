@@ -185,7 +185,9 @@ async def _load_pendencias(
         }
         fiscal_id = str(request.session.get("fiscal_id", ""))
         coordenador = _usuario_e_coordenador(request, sp_id)
-        atribuido = fiscal_id.isdigit() and int(fiscal_id) in ticket.get("fiscal_ids", [])
+        atribuido = fiscal_id.isdigit() and int(fiscal_id) in ticket.get(
+            "fiscal_ids", []
+        )
         if emissao_id not in vinculadas or not (coordenador or atribuido):
             return pd.DataFrame(columns=pendencias.columns)
         selecionada = pendencias[
@@ -232,7 +234,7 @@ async def _load_pendencias(
         pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
         == "pendente"
     )
-    visivel = criada_pelo_fiscal & situacao_pendente
+    visivel = criada_pelo_fiscal & situacao_pendente & ~submetida
     pendencias_visiveis = pendencias[visivel].copy()
     pode_editar = visivel & ~submetida
     pendencias_visiveis["PodeEditar"] = pode_editar[visivel]
@@ -551,6 +553,17 @@ async def api_pendencias(
     records = []
     for _, row in df.iterrows():
         id_ocorrencia = _texto_json(row.get("ID"))
+        situacao = _texto_json(row.get("Situação"), "Pendente") or "Pendente"
+        submetida_coordenador = pd.notna(row.get("SubmetidaCoordenadorEm"))
+        acompanhamento = (
+            situacao
+            if situacao.strip().casefold() != "pendente"
+            else (
+                "Submetida ao coordenador"
+                if submetida_coordenador
+                else "Aguardando submissão"
+            )
+        )
         imagens = []
         if id_ocorrencia.isdigit():
             imagens = carregar_imagens_ocorrencia(
@@ -583,7 +596,8 @@ async def api_pendencias(
                 "ocorrencia": _texto_json(row.get("Ocorrência (observações)")),
                 "ciente": _texto_json(row.get("Alguém mais ciente?")),
                 "interferente": _texto_json(row.get("Interferente?")),
-                "situacao": _texto_json(row.get("Situação")),
+                "situacao": situacao,
+                "acompanhamento": acompanhamento,
                 "estacao_raw": _texto_json(row.get("EstacaoRaw")),
                 "estacao_id": _texto_json(row.get("EstacaoID")),
                 "origem_captura": _texto_json(row.get("OrigemCaptura")),
@@ -712,7 +726,4 @@ async def post_consultar_submeter_ticket(
     request.session[
         "flash_error" if resultado_msg.startswith("ERRO") else "flash_success"
     ] = resultado_msg
-    request.session[
-        "flash_error" if resultado.startswith("ERRO") else "flash_success"
-    ] = resultado
     return RedirectResponse("/consultar", status_code=303)
