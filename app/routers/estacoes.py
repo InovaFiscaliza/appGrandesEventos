@@ -5,11 +5,13 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import MODELOS_EQUIPAMENTO, TITULO_PRINCIPAL
 from app.services.postgres import (
+    IdentificacaoEstacaoExistenteError,
     atualizar_estacao,
     criar_estacao,
     desabilitar_estacao,
     listar_estacoes_evento,
     listar_eventos_detalhes,
+    reativar_estacao,
     registrar_auditoria_coordenacao,
 )
 from app.utils.formatters import _img_b64
@@ -54,7 +56,34 @@ async def get_estacoes(request: Request):
         return _acesso_negado(request)
     mostrar_form = request.query_params.get("novo") == "1"
     editar_id = request.query_params.get("editar")
-    estacoes = listar_estacoes_evento(int(evento_id)) if evento_id else []
+    estacoes = (
+        listar_estacoes_evento(int(evento_id), incluir_inativas=True)
+        if evento_id
+        else []
+    )
+    for estacao in estacoes:
+        nome_normalizado = str(estacao["nome"]).strip().casefold()
+        estacao["colisoes_ativas"] = [
+            ativa
+            for ativa in estacoes
+            if ativa["ativa"]
+            and str(ativa["nome"]).strip().casefold() == nome_normalizado
+            and ativa["id"] != estacao["id"]
+        ]
+        estacao["colisoes_ativas_ids"] = ", ".join(
+            f"#{ativa['id']}" for ativa in estacao["colisoes_ativas"]
+        )
+    reativar_id = request.query_params.get("reativar", "")
+    estacao_reativacao = next(
+        (
+            estacao
+            for estacao in estacoes
+            if reativar_id.isdigit()
+            and str(estacao["id"]) == reativar_id
+            and not estacao["ativa"]
+        ),
+        None,
+    )
     eventos = listar_eventos_detalhes()
     evento = next((item for item in eventos if str(item["id"]) == str(evento_id)), None)
     estacao_edicao = next(
@@ -78,6 +107,7 @@ async def get_estacoes(request: Request):
             evento=evento,
             evento_id=str(evento_id) if evento_id else "",
             estacoes=estacoes,
+            estacao_reativacao=estacao_reativacao,
             modelos=MODELOS_EQUIPAMENTO,
             mostrar_form=mostrar_form,
             estacao_edicao=estacao_edicao,
@@ -116,6 +146,7 @@ async def post_estacao(request: Request):
         )
 
     erro = False
+    reativar_id = None
     try:
         latitude = float(latitude_texto) if latitude_texto else None
         longitude = float(longitude_texto) if longitude_texto else None
@@ -132,6 +163,19 @@ async def post_estacao(request: Request):
             longitude=longitude,
         )
         request.session["flash_success"] = "Estação cadastrada com sucesso."
+    except IdentificacaoEstacaoExistenteError as exc:
+        erro = True
+        if exc.estacao["desabilitada_em"] is not None:
+            reativar_id = int(exc.estacao["id"])
+            request.session["flash_error"] = (
+                "Essa identificação pertence a uma estação inativa. "
+                "Confirme a reativação na lista; os registros anteriores serão preservados."
+            )
+        else:
+            request.session["flash_error"] = (
+                "Já existe uma estação ativa com essa identificação no evento. "
+                "A comparação não diferencia maiúsculas e minúsculas."
+            )
     except IntegrityError:
         erro = True
         request.session["flash_error"] = (
@@ -140,7 +184,11 @@ async def post_estacao(request: Request):
     except ValueError:
         erro = True
         request.session["flash_error"] = "Informe latitude e longitude válidas."
-    sufixo = "&novo=1" if erro else ""
+    sufixo = (
+        f"&reativar={reativar_id}#estacao-{reativar_id}"
+        if reativar_id
+        else "&novo=1" if erro else ""
+    )
     return RedirectResponse(f"/estacoes?evento_id={evento_id}{sufixo}", status_code=303)
 
 
@@ -166,6 +214,7 @@ async def post_editar_estacao(request: Request, estacao_id: int):
         )
 
     erro = False
+    reativar_id = None
     try:
         latitude = float(latitude_texto) if latitude_texto else None
         longitude = float(longitude_texto) if longitude_texto else None
@@ -183,6 +232,19 @@ async def post_editar_estacao(request: Request, estacao_id: int):
             longitude=longitude,
         )
         request.session["flash_success"] = "Estação atualizada com sucesso."
+    except IdentificacaoEstacaoExistenteError as exc:
+        erro = True
+        if exc.estacao["desabilitada_em"] is not None:
+            reativar_id = int(exc.estacao["id"])
+            request.session["flash_error"] = (
+                "Essa identificação pertence a uma estação inativa. "
+                "Confirme a reativação na lista; os registros anteriores serão preservados."
+            )
+        else:
+            request.session["flash_error"] = (
+                "Já existe uma estação ativa com essa identificação no evento. "
+                "A comparação não diferencia maiúsculas e minúsculas."
+            )
     except IntegrityError:
         erro = True
         request.session["flash_error"] = (
@@ -191,8 +253,66 @@ async def post_editar_estacao(request: Request, estacao_id: int):
     except ValueError:
         erro = True
         request.session["flash_error"] = "Informe latitude e longitude válidas."
-    sufixo = f"&editar={estacao_id}" if erro else ""
+    sufixo = (
+        f"&reativar={reativar_id}#estacao-{reativar_id}"
+        if reativar_id
+        else f"&editar={estacao_id}" if erro else ""
+    )
     return RedirectResponse(f"/estacoes?evento_id={evento_id}{sufixo}", status_code=303)
+
+
+@router.post("/estacoes/{estacao_id}/reativar")
+async def post_reativar_estacao(request: Request, estacao_id: int):
+    """Reativa estação inativa após confirmação explícita da coordenação."""
+    form = await request.form()
+    evento_id = str(form.get("evento_id", "")).strip()
+    if not evento_id.isdigit() or not _usuario_e_coordenador(request, int(evento_id)):
+        return _acesso_negado(request)
+
+    try:
+        estacao = reativar_estacao(int(evento_id), estacao_id)
+    except IdentificacaoEstacaoExistenteError:
+        request.session["flash_error"] = (
+            "Não foi possível reativar: já existe uma estação ativa com essa identificação."
+        )
+    else:
+        if estacao is None:
+            request.session["flash_error"] = "Estação não encontrada ou já está ativa."
+        else:
+            nome = estacao["nome"]
+            estacoes_substituidas = estacao.get("estacoes_desativadas", [])
+            ids_substituidos = ", ".join(
+                str(item["id"]) for item in estacoes_substituidas
+            )
+            complemento = (
+                f"; estações ativas substituídas: #{ids_substituidos}"
+                if ids_substituidos
+                else ""
+            )
+            registrar_auditoria_coordenacao(
+                evento_id=int(evento_id),
+                usuario_fiscal=request.session.get(
+                    "fiscal_nome", "Usuário não identificado"
+                ),
+                acao="Estação reativada",
+                valor_anterior=(
+                    f"Estação #{estacao_id} ({nome}); estado: Inativa{complemento}"
+                ),
+                valor_novo=(
+                    f"Estação #{estacao_id} ({nome}); estado: Ativa{complemento}; "
+                    "IDs e referências históricas preservados"
+                ),
+            )
+            request.session["flash_success"] = (
+                "Estação reativada com sucesso. "
+                + (
+                    f"A estação ativa #{ids_substituidos} foi desativada; "
+                    "IDs e registros anteriores foram preservados."
+                    if ids_substituidos
+                    else "Os registros anteriores foram preservados."
+                )
+            )
+    return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
 
 
 @router.post("/estacoes/{estacao_id}/excluir")

@@ -40,6 +40,14 @@ class FrequenciaOcupadaError(Exception):
     """Indica que a frequência já está cadastrada no evento selecionado."""
 
 
+class IdentificacaoEstacaoExistenteError(Exception):
+    """Indica que a identificação já pertence a uma estação do evento."""
+
+    def __init__(self, estacao: dict) -> None:
+        self.estacao = estacao
+        super().__init__("Já existe uma estação com essa identificação no evento.")
+
+
 def _codigo_id_exibicao(instante, registro_id: int, tamanho: int = 4) -> str:
     """Gera o trecho alfanumérico compacto do ID a partir da data e hora."""
     semente = f"{instante.isoformat()}:{registro_id}".encode()
@@ -1651,17 +1659,20 @@ def obter_snapshot_auditoria_evento(evento_id: int) -> dict:
     return evento
 
 
-def listar_estacoes_evento(evento_id: int) -> list[dict]:
+def listar_estacoes_evento(
+    evento_id: int, incluir_inativas: bool = False
+) -> list[dict]:
     """Lista as estações vinculadas a um evento."""
+    filtro_ativas = "" if incluir_inativas else "AND desabilitada_em IS NULL"
     with get_engine().connect() as conn:
         rows = (
             conn.execute(
-                text("""
+                text(f"""
                   SELECT id, nome, modelo_equipamento, local,
-                      latitude, longitude
+                      latitude, longitude, desabilitada_em IS NULL AS ativa
                 FROM estacoes
-                                WHERE evento_id = :evento_id
-                                    AND desabilitada_em IS NULL
+                WHERE evento_id = :evento_id
+                    {filtro_ativas}
                 ORDER BY nome
             """),
                 {"evento_id": int(evento_id)},
@@ -1670,6 +1681,47 @@ def listar_estacoes_evento(evento_id: int) -> list[dict]:
             .all()
         )
     return [dict(row) for row in rows]
+
+
+def _bloquear_identificacao_estacao(conn, evento_id: int, nome: str) -> None:
+    """Serializa gravações para a mesma identificação, sem diferenciar caixa."""
+    conn.execute(
+        text("""
+            SELECT pg_advisory_xact_lock(
+                hashtextextended(
+                    CAST(:evento_id AS TEXT) || ':' || lower(btrim(:nome)), 0
+                )
+            )
+        """),
+        {"evento_id": int(evento_id), "nome": nome},
+    )
+
+
+def _buscar_estacao_por_identificacao(
+    conn, evento_id: int, nome: str, ignorar_id: int = 0
+) -> dict | None:
+    registro = (
+        conn.execute(
+            text("""
+                SELECT id, evento_id, nome, modelo_equipamento, local,
+                       latitude, longitude, desabilitada_em
+                FROM estacoes
+                WHERE evento_id = :evento_id
+                  AND id <> :ignorar_id
+                  AND lower(btrim(nome)) = lower(btrim(:nome))
+                ORDER BY (desabilitada_em IS NULL) DESC, id DESC
+                LIMIT 1
+            """),
+            {
+                "evento_id": int(evento_id),
+                "ignorar_id": int(ignorar_id),
+                "nome": nome,
+            },
+        )
+        .mappings()
+        .first()
+    )
+    return dict(registro) if registro else None
 
 
 def criar_estacao(
@@ -1682,6 +1734,10 @@ def criar_estacao(
 ) -> int:
     """Adiciona uma estação a um evento e retorna seu identificador."""
     with get_engine().begin() as conn:
+        _bloquear_identificacao_estacao(conn, evento_id, nome)
+        existente = _buscar_estacao_por_identificacao(conn, evento_id, nome)
+        if existente:
+            raise IdentificacaoEstacaoExistenteError(existente)
         return conn.execute(
             text("""
                 INSERT INTO estacoes
@@ -1712,6 +1768,12 @@ def atualizar_estacao(
 ) -> None:
     """Atualiza os dados de uma estação vinculada ao evento informado."""
     with get_engine().begin() as conn:
+        _bloquear_identificacao_estacao(conn, evento_id, nome)
+        existente = _buscar_estacao_por_identificacao(
+            conn, evento_id, nome, ignorar_id=estacao_id
+        )
+        if existente:
+            raise IdentificacaoEstacaoExistenteError(existente)
         conn.execute(
             text("""
                 UPDATE estacoes
@@ -1763,6 +1825,95 @@ def desabilitar_estacao(evento_id: int, estacao_id: int) -> dict | None:
             {"evento_id": int(evento_id), "estacao_id": int(estacao_id)},
         )
     return dict(estacao)
+
+
+def reativar_estacao(evento_id: int, estacao_id: int) -> dict | None:
+    """Reativa a mesma estação, mantendo seu ID e seus vínculos históricos."""
+    with get_engine().begin() as conn:
+        estacao = (
+            conn.execute(
+                text("""
+                    SELECT id, nome
+                    FROM estacoes
+                    WHERE id = :estacao_id
+                      AND evento_id = :evento_id
+                      AND desabilitada_em IS NOT NULL
+                """),
+                {"evento_id": int(evento_id), "estacao_id": int(estacao_id)},
+            )
+            .mappings()
+            .first()
+        )
+        if estacao is None:
+            return None
+
+        _bloquear_identificacao_estacao(conn, evento_id, estacao["nome"])
+        estacao = (
+            conn.execute(
+                text("""
+                    SELECT id, nome, modelo_equipamento, local, latitude, longitude
+                    FROM estacoes
+                    WHERE id = :estacao_id
+                      AND evento_id = :evento_id
+                      AND desabilitada_em IS NOT NULL
+                    FOR UPDATE
+                """),
+                {"evento_id": int(evento_id), "estacao_id": int(estacao_id)},
+            )
+            .mappings()
+            .first()
+        )
+        if estacao is None:
+            return None
+
+        estações_ativas = (
+            conn.execute(
+                text("""
+                    SELECT id, nome
+                    FROM estacoes
+                    WHERE evento_id = :evento_id
+                      AND id <> :estacao_id
+                      AND lower(btrim(nome)) = lower(btrim(:nome))
+                      AND desabilitada_em IS NULL
+                    ORDER BY id
+                    FOR UPDATE
+                """),
+                {
+                    "evento_id": int(evento_id),
+                    "estacao_id": int(estacao_id),
+                    "nome": estacao["nome"],
+                },
+            )
+            .mappings()
+            .all()
+        )
+        ids_estacoes_ativas = [int(item["id"]) for item in estações_ativas]
+        if ids_estacoes_ativas:
+            conn.execute(
+                text("""
+                    UPDATE estacoes
+                    SET desabilitada_em = now()
+                    WHERE evento_id = :evento_id
+                      AND id = ANY(:estacao_ids)
+                      AND desabilitada_em IS NULL
+                """),
+                {
+                    "evento_id": int(evento_id),
+                    "estacao_ids": ids_estacoes_ativas,
+                },
+            )
+
+        conn.execute(
+            text("""
+                UPDATE estacoes
+                SET desabilitada_em = NULL
+                WHERE id = :estacao_id AND evento_id = :evento_id
+            """),
+            {"evento_id": int(evento_id), "estacao_id": int(estacao_id)},
+        )
+    resultado = dict(estacao)
+    resultado["estacoes_desativadas"] = [dict(item) for item in estações_ativas]
+    return resultado
 
 
 def atualizar_evento(
@@ -2787,7 +2938,9 @@ def _salvar_imagens_teste_etiquetagem(
         )
 
 
-def inserir_teste_etiquetagem(_client=None, evento_id=None, dados: dict | None = None) -> str:
+def inserir_teste_etiquetagem(
+    _client=None, evento_id=None, dados: dict | None = None
+) -> str:
     """Insere um teste de etiquetagem vinculado ao evento selecionado."""
     if evento_id is None or dados is None:
         return "ERRO: parâmetros insuficientes."
