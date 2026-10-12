@@ -5,6 +5,26 @@ Sistema de monitoração de espectro eletromagnético para grandes eventos (Carn
 Para instalar a aplicação e uma cópia do banco em outro computador Windows
 com Podman Desktop, consulte a [automação de implantação](local_server/README.md).
 
+## Testes de regressão
+
+Antes e depois de cada correção, executar na raiz, sem iniciar o banco:
+
+```powershell
+uv run --locked python -m scripts.testar_regressoes
+```
+
+A camada rápida bloqueia conexões SQLAlchemy reais. Para executar também
+PostgreSQL descartável e Chromium, com a máquina do Podman iniciada:
+
+```powershell
+.\scripts\testar_todas_camadas.ps1
+```
+
+O comando completo remove somente seu próprio container de testes ao terminar.
+Há falhas funcionais conhecidas mantidas nos testes; portanto ele atualmente
+retorna erro. As camadas também estão configuradas no GitHub Actions.
+Consulte a [cobertura, os defeitos detectados e as lacunas restantes](docs/testes-regressao.md).
+
 ## Stack
 
 - **Backend**: Python 3.13+, FastAPI + Jinja2

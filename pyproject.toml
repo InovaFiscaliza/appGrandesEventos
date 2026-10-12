@@ -15,3 +15,9 @@ dependencies = [
 
 [project.scripts]
 app = "main:start"
+
+[dependency-groups]
+dev = [
+    "pglast>=8.5",
+    "playwright>=1.63.0",
+]

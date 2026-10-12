@@ -392,7 +392,7 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(template.call_args.args[2]["total"], 0)
         self.assertFalse(template.call_args.args[2]["exibir_tratamento_pendencias"])
 
-    async def test_consulta_permite_editar_propria_pendente(self) -> None:
+    async def test_consulta_edita_proprias_pendentes_nao_submetidas(self) -> None:
         from app.routers import consultar
 
         service = MagicMock()
@@ -411,9 +411,9 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
         rows = await consultar._load_pendencias(self.request, 10, service)
-        self.assertEqual(rows["ID"].tolist(), [1, 3, 5])
-        self.assertEqual(rows["PodeEditar"].tolist(), [True, False, True])
-        self.assertEqual(rows["CadastradoPor"].tolist(), ["Fiscal teste"] * 3)
+        self.assertEqual(rows["ID"].tolist(), [1, 5])
+        self.assertEqual(rows["PodeEditar"].tolist(), [True, True])
+        self.assertEqual(rows["CadastradoPor"].tolist(), ["Fiscal teste"] * 2)
 
     async def test_api_preserva_cadastrador(self) -> None:
         from app.routers import consultar
@@ -497,7 +497,9 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
             patch.object(consultar.templates, "TemplateResponse") as template,
             patch.object(consultar, "carregar_imagens_ocorrencia", return_value=[]),
         ):
-            await consultar.get_consultar(self.request, emissao_id=703, emissao_service=service)
+            await consultar.get_consultar(
+                self.request, emissao_id=703, emissao_service=service
+            )
             self.assertEqual(template.call_args.args[2]["selected_row"]["ID"], 703)
             response = await consultar.api_pendencias(self.request, service)
             imagens = await consultar.api_ocorrencia_imagens(self.request, 703, service)
@@ -524,14 +526,18 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
         )
         with (
             patch.object(consultar, "listar_tickets_evento", return_value=[ticket]),
-            patch.object(consultar, "atualizar_campos_na_aba_mae", return_value="Salvo") as salvar,
+            patch.object(
+                consultar, "atualizar_campos_na_aba_mae", return_value="Salvo"
+            ) as salvar,
         ):
             response = await consultar.post_consultar_salvar(self.request, service)
         salvar.assert_called_once()
         self.assertEqual(salvar.call_args.kwargs["id_ocorrencia"], "703")
         self.assertEqual(salvar.call_args.kwargs["usuario_fiscal"], "Fiscal teste")
         self.assertEqual(response.status_code, 303)
-        self.assertIn("emissao_id=703&ticket_id=99&popup=1", response.headers["location"])
+        self.assertIn(
+            "emissao_id=703&ticket_id=99&popup=1", response.headers["location"]
+        )
 
     async def test_popup_ticket_valida_vinculo_fiscal_evento_e_status(self) -> None:
         from app.routers import consultar
@@ -546,7 +552,11 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
         for alteracoes, ids, pode_editar in casos:
             with self.subTest(alteracoes=alteracoes):
                 service, ticket = self.preparar_emissao_ticket()
-                with patch.object(consultar, "listar_tickets_evento", return_value=[{**ticket, **alteracoes}]):
+                with patch.object(
+                    consultar,
+                    "listar_tickets_evento",
+                    return_value=[{**ticket, **alteracoes}],
+                ):
                     rows = await consultar._load_pendencias(self.request, 10, service)
                 self.assertEqual(rows["ID"].tolist(), ids)
                 if ids:
@@ -592,7 +602,9 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
                 "listar_emissoes_evento",
                 return_value=[emissao_em_elaboracao, emissao_submetida],
             ) as listar_emissoes,
-            patch.object(coordenacao, "listar_bsr_erb", return_value=[incidente_disponivel]) as listar_incidentes,
+            patch.object(
+                coordenacao, "listar_bsr_erb", return_value=[incidente_disponivel]
+            ) as listar_incidentes,
             patch.object(coordenacao, "listar_escalas_evento", return_value=[]),
             patch.object(coordenacao, "resumir_horas_escalas", return_value=[]),
             patch.object(coordenacao, "_img_b64", return_value=""),
@@ -615,7 +627,9 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
 
         registros = pd.DataFrame([{"ID": "709"}, {"ID": "703"}])
         with (
-            patch.object(busca, "_buscar_por_texto_livre", return_value=registros) as pesquisar,
+            patch.object(
+                busca, "_buscar_por_texto_livre", return_value=registros
+            ) as pesquisar,
             patch.object(busca, "carregar_imagens_ocorrencias", return_value={}),
             patch.object(busca, "_img_b64", return_value=""),
             patch.object(busca.templates, "TemplateResponse") as template,
@@ -638,7 +652,9 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
             [{"ID": str(identificador)} for identificador in (708, 706, 705, 704, 703)]
         )
         with (
-            patch.object(busca, "_buscar_por_texto_livre", return_value=registros) as pesquisar,
+            patch.object(
+                busca, "_buscar_por_texto_livre", return_value=registros
+            ) as pesquisar,
             patch.object(busca, "carregar_imagens_ocorrencias", return_value={}),
             patch.object(busca, "sugerir_busca_emissoes", return_value=[]) as sugerir,
             patch.object(busca, "_img_b64", return_value=""),
@@ -661,7 +677,9 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
 
         self.request._form = FormData({"termo": "Sinal"})
         with (
-            patch.object(busca, "_buscar_por_texto_livre", return_value=pd.DataFrame()) as pesquisar,
+            patch.object(
+                busca, "_buscar_por_texto_livre", return_value=pd.DataFrame()
+            ) as pesquisar,
             patch.object(busca, "carregar_imagens_ocorrencias", return_value={}),
             patch.object(busca, "sugerir_busca_emissoes", return_value=[]) as sugerir,
             patch.object(busca, "_img_b64", return_value=""),
@@ -704,7 +722,9 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch.object(postgres, "get_engine", return_value=MagicMock()),
-            patch.object(postgres.pd, "read_sql", return_value=postgres.pd.DataFrame()) as consultar_sql,
+            patch.object(
+                postgres.pd, "read_sql", return_value=postgres.pd.DataFrame()
+            ) as consultar_sql,
         ):
             postgres._buscar_por_texto_livre(evento_id=10, termos="")
         sql = str(consultar_sql.call_args.args[0])
