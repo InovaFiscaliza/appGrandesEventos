@@ -303,14 +303,11 @@ async def post_reativar_estacao(request: Request, estacao_id: int):
                     "IDs e referências históricas preservados"
                 ),
             )
-            request.session["flash_success"] = (
-                "Estação reativada com sucesso. "
-                + (
-                    f"A estação ativa #{ids_substituidos} foi desativada; "
-                    "IDs e registros anteriores foram preservados."
-                    if ids_substituidos
-                    else "Os registros anteriores foram preservados."
-                )
+            request.session["flash_success"] = "Estação reativada com sucesso. " + (
+                f"A estação ativa #{ids_substituidos} foi desativada; "
+                "IDs e registros anteriores foram preservados."
+                if ids_substituidos
+                else "Os registros anteriores foram preservados."
             )
     return RedirectResponse(f"/estacoes?evento_id={evento_id}", status_code=303)
 
