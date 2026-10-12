@@ -247,6 +247,8 @@ bloqueio também podem impedir a conexão. No computador do projeto, teste:
 
 ```powershell
 Test-NetConnection 192.168.1.11 -Port 22
+# Confira tambem por conexao TCP direta, caso o diagnostico do Windows falhe:
+.\local_server\testar-tcp.ps1 -ComputerName 192.168.1.11 -Port 22
 ```
 
 Só execute o envio novamente quando `TcpTestSucceeded` for `True`.

@@ -158,6 +158,15 @@ try {
     function Start-Sleep { param([int]$Seconds) }
     function Assert-Test { param([bool]$Condition, [string]$Message) if (-not $Condition) { throw "FAIL: $Message" }; Write-Host "PASS: $Message" }
 
+    # Exercise the socket probe with a real local listener and a closed port.
+    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
+    $listener.Start()
+    $probePort = $listener.LocalEndpoint.Port
+    try {
+        Assert-Test (& (Join-Path $PSScriptRoot 'testar-tcp.ps1') -ComputerName '127.0.0.1' -Port $probePort) 'Direct TCP probe accepts a listening endpoint'
+    } finally { $listener.Stop() }
+    Assert-Test (-not (& (Join-Path $PSScriptRoot 'testar-tcp.ps1') -ComputerName '127.0.0.1' -Port $probePort -TimeoutMilliseconds 1000)) 'Direct TCP probe rejects a closed endpoint'
+
     . (Join-Path $PSScriptRoot 'comum.ps1')
     $legacyResources = @('volume:appeventos-pgdata', 'network:appeventos-network',
         'container:appeventos-web', 'secret:appeventos-db-password', 'secret:appeventos-database-url')
