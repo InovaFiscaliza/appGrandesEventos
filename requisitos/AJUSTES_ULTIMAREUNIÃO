@@ -119,7 +119,7 @@ Relatório organizado por assunto a partir da transcrição automática local da
 
 ## 3. Cadastro, desativação e localização das estações
 
-- [ ] Permitir recuperar uma estação desativada. Ao tentar cadastrar novamente a identificação, o sistema informou que ela já existia, sem oferecer uma forma clara de reativação. Foi proposta a exibição do estado ativa/inativa e uma confirmação de reativação ao reutilizar a identificação. Preservar as referências aos registros anteriores. **Referência: 00:20:46–00:22:45; 00:25:40–00:26:22.**
+- [x] Permitir recuperar uma estação desativada. Ao tentar cadastrar novamente a identificação, o sistema informou que ela já existia, sem oferecer uma forma clara de reativação. Foi proposta a exibição do estado ativa/inativa e uma confirmação de reativação ao reutilizar a identificação. Preservar as referências aos registros anteriores. **Referência: 00:20:46–00:22:45; 00:25:40–00:26:22.**
 - [ ] **Decisão pendente:** esclarecer a dinâmica das estações móveis e o uso das coordenadas no registro das emissões. A mesma estação pode mudar de local; discutiu-se se o cadastro da estação fornece a localização da captura e como ficam os equipamentos de campo. A equipe decidiu observar o uso no lançamento antes de fechar essa regra. **Referência: 00:22:15–00:25:40; 00:34:39–00:35:18.**
 
 ## 4. Escalas e jornadas dos fiscais

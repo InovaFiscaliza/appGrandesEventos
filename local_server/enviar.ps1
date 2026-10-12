@@ -30,7 +30,17 @@ if ($SshKeyPath) {
 }
 $destination = "$WindowsUser@$ServerAddress"
 Write-Host "Verificando acesso ao SSH em ${ServerAddress}:22 antes de gerar o backup..."
-if (-not (Test-NetConnection -ComputerName $ServerAddress -Port 22 -InformationLevel Quiet -WarningAction SilentlyContinue)) {
+$sshReachable = $false
+try {
+    $sshReachable = Test-NetConnection -ComputerName $ServerAddress -Port 22 -InformationLevel Quiet -WarningAction SilentlyContinue -ErrorAction Stop
+} catch {
+    Write-Host 'O diagnostico de rede do Windows falhou; verificando a conexao TCP diretamente...'
+}
+if (-not $sshReachable) {
+    Write-Host 'Confirmando acesso a porta SSH por conexao TCP direta...'
+    $sshReachable = & (Join-Path $PSScriptRoot 'testar-tcp.ps1') -ComputerName $ServerAddress -Port 22
+}
+if (-not $sshReachable) {
     throw @"
 Nao foi possivel conectar a ${ServerAddress}:22. Nenhum novo backup foi gerado e nada foi enviado.
 No computador de destino, confira o IP com ipconfig e execute no PowerShell como Administrador:

@@ -1,0 +1,70 @@
+name: Regressao funcional
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  regressao:
+    name: Regressao funcional (Python 3.13)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql+psycopg://teste:teste@127.0.0.1:1/banco_bloqueado
+    steps:
+      - name: Obter fontes
+        uses: actions/checkout@v4
+      - name: Configurar uv e Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+      - name: Instalar dependencias do lockfile
+        run: uv sync --locked
+      - name: Executar contratos funcionais sem banco real
+        run: uv run --locked python -m scripts.testar_regressoes
+
+  integracao:
+    name: Integracao e navegador (Python 3.13)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://testes:testes@127.0.0.1:5432/appeventos_test_c1c1c1c1
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: testes
+          POSTGRES_PASSWORD: testes
+          POSTGRES_DB: appeventos_test_c1c1c1c1
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U testes -d appeventos_test_c1c1c1c1"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Obter fontes
+        uses: actions/checkout@v4
+      - name: Configurar uv e Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+      - name: Instalar dependencias de desenvolvimento
+        run: uv sync --locked
+      - name: Instalar Chromium e bibliotecas do sistema
+        run: uv run --locked playwright install --with-deps chromium
+      - name: Executar jornadas de banco e navegador
+        run: uv run --locked python -m scripts.testar_integracao --navegador
+      - name: Guardar capturas e traces das jornadas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jornadas-playwright
+          path: .test-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
