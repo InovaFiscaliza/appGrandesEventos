@@ -415,6 +415,28 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(rows["PodeEditar"].tolist(), [True, True])
         self.assertEqual(rows["CadastradoPor"].tolist(), ["Fiscal teste"] * 2)
 
+    async def test_coordenador_edita_propria_pendente_nao_submetida(self) -> None:
+        from app.routers import consultar
+
+        self.request.session["tipo_usuario"] = "Coordenação"
+        service = MagicMock()
+        service.listar_por_evento.return_value = self.listar(
+            [
+                self.record,
+                {**self.record, "id": 2, "criado_por_fiscal_id": 8},
+                {
+                    **self.record,
+                    "id": 3,
+                    "submetida_coordenador_em": datetime(2026, 10, 10),
+                },
+            ]
+        )
+
+        rows = await consultar._load_pendencias(self.request, 10, service)
+
+        self.assertEqual(rows["ID"].tolist(), [1, 2, 3])
+        self.assertEqual(rows["PodeEditar"].tolist(), [True, False, True])
+
     async def test_api_preserva_cadastrador(self) -> None:
         from app.routers import consultar
 

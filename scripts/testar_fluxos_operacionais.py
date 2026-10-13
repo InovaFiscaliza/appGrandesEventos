@@ -205,6 +205,17 @@ class CoordenacaoTicketsTests(unittest.TestCase):
         self.atualizar.assert_not_called()
         self.auditar.assert_not_called()
 
+    def test_devolucao_sem_campo_motivo_nao_atualiza(self) -> None:
+        response = self.client.post(
+            "/coordenacao/ticket/35/status",
+            data={"status": STATUS_TICKET_PENDENTE},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 303)
+        self.assertIn("motivo", self.sessao["flash_error"])
+        self.atualizar.assert_not_called()
+        self.auditar.assert_not_called()
+
     def test_devolucao_persiste_motivo_e_audita_estado_anterior(self) -> None:
         response = self.client.post(
             "/coordenacao/ticket/35/status",

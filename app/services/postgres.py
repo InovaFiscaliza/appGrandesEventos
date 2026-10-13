@@ -1200,6 +1200,28 @@ def atualizar_ticket_evento(
         raise ValueError("Status de ticket inválido.")
 
     with get_engine().begin() as conn:
+        ticket_atual = (
+            conn.execute(
+                text("""
+                    SELECT status
+                    FROM tickets
+                    WHERE id = :ticket_id AND evento_id = :evento_id
+                    FOR UPDATE
+                """),
+                {"ticket_id": int(ticket_id), "evento_id": int(evento_id)},
+            )
+            .mappings()
+            .first()
+        )
+        if ticket_atual is None:
+            raise ValueError("Ticket não encontrado no evento selecionado.")
+        if (
+            status == STATUS_TICKET_PENDENTE
+            and ticket_atual["status"] == STATUS_TICKET_CONCLUIDO_FISCAIS
+            and not str(motivo_devolucao or "").strip()
+        ):
+            raise ValueError("Informe o motivo da devolução do ticket.")
+
         resultado = conn.execute(
             text("""
                 UPDATE tickets

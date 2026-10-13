@@ -155,6 +155,81 @@ class NavegadorTests(unittest.TestCase):
     def test_salvar_emissao_celular(self) -> None:
         self.salvar_emissao(390, 844)
 
+    def test_escalas_adjacentes_permanecem_visiveis(self) -> None:
+        self.page.goto(self.endereco)
+        self.page.locator("#evento_key").select_option(
+            f"{self.dados['evento_nome']}|||{self.dados['evento_id']}"
+        )
+        self.page.locator("#fiscal_id").select_option(str(self.dados["coordenador"]))
+        self.page.locator("#papel").select_option("Coordenação")
+        self.page.locator("#senha").fill("teste")
+        self.page.get_by_role("button", name="Entrar", exact=True).click()
+        self.page.wait_for_url("**/menu")
+        self.page.goto(f"{self.endereco}/coordenacao")
+        self.page.get_by_role("tab", name="Escala").click()
+
+        formulario = self.page.locator(".coordenacao-escala-form")
+        formulario.locator('[name="fiscal_id"]').select_option(
+            str(self.dados["fiscal"])
+        )
+        formulario.locator('[name="data_trabalho"]').fill("2026-10-13")
+        formulario.locator('[name="turno_inicio"]').fill("10:00")
+        formulario.locator('[name="turno_fim"]').fill("12:00")
+        formulario.locator('button[type="submit"]').click()
+        self.page.wait_for_load_state("domcontentloaded")
+
+        formulario = self.page.locator(".coordenacao-escala-form")
+        formulario.locator('[name="fiscal_id"]').select_option(
+            str(self.dados["fiscal"])
+        )
+        formulario.locator('[name="data_trabalho"]').fill("2026-10-13")
+        formulario.locator('[name="turno_inicio"]').fill("12:00")
+        formulario.locator('[name="turno_fim"]').fill("14:00")
+        formulario.locator('button[type="submit"]').click()
+        self.page.wait_for_load_state("domcontentloaded")
+
+        formulario = self.page.locator(".coordenacao-escala-form")
+        formulario.locator('[name="fiscal_id"]').select_option(str(self.dados["outro"]))
+        formulario.locator('[name="data_trabalho"]').fill("2026-10-13")
+        formulario.locator('[name="turno_inicio"]').fill("10:00")
+        formulario.locator('[name="turno_fim"]').fill("12:00")
+        formulario.locator('button[type="submit"]').click()
+        self.page.wait_for_load_state("domcontentloaded")
+
+        blocos = self.page.locator(".escala-jornada-bloco")
+        expect(blocos).to_have_count(3)
+        blocos_fiscal = blocos.filter(has_text=self.dados["fiscal_nome"])
+        blocos_outro = blocos.filter(has_text=self.dados["outro_nome"])
+        expect(blocos_fiscal).to_have_count(2)
+        expect(blocos_outro).to_have_count(1)
+        expect(blocos_fiscal.nth(0)).to_contain_text("10:00")
+        expect(blocos_fiscal.nth(0)).to_contain_text("12:00")
+        expect(blocos_fiscal.nth(1)).to_contain_text("12:00")
+        expect(blocos_fiscal.nth(1)).to_contain_text("14:00")
+        self.assertEqual(
+            blocos_fiscal.nth(0).evaluate(
+                "element => getComputedStyle(element).backgroundColor"
+            ),
+            blocos_fiscal.nth(1).evaluate(
+                "element => getComputedStyle(element).backgroundColor"
+            ),
+        )
+        self.assertNotEqual(
+            blocos_fiscal.nth(0).evaluate(
+                "element => getComputedStyle(element).backgroundColor"
+            ),
+            blocos_outro.nth(0).evaluate(
+                "element => getComputedStyle(element).backgroundColor"
+            ),
+        )
+        with self.engine.connect() as connection:
+            quantidade = connection.execute(
+                text("SELECT COUNT(*) FROM escalas_trabalho WHERE evento_id = :id"),
+                {"id": self.dados["evento_id"]},
+            ).scalar_one()
+        self.assertEqual(quantidade, 3)
+        self.assertEqual(self.erros_js, [])
+
     def test_excluir_foto_exige_confirmacao_e_preserva_outra(self) -> None:
         from app.services import postgres
 

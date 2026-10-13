@@ -182,6 +182,20 @@ class PersistenciaTests(unittest.TestCase):
         self.assertIn(str(ocorrencia_id), response.text)
         self.assertIn(self.dados["fiscal_nome"], response.text)
 
+    def test_coordenador_cadastrador_edita_propria_emissao_pendente(self) -> None:
+        self.login("coordenador")
+        propria_id = self.cadastrar_emissao()
+        self.login("fiscal")
+        outra_id = self.cadastrar_emissao()
+        self.login("coordenador")
+
+        response = self.client.get("/api/pendencias")
+
+        self.assertEqual(response.status_code, 200)
+        registros = {int(item["id"]): item for item in response.json()}
+        self.assertTrue(registros[propria_id]["pode_editar"])
+        self.assertFalse(registros[outra_id]["pode_editar"])
+
     def test_jornada_emissao_ticket_devolucao_conclusao_e_auditoria(self) -> None:
         ocorrencia_id = self.cadastrar_emissao()
         self.client.post(
@@ -680,6 +694,34 @@ class PersistenciaTests(unittest.TestCase):
                 follow_redirects=False,
             )
             self.assertEqual(response.status_code, 303)
+
+        with self.engine.connect() as connection:
+            quantidade_antes = connection.execute(
+                text("SELECT COUNT(*) FROM escalas_trabalho WHERE evento_id = :id"),
+                {"id": self.evento_id},
+            ).scalar_one()
+        resposta_sobreposta = self.client.post(
+            "/coordenacao/escala",
+            data={
+                "fiscal_id": str(self.dados["fiscal"]),
+                "data_trabalho": "2026-10-12",
+                "turno_inicio": "01:00",
+                "turno_fim": "03:00",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(resposta_sobreposta.status_code, 303)
+        self.assertIn(
+            "se sobrepõe a outra escala deste fiscal",
+            self.client.get("/coordenacao?aba=escala").text,
+        )
+        with self.engine.connect() as connection:
+            quantidade_apos_rejeicao = connection.execute(
+                text("SELECT COUNT(*) FROM escalas_trabalho WHERE evento_id = :id"),
+                {"id": self.evento_id},
+            ).scalar_one()
+        self.assertEqual(quantidade_apos_rejeicao, quantidade_antes)
+
         self.login("fiscal")
         proprias = self.client.get("/escalas?visualizacao=proprias")
         outras = self.client.get("/escalas?visualizacao=outros")
@@ -696,6 +738,25 @@ class PersistenciaTests(unittest.TestCase):
         self.assertIn(
             "Escala criada", self.client.get("/auditoria?origem=Coordenação").text
         )
+
+        self.login("coordenador")
+        resposta_contigua = self.client.post(
+            "/coordenacao/escala",
+            data={
+                "fiscal_id": str(self.dados["fiscal"]),
+                "data_trabalho": "2026-10-12",
+                "turno_inicio": "02:00",
+                "turno_fim": "04:00",
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(resposta_contigua.status_code, 303)
+        with self.engine.connect() as connection:
+            quantidade_apos_contigua = connection.execute(
+                text("SELECT COUNT(*) FROM escalas_trabalho WHERE evento_id = :id"),
+                {"id": self.evento_id},
+            ).scalar_one()
+        self.assertEqual(quantidade_apos_contigua, quantidade_antes + 1)
 
     def test_devolver_ticket_sem_campo_motivo_deve_ser_recusado(self) -> None:
         from app.services import postgres
@@ -725,6 +786,13 @@ class PersistenciaTests(unittest.TestCase):
             "concluido_pelos_fiscais",
             "Devolucao sem motivo nao pode alterar o ticket",
         )
+        with self.assertRaisesRegex(ValueError, "motivo"):
+            postgres.atualizar_ticket_evento(ticket_id, self.evento_id, "pendente")
+        with self.engine.connect() as connection:
+            status = connection.execute(
+                text("SELECT status FROM tickets WHERE id = :id"), {"id": ticket_id}
+            ).scalar_one()
+        self.assertEqual(status, "concluido_pelos_fiscais")
 
 
 if __name__ == "__main__":

@@ -31,7 +31,7 @@ from app.services.postgres import (
     salvar_escala_evento,
     salvar_ticket_evento,
 )
-from app.utils.escalas import resumir_horas_escalas
+from app.utils.escalas import buscar_escala_sobreposta, resumir_horas_escalas
 from app.utils.formatters import _img_b64
 
 router = APIRouter()
@@ -227,6 +227,19 @@ async def post_escala_evento(request: Request):
         request.session["flash_error"] = "Selecione o fiscal e a data de trabalho."
         return RedirectResponse("/coordenacao", status_code=303)
 
+    escalas_existentes = listar_escalas_evento(int(evento_id))
+    if buscar_escala_sobreposta(
+        escalas_existentes,
+        int(fiscal_id),
+        data_trabalho,
+        turno_inicio,
+        turno_fim,
+    ):
+        request.session["flash_error"] = (
+            "A escala informada se sobrepõe a outra escala deste fiscal."
+        )
+        return RedirectResponse("/coordenacao?aba=escala", status_code=303)
+
     salvar_escala_evento(
         evento_id=int(evento_id),
         fiscal_id=int(fiscal_id),
@@ -345,12 +358,7 @@ async def post_ticket_status(request: Request, ticket_id: int):
     observacoes = None
     if "observacoes" in form:
         observacoes = str(form.get("observacoes", "")).strip() or None
-    motivo_devolucao = None
-    if "motivo_devolucao" in form:
-        motivo_devolucao = str(form.get("motivo_devolucao", "")).strip() or None
-        if status == STATUS_TICKET_PENDENTE and not motivo_devolucao:
-            request.session["flash_error"] = "Informe o motivo da devolução do ticket."
-            return RedirectResponse("/coordenacao", status_code=303)
+    motivo_devolucao = str(form.get("motivo_devolucao", "")).strip() or None
     fiscais = None
     if "fiscais" in form:
         fiscais = [
@@ -365,6 +373,14 @@ async def post_ticket_status(request: Request, ticket_id: int):
         ),
         None,
     )
+    if (
+        status == STATUS_TICKET_PENDENTE
+        and ticket_anterior
+        and ticket_anterior.get("status") == STATUS_TICKET_CONCLUIDO_FISCAIS
+        and not motivo_devolucao
+    ):
+        request.session["flash_error"] = "Informe o motivo da devolução do ticket."
+        return RedirectResponse("/coordenacao", status_code=303)
 
     try:
         atualizar_ticket_evento(

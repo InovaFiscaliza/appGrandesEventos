@@ -199,19 +199,6 @@ async def _load_pendencias(
         )
         return selecionada
 
-    if _usuario_e_coordenador(request, int(sp_id)):
-        if "SubmetidaCoordenadorEm" not in pendencias.columns:
-            return pd.DataFrame(columns=pendencias.columns)
-        submetida = pendencias["SubmetidaCoordenadorEm"].notna()
-        pendente = (
-            pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
-            == "pendente"
-        )
-        visivel = submetida | pendente
-        pendencias_visiveis = pendencias[visivel].copy()
-        pendencias_visiveis["PodeEditar"] = submetida[visivel]
-        return pendencias_visiveis
-
     fiscal_id = request.session.get("fiscal_id")
     pode_identificar_fiscal = bool(fiscal_id and str(fiscal_id).isdigit())
     if pode_identificar_fiscal and "CriadorFiscalID" in pendencias.columns:
@@ -229,11 +216,21 @@ async def _load_pendencias(
             == fiscal_nome
         )
 
+    if "SubmetidaCoordenadorEm" not in pendencias.columns:
+        return pd.DataFrame(columns=pendencias.columns)
     submetida = pendencias["SubmetidaCoordenadorEm"].notna()
     situacao_pendente = (
         pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
         == "pendente"
     )
+
+    if _usuario_e_coordenador(request, int(sp_id)):
+        visivel = submetida | situacao_pendente
+        pendencias_visiveis = pendencias[visivel].copy()
+        pode_editar = submetida | (situacao_pendente & criada_pelo_fiscal)
+        pendencias_visiveis["PodeEditar"] = pode_editar[visivel]
+        return pendencias_visiveis
+
     visivel = criada_pelo_fiscal & situacao_pendente & ~submetida
     pendencias_visiveis = pendencias[visivel].copy()
     pode_editar = visivel & ~submetida

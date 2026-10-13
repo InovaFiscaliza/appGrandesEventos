@@ -3,6 +3,7 @@
 {% include "partials/header.html" %}
 
 {% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error flash-toast" role="alert" aria-live="assertive">{{ flash_error }}</div>{% endif %}
 <section class="module-section coordenacao-tela">
     <div class="section-heading">
         <div>
@@ -833,8 +834,13 @@
             const escalasSemana = trechosEscalas.filter((trecho) =>
                 trecho.data >= dataChave(inicioSemana) && trecho.data <= dataChave(fimSemana)
             );
-            const paletaCores = ['#e8eef5', '#e8f5e9', '#fff3e0', '#f3e8ff', '#fce4ec', '#e0f7fa', '#f1f8e9', '#ede7f6'];
-            const obterCorEscala = (indice) => paletaCores[indice % paletaCores.length];
+            const fiscaisOrdenados = [...new Set(escalas.map((escala) => Number(escala.fiscalId)))]
+                .sort((primeiro, segundo) => primeiro - segundo);
+            const coresPorFiscal = new Map(fiscaisOrdenados.map((fiscalId, indice) => [
+                fiscalId,
+                `hsl(${(indice * 360) / fiscaisOrdenados.length} 65% 90%)`,
+            ]));
+            const obterCorEscala = (fiscalId) => coresPorFiscal.get(Number(fiscalId));
             vazio.hidden = escalasSemana.length > 0 || escalas.length === 0;
             corpo.innerHTML = '';
             const quantidadePassos = Math.ceil(1440 / passo);
@@ -869,7 +875,7 @@
                     evento.faixa = faixa;
                 });
                 const quantidadeFaixas = Math.max(finaisPorFaixa.length, 1);
-                eventosDia.forEach(({ escala, inicioMinutos, fimMinutos, faixa }, indice) => {
+                eventosDia.forEach(({ escala, inicioMinutos, fimMinutos, faixa }) => {
                     const horario = escala.inicio || escala.fim ? `${escala.inicio || '--:--'} às ${escala.fim || '--:--'}` : 'Dia inteiro';
                     const bloco = document.createElement('button');
                     bloco.type = 'button';
@@ -878,9 +884,13 @@
                     bloco.style.height = `${Math.max(((fimMinutos - inicioMinutos) / passo) * alturaPasso, alturaPasso)}px`;
                     bloco.style.left = `calc(${(faixa / quantidadeFaixas) * 100}% + 2px)`;
                     bloco.style.width = `calc(${100 / quantidadeFaixas}% - 4px)`;
-                    bloco.style.background = obterCorEscala((escala.fiscal || '').length + indice);
+                    bloco.style.background = obterCorEscala(escala.fiscalId);
                     bloco.innerHTML = `<strong>${textoSeguro(escala.fiscal)}</strong><span>${textoSeguro(horario)}</span>`;
-                    bloco.title = observacaoEscala(escala.observacoes) ? `${horario} — ${observacaoEscala(escala.observacoes)}` : horario;
+                    const descricaoEdicao = `Editar escala de ${escala.fiscal}: ${horario}`;
+                    bloco.setAttribute('aria-label', descricaoEdicao);
+                    bloco.title = observacaoEscala(escala.observacoes)
+                        ? `${descricaoEdicao} — ${observacaoEscala(escala.observacoes)}`
+                        : descricaoEdicao;
                     bloco.addEventListener('click', () => abrirPopupEditarEscala(escala));
                     coluna.appendChild(bloco);
                 });
