@@ -415,6 +415,20 @@ class PersistenciaTests(unittest.TestCase):
         self.addCleanup(engine_legado.dispose)
         dados = criar_dados_evento(engine_legado)
         with engine_legado.begin() as connection:
+            etiqueta_id = connection.execute(
+                text("""
+                    INSERT INTO testes_etiquetagem (
+                        evento_id, licenca, perfil, entidade, local,
+                        permissao, tipo_equipamento, numero_etiqueta,
+                        numero_equipamentos, observacoes
+                    ) VALUES (
+                        :evento_id, 'radiacao_restrita', 'pj', 'Equipe legada',
+                        'Arena', 'permitido', 'Radio', '150', 3,
+                        'Etiqueta legada preservada'
+                    ) RETURNING id
+                """),
+                {"evento_id": dados["evento_id"]},
+            ).scalar_one()
             ocorrencia_id = connection.execute(
                 text("""
                 INSERT INTO ocorrencias (evento_id, fiscal, frequencia_mhz, observacoes)
@@ -452,6 +466,34 @@ class PersistenciaTests(unittest.TestCase):
         self.assertEqual(registro["observacoes"], "Registro legado preservado")
         self.assertEqual(registro["criado_por_fiscal_id"], dados["fiscal"])
         self.assertIsNotNone(registro["submetida_coordenador_em"])
+        aplicar_migracoes_testes(engine_legado)
+        with engine_legado.begin() as connection:
+            etiqueta = (
+                connection.execute(
+                    text("""
+                    SELECT numero_etiqueta, numero_equipamentos, observacoes
+                    FROM testes_etiquetagem WHERE id = :id
+                """),
+                    {"id": etiqueta_id},
+                )
+                .mappings()
+                .one()
+            )
+            self.assertEqual(etiqueta["numero_etiqueta"], "150")
+            self.assertEqual(etiqueta["numero_equipamentos"], 3)
+            self.assertEqual(etiqueta["observacoes"], "Etiqueta legada preservada")
+            connection.execute(
+                text("""
+                    INSERT INTO testes_etiquetagem (
+                        evento_id, licenca, perfil, entidade, local,
+                        permissao, tipo_equipamento, numero_etiqueta
+                    ) VALUES (
+                        :evento_id, 'radiacao_restrita', 'pj', 'Outra categoria',
+                        'Arena', 'todos', 'Radio', '150'
+                    )
+                """),
+                {"evento_id": dados["evento_id"]},
+            )
 
     def test_etiquetagem_cadastra_edita_com_conflito_sem_bloquear_e_audita_foto(
         self,
@@ -519,6 +561,139 @@ class PersistenciaTests(unittest.TestCase):
                 .all()
             )
         self.assertEqual(registros, [["433,930 MHz ⌂ 25 kHz"]])
+        auditoria = self.client.get("/auditoria?origem=Teste%20de%20etiquetagem")
+        self.assertEqual(auditoria.status_code, 200)
+        self.assertIn("Imagem anexada", auditoria.text)
+
+    def test_etiquetas_separam_categorias_e_bloqueiam_sobreposicao(self) -> None:
+        from app.services import postgres
+
+        postgres.criar_faixa_numeracao_etiqueta(
+            evento_id=self.evento_id,
+            permissao="todos",
+            numero_inicial=100,
+            numero_final=999,
+        )
+        dados = {
+            "licenca": "radiacao_restrita",
+            "perfil": "pj",
+            "entidade": f"Equipe categorias {self.evento_id}",
+            "tipo_equipamento": "Radio",
+            "numero_etiqueta": "150",
+            "numero_equipamentos": "3",
+        }
+        registros = {}
+        for categoria in ("permitido", "todos"):
+            with self.subTest(categoria=categoria):
+                imagem = imagem_sintetica()
+                response = self.client.post(
+                    "/teste_etiquetagem",
+                    data={**dados, "permissao": categoria},
+                    files={
+                        "imagens": (
+                            imagem["nome_arquivo"],
+                            imagem["conteudo"],
+                            imagem["tipo_mime"],
+                        )
+                    },
+                    follow_redirects=False,
+                )
+                self.assertEqual(response.status_code, 303, response.text)
+                with self.engine.connect() as connection:
+                    registros[categoria] = connection.execute(
+                        text("""
+                            SELECT id FROM testes_etiquetagem
+                            WHERE evento_id = :evento_id AND permissao = :permissao
+                        """),
+                        {"evento_id": self.evento_id, "permissao": categoria},
+                    ).scalar_one()
+                repetida = self.client.post(
+                    "/teste_etiquetagem",
+                    data={**dados, "permissao": categoria, "numero_etiqueta": "151"},
+                    follow_redirects=False,
+                )
+                self.assertEqual(repetida.status_code, 200)
+                self.assertIn(
+                    "Faixa de etiquetas já utilizada", repetida.context["flash_error"]
+                )
+                editada = self.client.post(
+                    "/teste_etiquetagem",
+                    data={
+                        **dados,
+                        "permissao": categoria,
+                        "registro_id": str(registros[categoria]),
+                        "observacoes": "Revisao da categoria",
+                    },
+                    follow_redirects=False,
+                )
+                self.assertEqual(editada.status_code, 303, editada.text)
+
+        troca = self.client.post(
+            "/teste_etiquetagem",
+            data={
+                **dados,
+                "permissao": "todos",
+                "registro_id": str(registros["permitido"]),
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(troca.status_code, 200)
+        self.assertIn("Faixa de etiquetas já utilizada", troca.context["flash_error"])
+        with self.engine.connect() as connection:
+            categorias = (
+                connection.execute(
+                    text("""
+                    SELECT permissao FROM testes_etiquetagem
+                    WHERE evento_id = :evento_id ORDER BY permissao
+                """),
+                    {"evento_id": self.evento_id},
+                )
+                .scalars()
+                .all()
+            )
+        self.assertEqual(categorias, ["permitido", "todos"])
+        outro_evento = criar_dados_evento(self.engine)
+        self.assertIsNone(
+            postgres.verificar_etiqueta_existente(
+                evento_id=outro_evento["evento_id"],
+                permissao="permitido",
+                numero_etiqueta="150",
+                numero_final=152,
+            )
+        )
+        self.assertIsNotNone(
+            postgres.verificar_etiqueta_existente(
+                evento_id=outro_evento["evento_id"],
+                permissao="todos",
+                numero_etiqueta="151",
+                numero_final=153,
+            )
+        )
+        troca_livre = self.client.post(
+            "/teste_etiquetagem",
+            data={
+                **dados,
+                "permissao": "todos",
+                "numero_etiqueta": "160",
+                "registro_id": str(registros["permitido"]),
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(troca_livre.status_code, 303, troca_livre.text)
+        with self.engine.connect() as connection:
+            alterada = (
+                connection.execute(
+                    text("""
+                    SELECT permissao, numero_etiqueta
+                    FROM testes_etiquetagem WHERE id = :id
+                """),
+                    {"id": registros["permitido"]},
+                )
+                .mappings()
+                .one()
+            )
+        self.assertEqual(alterada["permissao"], "todos")
+        self.assertEqual(alterada["numero_etiqueta"], "160")
         auditoria = self.client.get("/auditoria?origem=Teste%20de%20etiquetagem")
         self.assertEqual(auditoria.status_code, 200)
         self.assertIn("Imagem anexada", auditoria.text)
@@ -724,17 +899,21 @@ class PersistenciaTests(unittest.TestCase):
 
         self.login("fiscal")
         proprias = self.client.get("/escalas?visualizacao=proprias")
-        outras = self.client.get("/escalas?visualizacao=outros")
+        outra_fiscal = self.client.get(f"/escalas?visualizacao={self.dados['outro']}")
         self.assertEqual(
             [item["fiscal_id"] for item in proprias.context["escalas"]],
             [self.dados["fiscal"]],
         )
         self.assertEqual(
-            [item["fiscal_id"] for item in outras.context["escalas"]],
+            [item["fiscal_id"] for item in outra_fiscal.context["escalas"]],
             [self.dados["outro"]],
         )
+        self.assertIn(
+            f'<option value="{self.dados["outro"]}" selected>',
+            outra_fiscal.text,
+        )
         self.assertEqual(proprias.context["resumo_horas"][0]["total_minutos"], 240)
-        self.assertEqual(outras.context["resumo_horas"][0]["total_minutos"], 150)
+        self.assertEqual(outra_fiscal.context["resumo_horas"][0]["total_minutos"], 150)
         self.assertIn(
             "Escala criada", self.client.get("/auditoria?origem=Coordenação").text
         )

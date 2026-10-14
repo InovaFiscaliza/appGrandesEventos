@@ -2740,12 +2740,10 @@ def verificar_etiqueta_existente(
 ) -> dict | None:
     """Retorna o primeiro cadastro que sobrepõe a faixa de etiquetas informada.
 
-    A checagem de duplicidade respeita o tipo da etiqueta: uma etiqueta
-    "permitido" (válida só no evento/local) só conflita com outra etiqueta
-    dentro do mesmo evento; já uma etiqueta "permitido em todos os estádios"
-    conflita com qualquer outra etiqueta em qualquer evento, pois vale para
-    todas as sedes. A quantidade de equipamentos transforma cada cadastro em
-    um intervalo contínuo de números.
+    As categorias possuem numerações independentes. Uma etiqueta "permitido"
+    só conflita com a mesma categoria no evento; uma etiqueta "todos" conflita
+    com a mesma categoria em qualquer evento. A quantidade de equipamentos
+    transforma cada cadastro em um intervalo contínuo de números.
     """
     numero = str(numero_etiqueta or "").strip()
     if not numero:
@@ -2774,6 +2772,7 @@ def verificar_etiqueta_existente(
                     FROM testes_etiquetagem t
                     JOIN eventos e ON e.id = t.evento_id
                     WHERE t.numero_etiqueta ~ '^[0-9]+$'
+                      AND t.permissao = :permissao
                       AND CAST(t.numero_etiqueta AS BIGINT) <= :fim
                       AND CAST(t.numero_etiqueta AS BIGINT)
                           + GREATEST(COALESCE(t.numero_equipamentos, 1), 1)
@@ -2784,7 +2783,6 @@ def verificar_etiqueta_existente(
                       )
                       AND (
                           NOT :escopo_local
-                          OR t.permissao = 'todos'
                           OR t.evento_id = CAST(:evento_id AS BIGINT)
                       )
                     ORDER BY t.criado_em, t.id
@@ -2794,6 +2792,7 @@ def verificar_etiqueta_existente(
                         "inicio": inicio,
                         "fim": fim,
                         "excluir_id": excluir_id,
+                        "permissao": permissao,
                         "escopo_local": escopo_local,
                         "evento_id": evento_id,
                     },
@@ -3019,8 +3018,14 @@ def inserir_teste_etiquetagem(
         return "Teste de etiquetagem inserido com sucesso."
     except Exception as e:
         logger.error(f"Erro inserir_teste_etiquetagem: {e}", exc_info=True)
-        if "testes_etiquetagem_evento_id_numero_etiqueta_key" in str(e):
-            return "ERRO: o número da etiqueta já existe neste evento."
+        if any(
+            restricao in str(e)
+            for restricao in (
+                "testes_etiquetagem_evento_id_numero_etiqueta_key",
+                "testes_etiquetagem_evento_permissao_numero_key",
+            )
+        ):
+            return "ERRO: o número da etiqueta já existe nesta categoria e evento."
         return f"ERRO ao inserir teste de etiquetagem: {e}"
 
 
@@ -3166,8 +3171,14 @@ def atualizar_teste_etiquetagem(
         )
     except Exception as e:
         logger.error(f"Erro ao atualizar teste de etiquetagem: {e}", exc_info=True)
-        if "testes_etiquetagem_evento_id_numero_etiqueta_key" in str(e):
-            return "ERRO: o número da etiqueta já existe neste evento."
+        if any(
+            restricao in str(e)
+            for restricao in (
+                "testes_etiquetagem_evento_id_numero_etiqueta_key",
+                "testes_etiquetagem_evento_permissao_numero_key",
+            )
+        ):
+            return "ERRO: o número da etiqueta já existe nesta categoria e evento."
         return f"ERRO ao atualizar teste de etiquetagem: {e}"
 
 

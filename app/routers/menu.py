@@ -89,10 +89,6 @@ async def get_menu(
             )
         df = pd.DataFrame(data)
 
-    # Filter by source like the old functions did
-    df_painel = df[df["Fonte"] == "PAINEL"] if not df.empty else pd.DataFrame()
-    df_estac = df[df["Fonte"] == "ESTACAO"] if not df.empty else pd.DataFrame()
-
     link_mapa = get_city_map_url(evento_id=sp_id_int)
 
     fiscal_id = request.session.get("fiscal_id")
@@ -116,10 +112,9 @@ async def get_menu(
                 )
             return df[propria]
 
-        df_painel = somente_proprias(df_painel)
-        df_estac = somente_proprias(df_estac)
+        df = somente_proprias(df)
 
-    total = sum(len(df) for df in [df_painel, df_estac] if df is not None)
+    total = len(df)
     tickets_atribuidos = [
         ticket
         for ticket in listar_tickets_evento(int(sp_id))

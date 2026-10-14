@@ -1,4 +1,62 @@
+from calendar import Calendar
 from datetime import date, datetime, time
+
+
+def montar_calendario_escalas(escalas: list[dict], mes: str = "") -> dict:
+    """Organiza as escalas por dia e calcula a navegacao mensal."""
+    por_dia: dict[date, list[dict]] = {}
+    for escala in escalas:
+        data_trabalho = _converter_data(escala.get("data_trabalho"))
+        if data_trabalho is not None:
+            por_dia.setdefault(data_trabalho, []).append(escala)
+    try:
+        referencia = date.fromisoformat(f"{mes}-01")
+    except ValueError:
+        referencia = min(por_dia) if por_dia else date.today()
+    ano, numero_mes = referencia.year, referencia.month
+    nomes_meses = (
+        "Janeiro",
+        "Fevereiro",
+        "Março",
+        "Abril",
+        "Maio",
+        "Junho",
+        "Julho",
+        "Agosto",
+        "Setembro",
+        "Outubro",
+        "Novembro",
+        "Dezembro",
+    )
+    semanas = []
+    total = 0
+    for semana in Calendar().monthdayscalendar(ano, numero_mes):
+        dias = []
+        for numero_dia in semana:
+            data_dia = date(ano, numero_mes, numero_dia) if numero_dia else None
+            jornadas = por_dia.get(data_dia, []) if data_dia else []
+            total += len(jornadas)
+            dias.append({"numero": numero_dia, "data": data_dia, "escalas": jornadas})
+        semanas.append(dias)
+    anterior = (
+        (f"{ano - 1:04d}-12" if numero_mes == 1 else f"{ano:04d}-{numero_mes - 1:02d}")
+        if (ano, numero_mes) != (1, 1)
+        else None
+    )
+    proximo = (
+        (f"{ano + 1:04d}-01" if numero_mes == 12 else f"{ano:04d}-{numero_mes + 1:02d}")
+        if (ano, numero_mes) != (9999, 12)
+        else None
+    )
+    return {
+        "mes": f"{ano:04d}-{numero_mes:02d}",
+        "titulo": f"{nomes_meses[numero_mes - 1]} de {ano}",
+        "anterior": anterior,
+        "proximo": proximo,
+        "semanas": semanas,
+        "total": total,
+        "hoje": date.today(),
+    }
 
 
 def _converter_data(valor: object) -> date | None:

@@ -44,18 +44,40 @@ grava uma emissão no banco configurado. Não usá-lo como validação de rotina
 
 ## Estado validado
 
-Execução local em 11/10/2026:
+Execução local em 14/10/2026:
 
 | Camada | Casos | Resultado |
 | --- | --- | --- |
-| Contratos e HTTP sem banco | 89 | Todos passaram |
-| PostgreSQL real isolado | 15 | 14 passaram; devolução sem campo de motivo falhou |
-| Chromium online | 3 | Três falharam: exclusão de foto e feedback de cadastro em desktop/celular |
-| Total | 107 | 103 passaram; quatro reprovações correspondem a três defeitos |
+| Contratos e HTTP sem banco | 98 | Todos passaram |
+| PostgreSQL real isolado | 17 | Todos passaram |
+| Chromium online | 8 | Todos passaram |
+| Total | 123 | Todos passaram |
 
-As falhas reais foram mantidas por decisão do usuário, sem correções na aplicação,
-`skip`, `expectedFailure` ou alteração da regra para fazê-las passar. O comando
-completo retorna `1` neste estado. A contagem não representa cobertura integral.
+O comando completo passou com PostgreSQL descartável e Chromium. A contagem
+não representa cobertura integral. As falhas registradas em 11/10 foram
+resolvidas sem remover ou ignorar os testes. A jornada de pendências agora
+cobre salvar, localizar pelo menu, abrir, editar e submeter, em desktop e celular.
+O contador também é verificado com diferentes origens, incluindo `FISCAL`.
+A consulta operacional da coordenação e sua API excluem emissões com situação
+`Concluída Pelo Coordenador`, inclusive com variações de maiúsculas e espaços.
+Emissões pendentes e concluídas pelo fiscal permanecem disponíveis conforme
+as regras existentes; busca geral e acesso específico por ticket são preservados.
+Na etiquetagem, o mesmo intervalo pode ser usado em categorias diferentes;
+sobreposições na mesma categoria continuam bloqueadas. A cobertura inclui
+troca de categoria, edição do próprio registro, escopo entre eventos e migração
+com preservação de etiqueta legada. A migração `0005` deve ser aplicada pela
+automação de implantação antes de usar essa regra no servidor existente.
+
+O calendário mensal em `/escalas` preserva o filtro de fiscal na paginação,
+permite escolher um mês e mantém as tabelas existentes. Os testes rápidos
+cobrem fevereiro bissexto, limites de datas e virada de ano. Playwright verifica
+meses anterior/próximo, seleção direta, mês vazio, horários noturnos e ausência
+de rolagem horizontal da página em desktop e celular; a tabela do calendário
+mantém sua própria rolagem horizontal quando necessário.
+O calendário fica abaixo dos totais mensais e reutiliza os estilos de cabeçalho
+e jornada da coordenação. As jornadas de navegador verificam cores diferentes
+por fiscal e sua estabilidade após filtrar ou mudar de mês, além da posição
+do calendário abaixo do resumo de horas.
 
 | Área | Contratos protegidos | Módulo |
 | --- | --- | --- |
@@ -83,13 +105,14 @@ sessão, templates e serviços reais com PostgreSQL isolado, inclusive auditoria
 Playwright usa um servidor real em porta livre, encerrado ao terminar a classe.
 Service workers ficam bloqueados no navegador para excluir offline do escopo.
 
-## Defeitos detectados
+## Defeitos corrigidos
 
 | Defeito | Evidência e caminho responsável |
 | --- | --- |
-| Devolução sem motivo quando o campo é omitido | `test_devolver_ticket_sem_campo_motivo_deve_ser_recusado`: ticket concluído pelo fiscal passa a pendente. A rota de coordenação valida vazio somente se o campo existe; o serviço também não impede a transição sem motivo. |
-| Confirmação duplicada para excluir foto | `test_excluir_foto_exige_confirmacao_e_preserva_outra`: após uma confirmação, continuam duas fotos e abre uma segunda confirmação. O handler genérico e o handler de imagem interceptam o mesmo clique. |
-| Feedback de sucesso perdido no cadastro | `test_salvar_emissao_desktop` e `test_salvar_emissao_celular`: o `fetch` segue o redirecionamento e consome o flash; a navegação posterior faz outro GET e a mensagem desaparece. |
+| Devolução sem motivo quando o campo é omitido | O teste de persistência confirma a recusa e a preservação do estado anterior. |
+| Confirmação duplicada para excluir foto | A lixeira usa a confirmação específica da imagem. O teste cancela e depois confirma uma única vez, preservando a outra foto e o incidente. |
+| Feedback de sucesso perdido no cadastro | Os formulários enviados por `AppOffline.interceptarSubmit` usam `X-App-Redirect: json`. O middleware devolve o destino em JSON e o navegador realiza o único GET que consome o flash; os demais formulários mantêm os redirecionamentos HTTP. |
+| Emissões de campo ausentes do contador e recusadas na edição | O menu conta os rascunhos sem restringir a origem, e a edição aceita `FISCAL` após validar autoria e permissão. As jornadas verificam persistência da edição e retirada da pendência após submissão. |
 
 Capturas e traces são gerados em `.test-artifacts/`, ignorado pelo Git e publicado
 como artefato no job de navegador. Para abrir um trace:
@@ -98,7 +121,7 @@ como artefato no job de navegador. Para abrir um trace:
 uv run --locked playwright show-trace .test-artifacts/test_salvar_emissao_celular.zip
 ```
 
-Essas reprovações não devem ser ignoradas para publicar uma versão como validada.
+Novas reprovações não devem ser ignoradas para publicar uma versão como validada.
 
 ## Isolamento do banco
 
@@ -149,14 +172,14 @@ confirmado após publicar os arquivos; a execução local já foi validada.
 Na proteção da branch `main`, exigir a verificação
 `Regressao funcional (Python 3.13)` e `Integracao e navegador (Python 3.13)` para
 permitir merge. O workflow sozinho não configura essa proteção. As regras só
-podem ser selecionadas após a primeira execução. O job completo reprovará os
-defeitos conhecidos até que sejam corrigidos.
+podem ser selecionadas após a primeira execução. A aprovação local não substitui
+a verificação da execução do workflow remoto.
 
 ## Lacunas restantes
 
 | Prioridade | Área | Cenários a acrescentar |
 | --- | --- | --- |
-| Alta | Defeitos conhecidos | Corrigir as três causas mantendo os testes existentes |
+| Alta | Novos defeitos | Preservar os testes dos defeitos corrigidos e cobrir novas ocorrências |
 | Alta | Navegador | Jornada completa de ticket/etiquetagem, edição nos popups, aviso imediato de conflito e upload pela interface |
 | Alta | Permissões e concorrência | Tentativas cruzadas entre eventos/usuários em todas as APIs, edição simultânea e repetição de envios |
 | Alta | Auditoria | Inclusão/edição/exclusão de todos os tipos, autoria em todos os serviços e combinações de filtros |

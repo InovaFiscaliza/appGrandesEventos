@@ -1,4 +1,32 @@
 /* ======== AppEventos — CSS Global ======== */
+.escala-mes-secao { margin: 1.5rem 0; }
+.escala-mes-controles, .escala-mes-navegacao, .escala-mes-seletor {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+.escala-mes-controles { justify-content: space-between; margin-bottom: .75rem; }
+.escala-mes-controles h2 { font-size: 1.1rem; }
+.escala-mes-navegacao .btn { min-width: 2.5rem; padding: .4rem; }
+.escala-mes-seletor input { width: 10rem; min-width: 0; }
+table.escala-mes-tabela { min-width: 700px; table-layout: fixed; width: 100%; background: #fff; }
+.escala-mes-tabela th { padding: 0; background: #f4f7fb; }
+.escala-mes-tabela td { height: 6rem; vertical-align: top; overflow-wrap: anywhere; border-color: #dce4ed; }
+.escala-mes-tabela time { display: block; font-weight: bold; margin-bottom: .25rem; }
+.escala-mes-tabela .escala-mes-hoje { background: #edf4ff; }
+.escala-mes-turno.escala-jornada-bloco {
+    position: relative;
+    width: 100%;
+    margin: .4rem 0;
+    background: var(--escala-cor, #edf4ff);
+    cursor: default;
+}
+.escala-mes-turno.escala-jornada-bloco strong,
+.escala-mes-turno.escala-jornada-bloco span {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
 :root {
     --blue-dark: #14337b;
     --blue-light: #4464A7;

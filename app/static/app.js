@@ -190,18 +190,20 @@ const AppOffline = (() => {
           const resp = await fetch(destino, {
             method: 'POST',
             body: fd,
+            headers: { 'X-App-Redirect': 'json' },
           });
           if (resp.ok) {
-            // Sucesso: servidor processou (pode ter redirecionado ou renderizado)
-            if (resp.redirected) {
-              window.location.href = resp.url;
-            } else {
-              // Se respondeu com HTML, substitui a página
-              const html = await resp.text();
-              document.open();
-              document.write(html);
-              document.close();
+            if (resp.headers.get('content-type')?.includes('application/json')) {
+              const dados = await resp.json();
+              if (dados.redirect_url) {
+                window.location.assign(dados.redirect_url);
+                return;
+              }
             }
+            const html = await resp.text();
+            document.open();
+            document.write(html);
+            document.close();
             return;
           }
           // Se o servidor respondeu com erro, tenta salvar offline
