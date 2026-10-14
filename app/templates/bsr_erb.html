@@ -84,7 +84,7 @@
                 {% for imagem in registro_edicao.imagens %}
                 <li class="imagem-preview-item">
                     <img src="{{ imagem.url }}" alt="{{ imagem.nome_arquivo }}" title="{{ imagem.nome_arquivo }}" onclick="abrirZoomImagem(this.src, this.alt)">
-                    <button type="button" class="imagem-preview-excluir" data-imagem-bsr-excluir="/bsr-erb/{{ registro_edicao.id }}/imagem/{{ imagem.id }}/excluir{% if ticket_id %}?ticket_id={{ ticket_id }}{% endif %}" aria-label="Excluir {{ imagem.nome_arquivo }}" title="Excluir imagem">🗑️</button>
+                    <button type="button" class="imagem-preview-excluir" data-confirmacao-imagem="true" data-imagem-bsr-excluir="/bsr-erb/{{ registro_edicao.id }}/imagem/{{ imagem.id }}/excluir{% if ticket_id %}?ticket_id={{ ticket_id }}{% endif %}" aria-label="Excluir {{ imagem.nome_arquivo }}" title="Excluir imagem">🗑️</button>
                 </li>
                 {% endfor %}
             </ul>

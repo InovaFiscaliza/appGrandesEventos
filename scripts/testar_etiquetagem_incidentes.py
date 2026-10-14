@@ -160,6 +160,21 @@ class EtiquetagemFrequenciasTests(unittest.TestCase):
         self.inserir.assert_not_called()
         self.editar.assert_not_called()
 
+    def test_formulario_identifica_e_preserva_equipamento_homologado(self) -> None:
+        self.faixa.return_value = False
+        response = self.client.post(
+            "/teste_etiquetagem",
+            data={**self.dados, "equipamento_homologado": "on"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Equipamento homologado</label>", response.text)
+        self.assertIn('for="equipamento-homologado"', response.text)
+        self.assertIn(
+            'name="equipamento_homologado" type="checkbox" checked', response.text
+        )
+        self.assertNotIn("Tipo de etiqueta", response.text)
+        self.assertTrue(response.context["values"]["equipamento_homologado"])
+
     def test_etiqueta_duplicada_nao_grava(self) -> None:
         self.etiqueta.return_value = {
             "evento": "Evento teste",

@@ -24,3 +24,9 @@ e aplica as migrações nessa cópia. Uma falha de SQL descarta a transação.
 O banco original permanece disponível para recuperação. Na primeira
 instalação em um banco sem tabelas, o backup local fornece a estrutura e os
 dados iniciais antes de aplicar as migrações.
+
+`0005_etiquetas_unicidade_categoria.sql` substitui a unicidade antiga por
+evento e número pela unicidade por evento, categoria de liberação e número.
+A tabela, as colunas e os registros existentes são preservados. A validação
+de sobreposição dos lotes continua no backend, com escopo local por evento
+para `permitido` e entre eventos para `todos`, sempre dentro da mesma categoria.

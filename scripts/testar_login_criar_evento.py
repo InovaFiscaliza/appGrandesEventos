@@ -373,6 +373,31 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(context["total"], 2)
         self.assertTrue(context["exibir_tratamento_pendencias"])
 
+    async def test_menu_conta_pendencias_independente_da_origem(self) -> None:
+        from app.routers import consultar, menu
+
+        for perfil in ("monitoração", "Coordenação"):
+            for origem in ("FISCAL", "PAINEL", "ESTACAO", "OUTRA"):
+                with self.subTest(perfil=perfil, origem=origem):
+                    self.request.session["tipo_usuario"] = perfil
+                    service = MagicMock()
+                    service.listar_por_evento.return_value = self.listar(
+                        [{**self.record, "fonte": origem}]
+                    )
+                    with (
+                        patch.object(menu, "get_city_map_url", return_value=""),
+                        patch.object(menu, "listar_tickets_evento", return_value=[]),
+                        patch.object(menu, "_img_b64", return_value=""),
+                        patch.object(menu.templates, "TemplateResponse") as template,
+                    ):
+                        await menu.get_menu(self.request, service)
+                    context = template.call_args.args[2]
+                    self.assertEqual(context["total"], 1)
+                    self.assertTrue(context["exibir_tratamento_pendencias"])
+                    rows = await consultar._load_pendencias(self.request, 10, service)
+                    self.assertEqual(rows["ID"].tolist(), [1])
+                    self.assertEqual(rows["PodeEditar"].tolist(), [True])
+
     async def test_menu_sem_pendencias_oculta_modulo(self) -> None:
         from app.routers import menu
 
@@ -436,6 +461,38 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(rows["ID"].tolist(), [1, 2, 3])
         self.assertEqual(rows["PodeEditar"].tolist(), [True, False, True])
+
+    async def test_coordenador_oculta_concluidas_da_lista_e_api(self) -> None:
+        from app.routers import consultar
+
+        self.request.session["tipo_usuario"] = "Coordenação"
+        service = MagicMock()
+        service.listar_por_evento.return_value = self.listar(
+            [
+                {
+                    **self.record,
+                    "id": indice,
+                    "situacao": situacao,
+                    "submetida_coordenador_em": datetime(2026, 10, 10),
+                }
+                for indice, situacao in enumerate(
+                    (
+                        "Pendente",
+                        "Concluída Pelo Fiscal",
+                        "Concluída Pelo Coordenador",
+                        "  CONCLUÍDA PELO COORDENADOR  ",
+                    ),
+                    start=1,
+                )
+            ]
+        )
+        rows = await consultar._load_pendencias(self.request, 10, service)
+        self.assertEqual(rows["ID"].tolist(), [1, 2])
+        with patch.object(consultar, "carregar_imagens_ocorrencia", return_value=[]):
+            response = await consultar.api_pendencias(self.request, service)
+        self.assertEqual(
+            [registro["id"] for registro in json.loads(response.body)], ["1", "2"]
+        )
 
     async def test_api_preserva_cadastrador(self) -> None:
         from app.routers import consultar

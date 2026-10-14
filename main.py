@@ -140,6 +140,13 @@ async def carregar_eventos_no_request(request: Request, call_next):
         )
 
     resposta = await call_next(request)
+    if (
+        request.method == "POST"
+        and request.headers.get("X-App-Redirect") == "json"
+        and resposta.status_code in {302, 303}
+        and resposta.headers.get("location")
+    ):
+        return JSONResponse({"redirect_url": resposta.headers["location"]})
     _mensagem_inicializacao(
         f"Resposta concluída em {time.perf_counter() - inicio_requisicao:.2f}s: "
         f"{request.method} {caminho} ({resposta.status_code})"

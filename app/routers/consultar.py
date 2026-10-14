@@ -10,6 +10,7 @@ from starlette.datastructures import UploadFile
 from app.config import (
     IDENT_OPCOES,
     ORIGENS_CAMPO,
+    SITUACAO_CONCLUIDA_COORDENADOR,
     STATUS_TICKET_CONCLUIDO_FISCAIS,
     STATUS_TICKET_PENDENTE,
     TITULO_PRINCIPAL,
@@ -225,7 +226,11 @@ async def _load_pendencias(
     )
 
     if _usuario_e_coordenador(request, int(sp_id)):
-        visivel = submetida | situacao_pendente
+        concluida_coordenador = (
+            pendencias["Situação"].fillna("").astype(str).str.strip().str.casefold()
+            == SITUACAO_CONCLUIDA_COORDENADOR.casefold()
+        )
+        visivel = (submetida | situacao_pendente) & ~concluida_coordenador
         pendencias_visiveis = pendencias[visivel].copy()
         pode_editar = submetida | (situacao_pendente & criada_pelo_fiscal)
         pendencias_visiveis["PodeEditar"] = pode_editar[visivel]
@@ -474,7 +479,7 @@ async def post_consultar_salvar(
     res = ""
     falhou_conexao = False
     try:
-        if fonte not in {"PAINEL", "ESTACAO"}:
+        if fonte not in {"PAINEL", "ESTACAO", "FISCAL"}:
             res = "ERRO: origem da ocorrência inválida."
         else:
             res = atualizar_campos_na_aba_mae(

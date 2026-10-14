@@ -101,8 +101,8 @@ class NavegadorTests(unittest.TestCase):
         self.page.get_by_role("button", name="Entrar", exact=True).click()
         self.page.wait_for_url("**/menu")
 
-    def salvar_emissao(self, largura: int, altura: int) -> None:
-        """Preenche e aciona o botao de salvar; confere ausencia de submissao."""
+    def preencher_e_salvar_emissao(self, largura: int, altura: int) -> None:
+        """Cadastra uma emissao em elaboracao pelo formulario real."""
         self.page.set_viewport_size({"width": largura, "height": altura})
         self.login()
         self.page.goto(f"{self.endereco}/inserir")
@@ -122,13 +122,19 @@ class NavegadorTests(unittest.TestCase):
         self.page.locator('[name="ute"]').select_option("Não")
         self.page.locator('[name="obs"]').fill("Cadastro pelo navegador")
         self.page.locator('[name="situacao"]').select_option("Pendente")
-        with self.page.expect_response(
-            lambda response: "/inserir/salvar" in response.url
-            and response.request.method == "POST"
-        ) as resposta:
+        with (
+            self.page.expect_response(
+                lambda response: "/inserir/salvar" in response.url
+                and response.request.method == "POST"
+            ) as resposta,
+        ):
             self.page.locator('button[formaction="/inserir/salvar"]').click()
-        self.assertEqual(resposta.value.status, 303)
-        self.page.wait_for_load_state("domcontentloaded")
+        self.assertEqual(resposta.value.status, 200)
+        expect(self.page.locator('[name="obs"]')).to_have_value("")
+
+    def salvar_emissao(self, largura: int, altura: int) -> None:
+        """Preenche e aciona o botao de salvar; confere ausencia de submissao."""
+        self.preencher_e_salvar_emissao(largura, altura)
         expect(self.page.locator(".flash-success").first).to_contain_text(
             "Emissão salva com sucesso"
         )
@@ -154,6 +160,163 @@ class NavegadorTests(unittest.TestCase):
 
     def test_salvar_emissao_celular(self) -> None:
         self.salvar_emissao(390, 844)
+
+    def tratar_emissao_pendente(self, largura: int, altura: int) -> None:
+        """Localiza, edita e submete um rascunho pelo atalho do menu."""
+        self.preencher_e_salvar_emissao(largura, altura)
+        self.page.goto(f"{self.endereco}/menu")
+        expect(self.page.locator(".module-count")).to_have_text("1 pendência(s)")
+        self.page.get_by_role("link", name="Tratar emissões pendentes").click()
+        self.page.wait_for_url("**/consultar")
+        linha = self.page.locator("#pendencias-tbody tr")
+        expect(linha).to_have_count(1)
+        linha.click()
+        expect(self.page.locator("#form-consultar")).to_be_visible()
+        self.page.locator("#f-estacao").select_option("campo_analisador")
+        self.page.locator("#f-autz").select_option("Não")
+        self.page.locator("#f-obs").fill("Rascunho revisado pelo fiscal")
+        self.page.get_by_role("button", name="Salvar alterações", exact=True).click()
+        expect(self.page.locator(".confirmacao-overlay")).to_be_visible()
+        with self.page.expect_response(
+            lambda response: "/consultar/salvar" in response.url
+            and response.request.method == "POST"
+        ):
+            self.page.locator(".confirmacao-confirmar").click()
+        expect(
+            self.page.get_by_role("status").filter(has_text="Atualizado no banco")
+        ).to_be_visible()
+        self.page.goto(f"{self.endereco}/menu")
+        expect(self.page.locator(".module-count")).to_have_text("1 pendência(s)")
+        self.page.get_by_role("link", name="Tratar emissões pendentes").click()
+        self.page.locator("#pendencias-tbody tr").click()
+        expect(self.page.locator("#f-obs")).to_have_value(
+            "Rascunho revisado pelo fiscal"
+        )
+        self.page.once("dialog", lambda dialog: dialog.accept())
+        with self.page.expect_response(
+            lambda response: "/consultar/submeter-ticket/" in response.url
+            and response.request.method == "POST"
+        ) as resposta:
+            self.page.locator("#btn-submeter-ticket").click()
+        self.assertEqual(resposta.value.status, 303)
+        expect(self.page.locator("#msg-vazio")).to_be_visible()
+        self.page.goto(f"{self.endereco}/menu")
+        expect(self.page.locator(".module-count")).to_have_text("0 pendência(s)")
+        expect(
+            self.page.get_by_role("link", name="Tratar emissões pendentes")
+        ).to_have_count(0)
+        with self.engine.connect() as connection:
+            emissao = (
+                connection.execute(
+                    text("""
+                    SELECT observacoes, submetida_coordenador_em
+                    FROM ocorrencias WHERE evento_id = :evento_id
+                """),
+                    {"evento_id": self.dados["evento_id"]},
+                )
+                .mappings()
+                .one()
+            )
+        self.assertEqual(emissao["observacoes"], "Rascunho revisado pelo fiscal")
+        self.assertIsNotNone(emissao["submetida_coordenador_em"])
+        self.assertEqual(self.erros_js, [])
+
+    def test_tratar_emissao_pendente_desktop(self) -> None:
+        self.tratar_emissao_pendente(1280, 900)
+
+    def test_tratar_emissao_pendente_celular(self) -> None:
+        self.tratar_emissao_pendente(390, 844)
+
+    def consultar_calendario_escalas(self, largura: int, altura: int) -> None:
+        """Pagina meses e preserva o filtro do fiscal na agenda mensal."""
+        with self.engine.begin() as connection:
+            for fiscal, dia, inicio, fim in (
+                ("fiscal", "2026-12-31", "22:15", "02:45"),
+                ("outro", "2026-12-31", "08:00", "10:30"),
+                ("fiscal", "2027-01-01", "09:15", "11:30"),
+            ):
+                connection.execute(
+                    text("""
+                        INSERT INTO escalas_trabalho (
+                            evento_id, fiscal_id, data_trabalho, turno_inicio, turno_fim
+                        ) VALUES (:evento, :fiscal, :dia, :inicio, :fim)
+                    """),
+                    {
+                        "evento": self.dados["evento_id"],
+                        "fiscal": self.dados[fiscal],
+                        "dia": dia,
+                        "inicio": inicio,
+                        "fim": fim,
+                    },
+                )
+        self.page.set_viewport_size({"width": largura, "height": altura})
+        self.login()
+        self.page.goto(f"{self.endereco}/escalas?mes=2026-12")
+        titulo = self.page.locator("#escala-mes-titulo")
+        turnos = self.page.locator(".escala-mes-turno")
+        expect(titulo).to_have_text("Dezembro de 2026")
+        expect(turnos).to_have_count(2)
+        cor_fiscal = turnos.filter(has_text=self.dados["fiscal_nome"]).evaluate(
+            "elemento => getComputedStyle(elemento).backgroundColor"
+        )
+        cor_outro = turnos.filter(has_text=self.dados["outro_nome"]).evaluate(
+            "elemento => getComputedStyle(elemento).backgroundColor"
+        )
+        self.assertNotEqual(cor_fiscal, cor_outro)
+        self.assertNotIn(cor_fiscal, ("rgba(0, 0, 0, 0)", "rgb(255, 255, 255)"))
+        self.assertTrue(
+            self.page.locator(".escala-mes-secao").evaluate(
+                "elemento => elemento.getBoundingClientRect().top >= "
+                "document.querySelector('[aria-label=\"Totais mensais de horas por fiscal\"]').getBoundingClientRect().bottom"
+            )
+        )
+        self.page.locator("#filtro-visualizacao-escalas").select_option("proprias")
+        self.page.get_by_role("button", name="Filtrar", exact=True).click()
+        self.page.wait_for_url("**visualizacao=proprias")
+        expect(turnos).to_have_count(1)
+        expect(turnos).to_contain_text("22:15 às 02:45 (+1 dia)")
+        self.assertEqual(
+            turnos.evaluate("elemento => getComputedStyle(elemento).backgroundColor"),
+            cor_fiscal,
+        )
+        self.page.get_by_role("link", name="Próximo mês", exact=True).click()
+        expect(titulo).to_have_text("Janeiro de 2027")
+        expect(turnos).to_have_count(1)
+        expect(turnos).to_contain_text("09:15 às 11:30")
+        self.assertEqual(
+            turnos.evaluate("elemento => getComputedStyle(elemento).backgroundColor"),
+            cor_fiscal,
+        )
+        expect(self.page.locator("#filtro-visualizacao-escalas")).to_have_value(
+            "proprias"
+        )
+        self.page.get_by_role("link", name="Mês anterior", exact=True).click()
+        expect(titulo).to_have_text("Dezembro de 2026")
+        expect(turnos).to_have_count(1)
+        self.page.locator("#escala-mes").fill("2027-02")
+        self.page.get_by_role("button", name="Exibir mês", exact=True).click()
+        expect(titulo).to_have_text("Fevereiro de 2027")
+        expect(turnos).to_have_count(0)
+        expect(
+            self.page.get_by_text(
+                "Nenhuma escala neste mês para o filtro selecionado.", exact=True
+            )
+        ).to_be_visible()
+        self.page.get_by_role("link", name="Mês anterior", exact=True).click()
+        expect(titulo).to_have_text("Janeiro de 2027")
+        self.assertLessEqual(
+            self.page.evaluate("document.documentElement.scrollWidth"), largura + 1
+        )
+        self.page.locator(".escala-mes-secao").screenshot(
+            path=str(self.artefatos / f"calendario-escalas-{largura}.png")
+        )
+        self.assertEqual(self.erros_js, [])
+
+    def test_calendario_escalas_desktop(self) -> None:
+        self.consultar_calendario_escalas(1280, 900)
+
+    def test_calendario_escalas_celular(self) -> None:
+        self.consultar_calendario_escalas(390, 844)
 
     def test_escalas_adjacentes_permanecem_visiveis(self) -> None:
         self.page.goto(self.endereco)

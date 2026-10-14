@@ -10,6 +10,73 @@ from starlette.responses import Response
 import main
 
 
+class CalendarioEscalasTests(unittest.TestCase):
+    """Protege dias, jornadas e navegacao mensal do calendario."""
+
+    def test_fevereiro_bissexto_distribui_as_escalas(self) -> None:
+        from app.utils.escalas import montar_calendario_escalas
+
+        escala = {"data_trabalho": "2028-02-29", "fiscal_nome": "Fiscal teste"}
+        calendario = montar_calendario_escalas([escala], "2028-02")
+        dias = [dia for semana in calendario["semanas"] for dia in semana]
+        self.assertEqual(sum(bool(dia["numero"]) for dia in dias), 29)
+        self.assertEqual(
+            next(dia for dia in dias if dia["numero"] == 29)["escalas"], [escala]
+        )
+        self.assertEqual(calendario["total"], 1)
+        self.assertEqual(calendario["anterior"], "2028-01")
+        self.assertEqual(calendario["proximo"], "2028-03")
+
+    def test_paginacao_cruza_ano_e_nao_mistura_meses(self) -> None:
+        from app.utils.escalas import montar_calendario_escalas
+
+        escalas = [{"data_trabalho": "2026-12-31"}, {"data_trabalho": "2027-01-01"}]
+        calendario = montar_calendario_escalas(escalas, "2026-12")
+        self.assertEqual(calendario["proximo"], "2027-01")
+        self.assertEqual(calendario["total"], 1)
+        self.assertEqual(
+            montar_calendario_escalas(escalas, "2027-01")["anterior"], "2026-12"
+        )
+
+    def test_mes_invalido_e_limites_nao_quebram_calendario(self) -> None:
+        from app.utils.escalas import montar_calendario_escalas
+
+        escala = {"data_trabalho": "2026-10-13"}
+        self.assertEqual(
+            montar_calendario_escalas([escala], "invalido")["mes"], "2026-10"
+        )
+        self.assertIsNone(montar_calendario_escalas([], "0001-01")["anterior"])
+        self.assertIsNone(montar_calendario_escalas([], "9999-12")["proximo"])
+
+
+class NavegacaoEstruturalTests(unittest.TestCase):
+    """Protege o nome da tela atual no cabecalho compartilhado."""
+
+    def test_cabecalho_identifica_coordenacao_e_preserva_outros_caminhos(self) -> None:
+        template = main.coordenacao.templates.env.get_template("partials/header.html")
+        for caminho, titulo in (
+            ("/coordenacao", "Coordenação do evento"),
+            ("/coordenacao/", "Coordenação do evento"),
+            ("/escalas", "Escalas dos fiscais"),
+            ("/criar-evento", "Gerenciar eventos"),
+        ):
+            with self.subTest(caminho=caminho):
+                request = Request(
+                    {
+                        "type": "http",
+                        "scheme": "http",
+                        "server": ("testserver", 80),
+                        "path": caminho,
+                        "query_string": b"aba=escala",
+                        "headers": [],
+                        "session": {},
+                    }
+                )
+                html = template.render(request=request)
+                self.assertIn('<a href="/menu">Início</a>', html)
+                self.assertIn(f'<span aria-current="page">{titulo}</span>', html)
+
+
 class NavegacaoHTTPTests(unittest.TestCase):
     """Protege os pontos de entrada comuns usando o app e os cookies reais."""
 
