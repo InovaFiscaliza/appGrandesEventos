@@ -27,6 +27,7 @@ from app.services.postgres import (
     consultar_historico_ocorrencia,
     listar_estacoes_evento,
     listar_tickets_evento,
+    submeter_emissao_evento,
 )
 from app.utils.formatters import _data_hora_foto, _img_b64
 from app.utils.offline import extrair_dados_edicao, preparar_offline_ctx
@@ -136,17 +137,13 @@ async def _load_pendencias(
                 "Largura (kHz)": e.largura_khz,
                 "Local": e.local_regiao,
                 "Identificação": e.identificacao,
-                "Autorizado?": (
-                    "Sim"
-                    if e.autorizado
-                    else ("Não" if e.autorizado is False else "Indefinido")
-                ),
+                "Autorizado?": e.autorizado or "Indefinido",
                 "UTE?": "Sim" if e.ute else "Não",
                 "Processo SEI UTE": e.processo_sei_ute or "",
                 "Ato UTE": e.ato_ute or "",
                 "Ocorrência (observações)": e.observacoes,
                 "Alguém mais ciente?": e.alguem_ciente,
-                "Interferente?": e.interferente,
+                "Interferente?": e.interferente or "Indefinido",
                 "Situação": e.situacao,
                 "Fonte": e.fonte,
                 "Data": e.data,
@@ -157,7 +154,8 @@ async def _load_pendencias(
                 "SubmetidaCoordenadorEm": e.submetida_coordenador_em,
                 "IDExibicao": e.id_exibicao,
                 "EstacaoRaw": e.equipamento or "",
-                "EstacaoID": e.id,
+                "EstacaoID": e.estacao_id,
+                "OrigemCaptura": e.origem_captura,
             }
         )
 
@@ -709,21 +707,38 @@ async def post_consultar_submeter_ticket(
     evento_id = request.session.get("spreadsheet_id")
     if not evento_id:
         return RedirectResponse("/", status_code=302)
-    if _usuario_e_coordenador(request, int(evento_id)):
-        request.session["flash_error"] = "Somente fiscais podem submeter emissões."
-        return RedirectResponse("/consultar", status_code=303)
 
     fiscal_id = request.session.get("fiscal_id")
-    request.session.get("fiscal_nome", "Usuário não identificado")
     if not fiscal_id or not str(fiscal_id).isdigit():
         request.session["flash_error"] = "Fiscal não identificado na sessão."
         return RedirectResponse("/consultar", status_code=303)
 
-    resultado = emissao_service.submeter_para_coordenacao(ocorrencia_id)
-    if resultado:
-        resultado_msg = "Emissão submetida ao coordenador com sucesso!"
-    else:
-        resultado_msg = "ERRO: Não foi possível submeter a emissão. Ela pode não existir ou não estar com situação 'pendente'."
+    emissoes = emissao_service.listar_por_evento(int(evento_id), incluir_todas=True)
+    emissao = next(
+        (
+            item
+            for item in emissoes
+            if item.id == ocorrencia_id and item.evento_id == int(evento_id)
+        ),
+        None,
+    )
+    if (
+        emissao is None
+        or emissao.fiscal_id != int(fiscal_id)
+        or emissao.situacao.strip().casefold() != "pendente"
+        or emissao.submetida_coordenador_em is not None
+    ):
+        request.session["flash_error"] = (
+            "Somente emissões próprias, pendentes e ainda não submetidas podem ser submetidas."
+        )
+        return RedirectResponse("/consultar", status_code=303)
+
+    resultado_msg = submeter_emissao_evento(
+        evento_id=int(evento_id),
+        ocorrencia_id=ocorrencia_id,
+        fiscal_id=int(fiscal_id),
+        usuario_fiscal=request.session.get("fiscal_nome", USR_FISCAL_ANATEL),
+    )
 
     request.session[
         "flash_error" if resultado_msg.startswith("ERRO") else "flash_success"

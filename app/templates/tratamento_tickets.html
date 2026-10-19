@@ -3,6 +3,7 @@
 {% include "partials/header.html" %}
 
 {% if flash_success %}<div class="flash flash-success flash-toast" role="status" aria-live="polite">{{ flash_success }}</div>{% endif %}
+{% if flash_error %}<div class="flash flash-error" role="alert">{{ flash_error }}</div>{% endif %}
 <section class="module-section" aria-labelledby="tratamento-tickets-titulo">
     <div class="section-heading">
         <div>

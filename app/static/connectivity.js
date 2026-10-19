@@ -1,6 +1,3 @@
-// Detecção ATIVA de conectividade.
-// Usa o próprio servidor da aplicação como referência (/api/ping)
-// em vez de serviço externo, evitando falsos positivos com proxy corporativo.
 (function () {
   window.APP_OFFLINE = !navigator.onLine;
 
@@ -18,31 +15,10 @@
   }
 
   function checarConexao() {
-    if (!navigator.onLine) {
-      aplicarEstado(true);
-      return;
-    }
-    var ctrl = new AbortController();
-    var t = setTimeout(function () {
-      ctrl.abort();
-    }, 6000);
-    // Usa endpoint local em vez de serviço externo
-    fetch("/api/ping", {
-      cache: "no-store",
-      signal: ctrl.signal,
-    })
-      .then(function (r) {
-        clearTimeout(t);
-        aplicarEstado(!r.ok);
-      })
-      .catch(function () {
-        clearTimeout(t);
-        aplicarEstado(true);
-      });
+    aplicarEstado(!navigator.onLine);
   }
 
   window.addEventListener("online", checarConexao);
   window.addEventListener("offline", checarConexao);
-  setInterval(checarConexao, 8000);
   checarConexao();
 })();

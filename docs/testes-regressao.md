@@ -44,6 +44,26 @@ grava uma emissão no banco configurado. Não usá-lo como validação de rotina
 
 ## Estado validado
 
+### Conclusão de tickets — 16/10/2026
+
+A conclusão verifica todas as emissões e todos os incidentes vinculados, antes
+de gravar qualquer mudança. Havendo pendências, o ticket permanece aberto e a
+tela identifica cada registro e seus campos faltantes. Salvar como pendente
+continua permitido. Campos opcionais não passam a ser obrigatórios.
+
+Nas emissões, além das regras de conclusão existentes, são exigidos local,
+autorização esclarecida e resposta UTE; UTE positiva exige Processo SEI ou Ato.
+Classificações de autorização e interferência indefinidas precisam ser esclarecidas.
+Nos incidentes, são conferidos tipo, fiscal, local e observações; registros
+excluídos não podem ser concluídos pelo ticket. As mudanças de situação e de
+responsável pela conclusão geram auditoria específica nos dois tipos de registro.
+
+Validação: 109 testes rápidos e 18 testes PostgreSQL isolados aprovados com
+`scripts/testar_todas_camadas.ps1 -SemNavegador`. A nova jornada vincula duas
+emissões e dois incidentes, confirma o bloqueio sem alteração, edita todos pelos
+formulários reais e verifica a conclusão e a consulta de auditoria. Chromium
+não foi executado nesta alteração.
+
 Execução local em 14/10/2026:
 
 | Camada | Casos | Resultado |

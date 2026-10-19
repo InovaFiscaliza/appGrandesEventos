@@ -58,8 +58,8 @@ async def get_menu(
                 {
                     "Local": e.local_regiao,
                     "EstacaoRaw": e.equipamento or "",
-                    "EstacaoID": str(e.id),
-                    "OrigemCaptura": e.fonte,
+                    "EstacaoID": str(e.estacao_id or ""),
+                    "OrigemCaptura": e.origem_captura or "",
                     "CriadorFiscalID": e.fiscal_id,
                     "CadastradoPor": e.fiscal_nome or "Não informado",
                     "SubmetidaCoordenadorEm": e.submetida_coordenador_em,
@@ -72,17 +72,13 @@ async def get_menu(
                     "Largura (kHz)": str(e.largura_khz),
                     "Faixa de Frequência Envolvida": e.faixa,
                     "Identificação": e.identificacao,
-                    "Autorizado?": (
-                        "Sim"
-                        if e.autorizado
-                        else ("Não" if e.autorizado is False else "Indefinido")
-                    ),
+                    "Autorizado?": e.autorizado or "Indefinido",
                     "UTE?": "Sim" if e.ute else "Não",
                     "Processo SEI UTE": e.processo_sei_ute or "",
                     "Ato UTE": e.ato_ute or "",
                     "Ocorrência (observações)": e.observacoes,
                     "Alguém mais ciente?": e.alguem_ciente,
-                    "Interferente?": "Sim" if e.interferente else "Não",
+                    "Interferente?": e.interferente or "Indefinido",
                     "Situação": e.situacao,
                     "Fonte": e.fonte,
                 }

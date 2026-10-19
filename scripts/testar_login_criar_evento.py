@@ -346,6 +346,26 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
         textual = {**self.record, "data": "2026-10-10", "hora": "12:30:00"}
         self.assertEqual(self.listar([textual])[0].data, emissao.data)
 
+    def test_leitura_preserva_campos_editaveis_da_emissao(self) -> None:
+        registro = {
+            **self.record,
+            "autorizado": "Não licenciável",
+            "ute": True,
+            "alguem_ciente": "Responsável local",
+            "interferente": "Indefinido",
+            "estacao_id": 25,
+            "origem_captura": None,
+        }
+
+        emissao = self.listar([registro])[0]
+
+        self.assertEqual(emissao.autorizado, "Não licenciável")
+        self.assertTrue(emissao.ute)
+        self.assertEqual(emissao.alguem_ciente, "Responsável local")
+        self.assertEqual(emissao.interferente, "Indefinido")
+        self.assertEqual(emissao.estacao_id, 25)
+        self.assertIsNone(emissao.origem_captura)
+
     async def test_menu_conta_apenas_pendencias_proprias_nao_submetidas(self) -> None:
         from app.routers import menu
 
@@ -461,6 +481,113 @@ class EmissoesPendentesTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(rows["ID"].tolist(), [1, 2, 3])
         self.assertEqual(rows["PodeEditar"].tolist(), [True, False, True])
+
+    async def test_submissao_propria_permitida_para_fiscal_e_coordenador(self) -> None:
+        from app.routers import consultar
+
+        for perfil in ("monitoração", "Coordenação"):
+            with self.subTest(perfil=perfil):
+                self.request.session["tipo_usuario"] = perfil
+                service = MagicMock()
+                service.listar_por_evento.return_value = self.listar([self.record])
+
+                with patch.object(
+                    consultar,
+                    "submeter_emissao_evento",
+                    return_value="Emissão submetida ao coordenador com sucesso.",
+                ) as submeter:
+                    resposta = await consultar.post_consultar_submeter_ticket(
+                        self.request, 1, service
+                    )
+
+                self.assertEqual(resposta.status_code, 303)
+                submeter.assert_called_once_with(
+                    evento_id=10,
+                    ocorrencia_id=1,
+                    fiscal_id=7,
+                    usuario_fiscal="Fiscal teste",
+                )
+                self.assertIn("flash_success", self.request.session)
+
+    async def test_submissao_rejeita_emissao_alheia_ou_fora_do_fluxo(self) -> None:
+        from app.routers import consultar
+
+        for perfil in ("monitoração", "Coordenação"):
+            for alteracoes in (
+                {"criado_por_fiscal_id": 8},
+                {"evento_id": 20},
+                {"situacao": "Concluída Pelo Fiscal"},
+                {"submetida_coordenador_em": datetime(2026, 10, 10)},
+            ):
+                with self.subTest(perfil=perfil, alteracoes=alteracoes):
+                    self.request.session["tipo_usuario"] = perfil
+                    service = MagicMock()
+                    service.listar_por_evento.return_value = self.listar(
+                        [{**self.record, **alteracoes}]
+                    )
+
+                    with patch.object(consultar, "submeter_emissao_evento") as submeter:
+                        resposta = await consultar.post_consultar_submeter_ticket(
+                            self.request, 1, service
+                        )
+
+                    self.assertEqual(resposta.status_code, 303)
+                    submeter.assert_not_called()
+                    self.assertIn("flash_error", self.request.session)
+
+    def test_botao_submissao_visivel_para_coordenador_fora_do_popup(self) -> None:
+        from jinja2 import ChoiceLoader, DictLoader
+        from app.routers import consultar
+
+        ambiente = consultar.templates.env.overlay(
+            loader=ChoiceLoader(
+                [
+                    DictLoader(
+                        {
+                            "base.html": "{% block content %}{% endblock %}",
+                            "partials/header.html": "",
+                        }
+                    ),
+                    consultar.templates.env.loader,
+                ]
+            )
+        )
+        template = ambiente.get_template("consultar.html")
+        for coordenador in (False, True):
+            with self.subTest(coordenador=coordenador):
+                html = template.render(
+                    request=self.request, eh_coordenador=coordenador, origens_campo={}
+                )
+                self.assertIn('id="btn-submeter-ticket"', html)
+        self.request.scope["query_string"] = b"popup=1"
+        from starlette.requests import Request
+
+        html = template.render(
+            request=Request(self.request.scope), eh_coordenador=True, origens_campo={}
+        )
+        self.assertNotIn('id="btn-submeter-ticket"', html)
+
+    def test_submissao_registra_auditoria_com_usuario_e_evento(self) -> None:
+        from app.services import postgres
+
+        engine = MagicMock()
+        conexao = engine.begin.return_value.__enter__.return_value
+        conexao.execute.return_value.mappings.return_value.first.return_value = {
+            "criado_por_fiscal_id": 7,
+            "submetida_coordenador_em": None,
+        }
+        with patch.object(postgres, "get_engine", return_value=engine):
+            resultado = postgres.submeter_emissao_evento(10, 1, 7, "Fiscal teste")
+
+        self.assertFalse(resultado.startswith("ERRO"))
+        comandos = conexao.execute.call_args_list
+        self.assertEqual(len(comandos), 3)
+        self.assertIn("UPDATE ocorrencias", str(comandos[1].args[0]))
+        self.assertIn("INSERT INTO auditoria_ocorrencias", str(comandos[2].args[0]))
+        self.assertIn("Submissão ao coordenador", str(comandos[2].args[0]))
+        self.assertEqual(
+            comandos[2].args[1], {"id": 1, "evento_id": 10, "usuario": "Fiscal teste"}
+        )
 
     async def test_coordenador_oculta_concluidas_da_lista_e_api(self) -> None:
         from app.routers import consultar

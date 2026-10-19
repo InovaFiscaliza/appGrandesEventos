@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date, time
 from io import BytesIO
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.testclient import TestClient
@@ -162,6 +162,185 @@ class TratamentoTicketsTests(unittest.TestCase):
         self.listar.assert_not_called()
         self.atualizar.assert_not_called()
         self.auditar.assert_not_called()
+
+
+class ValidacaoConclusaoTicketTests(unittest.TestCase):
+    """Confere todos os registros antes de alterar o ticket ou seus vínculos."""
+
+    def setUp(self) -> None:
+        self.emissao = {
+            "id": 1,
+            "data": date(2026, 10, 16),
+            "hora": time(12, 30),
+            "fiscal": "Fiscal teste",
+            "origem_captura": "Fiscal de campo",
+            "frequencia_mhz": 433.925,
+            "largura_khz": 25,
+            "faixa": "UHF",
+            "local_regiao": "Local teste",
+            "identificacao": "Rádio",
+            "autorizado": "Não",
+            "ute": False,
+            "interferente": "Não",
+            "observacoes": "Emissão verificada em campo",
+            "situacao": "Pendente",
+            "concluida_por": None,
+        }
+        self.incidente = {
+            "id": 2,
+            "tipo": "Bloqueador de sinal (BSR)",
+            "possui_fiscal": True,
+            "regiao": "Local teste",
+            "observacoes": "Equipamento localizado",
+            "situacao": "Pendente",
+            "concluida_por": None,
+        }
+
+    def atualizar(
+        self, emissoes: list[dict], incidentes: list[dict], status: str
+    ) -> None:
+        from app.services import postgres
+
+        engine = MagicMock()
+        self.conexao = engine.begin.return_value.__enter__.return_value
+
+        def executar(comando, parametros):
+            resultado = MagicMock()
+            resultado.rowcount = 1
+            sql = str(comando)
+            if "FROM tickets" in sql:
+                resultado.mappings.return_value.first.return_value = {
+                    "status": "pendente"
+                }
+            elif "FROM ocorrencias o" in sql:
+                resultado.mappings.return_value.all.return_value = emissoes
+            elif "FROM bsr_erb b" in sql:
+                resultado.mappings.return_value.all.return_value = incidentes
+            return resultado
+
+        self.conexao.execute.side_effect = executar
+        with patch.object(postgres, "get_engine", return_value=engine):
+            postgres.atualizar_ticket_evento(
+                35,
+                10,
+                status,
+                providencias="Inspeção realizada",
+                usuario_fiscal="Fiscal teste",
+            )
+
+    def test_conclusao_lista_pendencias_de_todas_emissoes_e_incidentes(self) -> None:
+        with self.assertRaises(ValueError) as erro:
+            self.atualizar(
+                [
+                    {**self.emissao, "autorizado": "", "ute": None},
+                    {**self.emissao, "id": 3, "ute": True},
+                ],
+                [{**self.incidente, "regiao": " ", "observacoes": "null"}],
+                STATUS_TICKET_CONCLUIDO_FISCAIS,
+            )
+        mensagem = str(erro.exception)
+        for texto in (
+            "Emissão #1",
+            "Autorizado",
+            "UTE",
+            "Emissão #3",
+            "Processo SEI ou Ato UTE",
+            "Incidente #2",
+            "Local",
+            "Observações",
+        ):
+            self.assertIn(texto, mensagem)
+        comandos = [
+            str(chamada.args[0]) for chamada in self.conexao.execute.call_args_list
+        ]
+        self.assertFalse(
+            any(sql.lstrip().startswith(("UPDATE ", "INSERT ")) for sql in comandos)
+        )
+
+    def test_conclusao_aceita_ute_negativa_e_audita_os_dois_tipos(self) -> None:
+        self.atualizar(
+            [self.emissao], [self.incidente], STATUS_TICKET_CONCLUIDO_FISCAIS
+        )
+        comandos = [
+            str(chamada.args[0]) for chamada in self.conexao.execute.call_args_list
+        ]
+        self.assertTrue(any("UPDATE tickets" in sql for sql in comandos))
+        self.assertTrue(
+            any("INSERT INTO auditoria_ocorrencias" in sql for sql in comandos)
+        )
+        self.assertTrue(any("INSERT INTO auditoria_bsr_erb" in sql for sql in comandos))
+
+    def test_cada_campo_obrigatorio_vazio_bloqueia_conclusao(self) -> None:
+        from app.services import postgres
+
+        for campo in (
+            "data",
+            "hora",
+            "fiscal",
+            "origem_captura",
+            "frequencia_mhz",
+            "largura_khz",
+            "faixa",
+            "local_regiao",
+            "identificacao",
+            "autorizado",
+            "ute",
+            "interferente",
+            "observacoes",
+        ):
+            for valor in (None, " ", "null", "NaN"):
+                with self.subTest(campo=campo, valor=valor):
+                    self.assertTrue(
+                        postgres._pendencias_conclusao_ticket(
+                            [{**self.emissao, campo: valor}], []
+                        )
+                    )
+        for campo in ("tipo", "regiao", "observacoes", "possui_fiscal"):
+            with self.subTest(campo=campo):
+                self.assertTrue(
+                    postgres._pendencias_conclusao_ticket(
+                        [], [{**self.incidente, campo: None}]
+                    )
+                )
+
+    def test_respostas_indefinidas_precisam_ser_esclarecidas(self) -> None:
+        from app.services import postgres
+
+        for campo in ("autorizado", "interferente"):
+            with self.subTest(campo=campo):
+                self.assertTrue(
+                    postgres._pendencias_conclusao_ticket(
+                        [{**self.emissao, campo: "Indefinido"}], []
+                    )
+                )
+
+    def test_ute_sim_aceita_processo_ou_ato(self) -> None:
+        from app.services import postgres
+
+        for campo in ("processo_sei_ute", "ato_ute"):
+            with self.subTest(campo=campo):
+                self.assertEqual(
+                    postgres._pendencias_conclusao_ticket(
+                        [{**self.emissao, "ute": True, campo: "12345"}],
+                        [self.incidente],
+                    ),
+                    [],
+                )
+
+    def test_ticket_somente_incidentes_tambem_exige_preenchimento(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Incidente #2.*Observações"):
+            self.atualizar(
+                [],
+                [{**self.incidente, "observacoes": None}],
+                STATUS_TICKET_CONCLUIDO_FISCAIS,
+            )
+
+    def test_salvar_pendente_nao_exige_esclarecimento_dos_vinculos(self) -> None:
+        self.atualizar(
+            [{**self.emissao, "autorizado": None}],
+            [{**self.incidente, "observacoes": None}],
+            STATUS_TICKET_PENDENTE,
+        )
 
 
 class CoordenacaoTicketsTests(unittest.TestCase):

@@ -23,14 +23,13 @@ class Emissao:
         largura_khz: Largura de banda medida em kHz (ex: 12.5).
         local_regiao: Descrição textual do local da medição (ex: 'Próximo ao poste 123').
         identificacao: Código ou etiqueta que identifica a emissão (ex: 'ETQ-001').
-        autorizado: Indica se a emissão está dentro dos limites autorizados (Q).
-                   None se não aplicável ou não informado.
+        autorizado: Valor textual da autorização, conforme cadastro (Q).
         ute: Indica se a emissão corresponde a uma UTE (Unidade de Teste e Ensaios).
         processo_sei_ute: Número do processo SEI associado à UTE, se aplicável.
         ato_ute: Ato ou descrição específica da UTE, se aplicável.
         observacoes: Campo livre para observações do fiscal sobre a medição.
-        alguem_ciente: Indica se havia alguém mais ciente presente durante a medição.
-        interferente: Indica se foi detectado sinal interferente na frequência.
+        alguem_ciente: Identificação textual de outra pessoa ciente da medição.
+        interferente: Classificação textual do sinal interferente.
         situacao: Status atual da emissão (ex: 'pendente', 'concluido', 'cancelado').
         fonte: Origem da emissão ('PAINEL' ou 'ESTACAO').
         data: Data em que a medição foi realizada.
@@ -47,13 +46,13 @@ class Emissao:
     largura_khz: float
     local_regiao: str
     identificacao: str
-    autorizado: bool | None = None
+    autorizado: str | None = None
     ute: bool = False
     processo_sei_ute: str | None = None
     ato_ute: str | None = None
     observacoes: str = ""
-    alguem_ciente: bool | None = None
-    interferente: bool = False
+    alguem_ciente: str | None = None
+    interferente: str | None = None
     situacao: str = "pendente"
     fonte: str = "PAINEL"
     data: date = field(default_factory=date.today)
@@ -64,6 +63,8 @@ class Emissao:
     fiscal_nome: str | None = None
     submetida_coordenador_em: datetime | None = None
     faixa: str = ""
+    estacao_id: int | None = None
+    origem_captura: str | None = None
 
     def __post_init__(self) -> None:
         """Validações básicas de consistência após a inicialização."""

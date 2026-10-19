@@ -1184,6 +1184,58 @@ def excluir_escala_evento(evento_id: int, escala_id: int) -> None:
             raise ValueError("Escala não encontrada no evento selecionado.")
 
 
+def _pendencias_conclusao_ticket(
+    emissoes: list[dict], incidentes: list[dict]
+) -> list[str]:
+    """Identifica os campos que ainda precisam ser esclarecidos nos vínculos."""
+    pendencias = []
+    for emissao in emissoes:
+        dados = {
+            campo: None if _normalizar_valor_auditoria(valor) is None else valor
+            for campo, valor in emissao.items()
+        }
+        campos = _campos_pendentes_para_conclusao(dados)
+        if not dados.get("local_regiao"):
+            campos.append("Local")
+        if str(dados.get("autorizado") or "").strip().casefold() not in {
+            "sim",
+            "não",
+            "não licenciável",
+        }:
+            campos.append("Autorizado")
+        if (
+            str(dados.get("interferente") or "").strip().casefold()
+            not in {"sim", "não"}
+            and "Classificação de interferência" not in campos
+        ):
+            campos.append("Classificação de interferência")
+        if dados.get("ute") is None:
+            campos.append("UTE")
+        elif dados["ute"] is True and not (
+            dados.get("processo_sei_ute") or dados.get("ato_ute")
+        ):
+            campos.append("Processo SEI ou Ato UTE")
+        if campos:
+            pendencias.append(f"Emissão #{emissao['id']}: {', '.join(campos)}")
+    for incidente in incidentes:
+        campos = [
+            nome
+            for campo, nome in (
+                ("tipo", "Tipo"),
+                ("regiao", "Local"),
+                ("observacoes", "Observações"),
+            )
+            if _normalizar_valor_auditoria(incidente.get(campo)) is None
+        ]
+        if not incidente.get("possui_fiscal"):
+            campos.append("Fiscal")
+        if incidente.get("excluido_em") is not None:
+            campos.append("Incidente excluído")
+        if campos:
+            pendencias.append(f"Incidente #{incidente['id']}: {', '.join(campos)}")
+    return pendencias
+
+
 def atualizar_ticket_evento(
     ticket_id: int,
     evento_id: int,
@@ -1222,6 +1274,69 @@ def atualizar_ticket_evento(
         ):
             raise ValueError("Informe o motivo da devolução do ticket.")
 
+        situacao_por_status = {
+            STATUS_TICKET_PENDENTE: (SITUACAO_PENDENTE, None),
+            STATUS_TICKET_CONCLUIDO_FISCAIS: (
+                SITUACAO_CONCLUIDA_FISCAL,
+                "Fiscal",
+            ),
+            STATUS_TICKET_CONCLUIDO_COORDENADOR: (
+                SITUACAO_CONCLUIDA_COORDENADOR,
+                "Coordenador",
+            ),
+        }
+        situacao_nova, conclusao_nova = situacao_por_status[status]
+        emissoes = (
+            conn.execute(
+                text("""
+                    SELECT o.id, o.data, o.hora, o.fiscal, o.frequencia_mhz,
+                           o.largura_khz, o.faixa, o.identificacao, o.interferente,
+                           o.observacoes, o.estacao_id, o.origem_captura,
+                           o.local_regiao, o.autorizado, o.ute,
+                           o.processo_sei_ute, o.ato_ute,
+                           o.situacao, o.concluida_por
+                    FROM ocorrencias o
+                    JOIN ticket_ocorrencias vinculacao
+                      ON vinculacao.ocorrencia_id = o.id
+                    WHERE vinculacao.ticket_id = :ticket_id
+                      AND o.evento_id = :evento_id
+                    FOR UPDATE OF o
+                """),
+                {
+                    "ticket_id": int(ticket_id),
+                    "evento_id": int(evento_id),
+                },
+            )
+            .mappings()
+            .all()
+        )
+        incidentes_vinculados = (
+            conn.execute(
+                text("""
+                    SELECT b.id, b.tipo, b.regiao, b.observacoes, b.excluido_em,
+                           b.situacao, b.concluida_por,
+                           (b.criado_por_fiscal_id IS NOT NULL OR EXISTS (
+                               SELECT 1 FROM incidente_fiscais participantes
+                               WHERE participantes.incidente_id = b.id
+                           )) AS possui_fiscal
+                    FROM bsr_erb b
+                    JOIN ticket_incidentes vinculacao
+                      ON vinculacao.incidente_id = b.id
+                    WHERE vinculacao.ticket_id = :ticket_id
+                      AND b.evento_id = :evento_id
+                    FOR UPDATE OF b
+                """),
+                {"ticket_id": int(ticket_id), "evento_id": int(evento_id)},
+            )
+            .mappings()
+            .all()
+        )
+        if conclusao_nova:
+            pendencias = _pendencias_conclusao_ticket(emissoes, incidentes_vinculados)
+            if pendencias:
+                raise ValueError(
+                    "Não é possível concluir o ticket. " + "; ".join(pendencias) + "."
+                )
         resultado = conn.execute(
             text("""
                 UPDATE tickets
@@ -1246,50 +1361,6 @@ def atualizar_ticket_evento(
         if resultado.rowcount == 0:
             raise ValueError("Ticket não encontrado no evento selecionado.")
 
-        situacao_por_status = {
-            STATUS_TICKET_PENDENTE: (SITUACAO_PENDENTE, None),
-            STATUS_TICKET_CONCLUIDO_FISCAIS: (
-                SITUACAO_CONCLUIDA_FISCAL,
-                "Fiscal",
-            ),
-            STATUS_TICKET_CONCLUIDO_COORDENADOR: (
-                SITUACAO_CONCLUIDA_COORDENADOR,
-                "Coordenador",
-            ),
-        }
-        situacao_nova, conclusao_nova = situacao_por_status[status]
-        emissoes = (
-            conn.execute(
-                text("""
-                    SELECT o.id, o.data, o.hora, o.fiscal, o.frequencia_mhz,
-                           o.largura_khz, o.faixa, o.identificacao, o.interferente,
-                           o.observacoes, o.estacao_id, o.origem_captura,
-                           o.situacao, o.concluida_por
-                    FROM ocorrencias o
-                    JOIN ticket_ocorrencias vinculacao
-                      ON vinculacao.ocorrencia_id = o.id
-                    WHERE vinculacao.ticket_id = :ticket_id
-                      AND o.evento_id = :evento_id
-                    FOR UPDATE OF o
-                """),
-                {
-                    "ticket_id": int(ticket_id),
-                    "evento_id": int(evento_id),
-                },
-            )
-            .mappings()
-            .all()
-        )
-        if conclusao_nova:
-            pendencias = [
-                f"Emissão #{emissao['id']}: {', '.join(_campos_pendentes_para_conclusao(emissao))}"
-                for emissao in emissoes
-                if _campos_pendentes_para_conclusao(emissao)
-            ]
-            if pendencias:
-                raise ValueError(
-                    "Não é possível concluir o ticket. " + "; ".join(pendencias) + "."
-                )
         for emissao in emissoes:
             situacao_anterior = emissao["situacao"]
             conclusao_anterior = emissao["concluida_por"]
@@ -1353,22 +1424,6 @@ def atualizar_ticket_evento(
                     },
                 )
 
-        incidentes_vinculados = (
-            conn.execute(
-                text("""
-                    SELECT b.id, b.situacao, b.concluida_por
-                    FROM bsr_erb b
-                    JOIN ticket_incidentes vinculacao
-                      ON vinculacao.incidente_id = b.id
-                    WHERE vinculacao.ticket_id = :ticket_id
-                      AND b.evento_id = :evento_id
-                    FOR UPDATE OF b
-                """),
-                {"ticket_id": int(ticket_id), "evento_id": int(evento_id)},
-            )
-            .mappings()
-            .all()
-        )
         for incidente in incidentes_vinculados:
             conn.execute(
                 text("""
@@ -1383,6 +1438,31 @@ def atualizar_ticket_evento(
                     "evento_id": int(evento_id),
                 },
             )
+            for campo, valor_anterior, valor_novo in (
+                ("Situação", incidente["situacao"], situacao_nova),
+                ("Concluída por", incidente["concluida_por"], conclusao_nova),
+            ):
+                if valor_anterior == valor_novo:
+                    continue
+                conn.execute(
+                    text("""
+                        INSERT INTO auditoria_bsr_erb (
+                            bsr_erb_id, evento_id, usuario_fiscal, campo,
+                            valor_anterior, valor_novo
+                        ) VALUES (
+                            :incidente_id, :evento_id, :usuario_fiscal, :campo,
+                            :valor_anterior, :valor_novo
+                        )
+                    """),
+                    {
+                        "incidente_id": int(incidente["id"]),
+                        "evento_id": int(evento_id),
+                        "usuario_fiscal": usuario_fiscal,
+                        "campo": campo,
+                        "valor_anterior": valor_anterior,
+                        "valor_novo": valor_novo,
+                    },
+                )
         if fiscal_ids is not None:
             conn.execute(
                 text("DELETE FROM ticket_fiscais WHERE ticket_id = :ticket_id"),
@@ -3728,13 +3808,16 @@ def atualizar_bsr_erb(
                     text("DELETE FROM incidente_fiscais WHERE incidente_id = :id"),
                     {"id": int(registro_id)},
                 )
-                for fiscal_id in fiscais_novos:
+                for participante_id in fiscais_novos:
                     conn.execute(
                         text("""
                             INSERT INTO incidente_fiscais (incidente_id, fiscal_id)
                             VALUES (:incidente_id, :fiscal_id)
                         """),
-                        {"incidente_id": int(registro_id), "fiscal_id": fiscal_id},
+                        {
+                            "incidente_id": int(registro_id),
+                            "fiscal_id": participante_id,
+                        },
                     )
                 conn.execute(
                     text("""
@@ -3824,6 +3907,7 @@ def atualizar_bsr_erb(
                 "Latitude": lat_v,
                 "Longitude": lon_v,
                 "Observações": observacoes or "",
+                "Situação": situacao,
             }
             valores_anteriores = {
                 "Tipo": anterior["tipo"],
@@ -3831,6 +3915,7 @@ def atualizar_bsr_erb(
                 "Latitude": anterior["latitude"],
                 "Longitude": anterior["longitude"],
                 "Observações": anterior["observacoes"] or "",
+                "Situação": anterior["situacao"],
             }
             for campo, valor_novo in valores_novos.items():
                 valor_anterior = valores_anteriores[campo]

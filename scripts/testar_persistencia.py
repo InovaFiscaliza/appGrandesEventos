@@ -158,6 +158,28 @@ class PersistenciaTests(unittest.TestCase):
                 {"evento_id": self.evento_id},
             ).scalar_one()
 
+    def esclarecer_emissao(self, ocorrencia_id: int, ticket_id: int) -> None:
+        """Preenche pela edição real os campos pendentes da emissão atribuída."""
+        resposta = self.client.post(
+            f"/consultar/salvar?popup=1&emissao_id={ocorrencia_id}&ticket_id={ticket_id}",
+            data={
+                "fonte": "FISCAL",
+                "id_val": str(ocorrencia_id),
+                "ident_edit": "Sinal de dados",
+                "autz_edit": "Não licenciável",
+                "ute_check": "Sim",
+                "proc_edit": "SEI-12345",
+                "ato_ute_edit": "Ato 678",
+                "obs_edit": "Emissão esclarecida pelo fiscal",
+                "cient_edit": "Responsável local",
+                "interf_edit": "Não",
+                "situ_edit": "Pendente",
+                "estacao_id": str(self.dados["estacao_id"]),
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(resposta.status_code, 303)
+
     def test_salvar_emissao_persiste_e_aparece_nas_pendencias(self) -> None:
         ocorrencia_id = self.cadastrar_emissao()
         with self.engine.connect() as connection:
@@ -181,6 +203,184 @@ class PersistenciaTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(str(ocorrencia_id), response.text)
         self.assertIn(self.dados["fiscal_nome"], response.text)
+
+    def test_edicao_emissao_por_ticket_salva_e_recarrega_todos_os_campos(self) -> None:
+        from app.services import postgres
+
+        ocorrencia_id = self.cadastrar_emissao()
+        self.client.post(
+            f"/consultar/submeter-ticket/{ocorrencia_id}", follow_redirects=False
+        )
+        self.login("coordenador")
+        ticket_id = postgres.salvar_ticket_evento(
+            evento_id=self.evento_id,
+            ocorrencia_ids=[ocorrencia_id],
+            fiscal_ids=[self.dados["fiscal"]],
+        )
+        self.login("fiscal")
+
+        self.esclarecer_emissao(ocorrencia_id, ticket_id)
+
+        with self.engine.connect() as connection:
+            registro = (
+                connection.execute(
+                    text("""
+                    SELECT identificacao, autorizado, ute, processo_sei_ute,
+                           ato_ute, observacoes, alguem_ciente, interferente,
+                           situacao, estacao_id, origem_captura
+                    FROM ocorrencias WHERE id = :id
+                """),
+                    {"id": ocorrencia_id},
+                )
+                .mappings()
+                .one()
+            )
+        self.assertEqual(
+            dict(registro),
+            {
+                "identificacao": "Sinal de dados",
+                "autorizado": "Não licenciável",
+                "ute": True,
+                "processo_sei_ute": "SEI-12345",
+                "ato_ute": "Ato 678",
+                "observacoes": "Emissão esclarecida pelo fiscal",
+                "alguem_ciente": "Responsável local",
+                "interferente": "Não",
+                "situacao": "Pendente",
+                "estacao_id": self.dados["estacao_id"],
+                "origem_captura": None,
+            },
+        )
+
+        resposta = self.client.get(
+            f"/api/pendencias?popup=1&emissao_id={ocorrencia_id}&ticket_id={ticket_id}"
+        )
+        self.assertEqual(resposta.status_code, 200)
+        emissao = resposta.json()[0]
+        self.assertEqual(emissao["estacao_id"], str(self.dados["estacao_id"]))
+        self.assertEqual(emissao["autorizado"], "Não licenciável")
+        self.assertEqual(emissao["interferente"], "Não")
+        self.assertEqual(emissao["processo_sei"], "SEI-12345")
+
+    def test_edicao_incidente_por_ticket_salva_campos_audita_e_mantem_popup(
+        self,
+    ) -> None:
+        from app.services import postgres
+
+        with self.engine.begin() as connection:
+            incidente_id = connection.execute(
+                text("""
+                    INSERT INTO bsr_erb (
+                        evento_id, tipo, regiao, latitude, longitude, observacoes,
+                        criado_por_fiscal_id, submetido_coordenador_em
+                    ) VALUES (
+                        :evento_id, 'Bloqueador de sinal (BSR)', 'Local original',
+                        -22.9, -43.2, 'Observação original', :fiscal_id, now()
+                    ) RETURNING id
+                """),
+                {
+                    "evento_id": self.evento_id,
+                    "fiscal_id": self.dados["fiscal"],
+                },
+            ).scalar_one()
+        ticket_id = postgres.salvar_ticket_evento(
+            evento_id=self.evento_id,
+            ocorrencia_ids=[],
+            incidente_ids=[incidente_id],
+            fiscal_ids=[self.dados["fiscal"]],
+        )
+
+        pagina = self.client.get(
+            f"/bsr-erb?editar={incidente_id}&ticket_id={ticket_id}&popup=1"
+        )
+        self.assertEqual(pagina.status_code, 200)
+        self.assertIn(f'action="/bsr-erb/{incidente_id}/editar?popup=1"', pagina.text)
+
+        resposta = self.client.post(
+            f"/bsr-erb/{incidente_id}/editar?popup=1",
+            data={
+                "ticket_id": str(ticket_id),
+                "tipo": "ERB Fake",
+                "regiao": "Local atualizado",
+                "lat": "-23.1",
+                "lon": "-44.3",
+                "observacoes": "Providência do fiscal",
+                "situacao": "Concluída Pelo Fiscal",
+                "fiscais_participantes": str(self.dados["outro"]),
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(resposta.status_code, 303)
+        pagina_retorno = self.client.get(resposta.headers["location"])
+        self.assertIn("atualizado com sucesso.", pagina_retorno.text)
+        self.assertEqual(
+            resposta.headers["location"],
+            f"/bsr-erb?editar={incidente_id}&ticket_id={ticket_id}&popup=1",
+        )
+
+        with self.engine.connect() as connection:
+            registro = (
+                connection.execute(
+                    text("""
+                    SELECT tipo, regiao, latitude, longitude, observacoes,
+                           situacao, concluida_por
+                    FROM bsr_erb WHERE id = :id
+                """),
+                    {"id": incidente_id},
+                )
+                .mappings()
+                .one()
+            )
+            participantes = (
+                connection.execute(
+                    text("""
+                    SELECT fiscal_id FROM incidente_fiscais
+                    WHERE incidente_id = :id
+                """),
+                    {"id": incidente_id},
+                )
+                .scalars()
+                .all()
+            )
+            campos_auditados = (
+                connection.execute(
+                    text("""
+                    SELECT campo FROM auditoria_bsr_erb WHERE bsr_erb_id = :id
+                """),
+                    {"id": incidente_id},
+                )
+                .scalars()
+                .all()
+            )
+
+        self.assertEqual(
+            {
+                chave: registro[chave]
+                for chave in dict(registro)
+                if chave not in {"latitude", "longitude"}
+            },
+            {
+                "tipo": "ERB Fake",
+                "regiao": "Local atualizado",
+                "observacoes": "Providência do fiscal",
+                "situacao": "Concluída Pelo Fiscal",
+                "concluida_por": "Fiscal",
+            },
+        )
+        self.assertAlmostEqual(float(registro["latitude"]), -23.1)
+        self.assertAlmostEqual(float(registro["longitude"]), -44.3)
+        self.assertEqual(participantes, [self.dados["outro"]])
+        self.assertTrue(
+            {
+                "Tipo",
+                "Local",
+                "Latitude",
+                "Longitude",
+                "Observações",
+                "Situação",
+                "Fiscais participantes",
+            }.issubset(campos_auditados)
+        )
 
     def test_coordenador_cadastrador_edita_propria_emissao_pendente(self) -> None:
         self.login("coordenador")
@@ -219,6 +419,7 @@ class PersistenciaTests(unittest.TestCase):
                 {"evento_id": self.evento_id},
             ).scalar_one()
         self.login("fiscal")
+        self.esclarecer_emissao(ocorrencia_id, ticket_id)
         self.client.post(
             f"/tratamento-tickets/{ticket_id}",
             data={
@@ -270,6 +471,112 @@ class PersistenciaTests(unittest.TestCase):
         self.assertEqual(auditoria.status_code, 200)
         self.assertIn("Rever antena secundaria", auditoria.text)
         self.assertIn(self.dados["coordenador_nome"], auditoria.text)
+
+    def test_conclusao_exige_todas_emissoes_e_incidentes_e_audita(self) -> None:
+        from app.services import postgres
+
+        emissoes = [self.cadastrar_emissao(), self.cadastrar_emissao()]
+        for ocorrencia_id in emissoes:
+            self.client.post(
+                f"/consultar/submeter-ticket/{ocorrencia_id}", follow_redirects=False
+            )
+        with self.engine.begin() as conexao:
+            incidentes = [
+                conexao.execute(
+                    text("""
+                        INSERT INTO bsr_erb (
+                            evento_id, tipo, regiao, criado_por_fiscal_id,
+                            submetido_coordenador_em
+                        ) VALUES (
+                            :evento_id, 'Bloqueador de sinal (BSR)', 'Arena', :fiscal_id, now()
+                        ) RETURNING id
+                    """),
+                    {"evento_id": self.evento_id, "fiscal_id": self.dados["fiscal"]},
+                ).scalar_one()
+                for _ in range(2)
+            ]
+        ticket_id = postgres.salvar_ticket_evento(
+            self.evento_id,
+            emissoes,
+            incidente_ids=incidentes,
+            fiscal_ids=[self.dados["fiscal"]],
+        )
+
+        def concluir() -> None:
+            resposta = self.client.post(
+                f"/tratamento-tickets/{ticket_id}",
+                data={
+                    "status": "concluido_pelos_fiscais",
+                    "providencias": "Verificação realizada",
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(resposta.status_code, 303)
+
+        concluir()
+        tela = self.client.get("/tratamento-tickets")
+        for ocorrencia_id in emissoes:
+            self.assertIn(f"Emissão #{ocorrencia_id}", tela.text)
+        for incidente_id in incidentes:
+            self.assertIn(f"Incidente #{incidente_id}", tela.text)
+        with self.engine.connect() as conexao:
+            self.assertEqual(
+                conexao.execute(
+                    text("SELECT status FROM tickets WHERE id = :id"), {"id": ticket_id}
+                ).scalar_one(),
+                "pendente",
+            )
+            self.assertEqual(
+                conexao.execute(
+                    text(
+                        "SELECT COUNT(*) FROM auditoria_bsr_erb WHERE evento_id = :id"
+                    ),
+                    {"id": self.evento_id},
+                ).scalar_one(),
+                0,
+            )
+
+        for ocorrencia_id in emissoes:
+            self.esclarecer_emissao(ocorrencia_id, ticket_id)
+        for incidente_id in incidentes:
+            resposta = self.client.post(
+                f"/bsr-erb/{incidente_id}/editar",
+                data={
+                    "ticket_id": str(ticket_id),
+                    "tipo": "Bloqueador de sinal (BSR)",
+                    "regiao": "Arena",
+                    "observacoes": "Incidente esclarecido pelo fiscal",
+                    "situacao": "Pendente",
+                    "fiscais_participantes": str(self.dados["fiscal"]),
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(resposta.status_code, 303)
+        concluir()
+        with self.engine.connect() as conexao:
+            self.assertEqual(
+                conexao.execute(
+                    text("SELECT status FROM tickets WHERE id = :id"), {"id": ticket_id}
+                ).scalar_one(),
+                "concluido_pelos_fiscais",
+            )
+            for tabela in ("ocorrencias", "bsr_erb"):
+                registros = conexao.execute(
+                    text(
+                        f"SELECT situacao, concluida_por FROM {tabela} WHERE evento_id = :id"
+                    ),
+                    {"id": self.evento_id},
+                ).all()
+                self.assertEqual(
+                    [tuple(item) for item in registros],
+                    [
+                        ("Concluída Pelo Fiscal", "Fiscal"),
+                        ("Concluída Pelo Fiscal", "Fiscal"),
+                    ],
+                )
+        auditoria = self.client.get("/auditoria?origem=Incidentes")
+        self.assertIn("Concluída Pelo Fiscal", auditoria.text)
+        self.assertIn(self.dados["fiscal_nome"], auditoria.text)
 
     def test_ticket_duplicado_e_evento_incorreto_nao_alteram_vinculos(self) -> None:
         from app.services import postgres
@@ -944,6 +1251,7 @@ class PersistenciaTests(unittest.TestCase):
         ticket_id = postgres.salvar_ticket_evento(
             self.evento_id, [ocorrencia_id], fiscal_ids=[self.dados["fiscal"]]
         )
+        self.esclarecer_emissao(ocorrencia_id, ticket_id)
         postgres.atualizar_ticket_evento(
             ticket_id,
             self.evento_id,

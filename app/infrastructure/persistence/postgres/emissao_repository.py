@@ -41,17 +41,13 @@ class PostgresEmissaoRepository(EmissaoRepository):
             "Largura em kHz": emissao.largura_khz,
             "Faixa de Frequência": emissao.faixa,
             "Identificação": emissao.identificacao,
-            "Autorizado? (Q)": (
-                "Sim"
-                if emissao.autorizado
-                else ("Não" if emissao.autorizado is False else "Indefinido")
-            ),
+            "Autorizado? (Q)": emissao.autorizado or "Indefinido",
             "UTE?": "Sim" if emissao.ute else "Não",
             "Processo SEI UTE": emissao.processo_sei_ute or "",
             "Ato UTE": emissao.ato_ute or "",
             "Observações/Detalhes/Contatos": emissao.observacoes,
             "Responsável pela emissão": "",  # This is concatenated in inserir_emissao_I_W, we'll leave blank and let it handle
-            "Interferente?": "Sim" if emissao.interferente else "Não",
+            "Interferente?": emissao.interferente or "Indefinido",
             "Situacao": emissao.situacao,
             "Submeter ao coordenador": emissao.submetida_coordenador_em is not None,
             "Fiscais participantes": [],  # This is handled separately in the router, we'll leave empty and let the router handle
@@ -74,17 +70,13 @@ class PostgresEmissaoRepository(EmissaoRepository):
             largura_khz=float(data.get("largura_khz", 0.0)),
             local_regiao=str(data.get("local_regiao", "")),
             identificacao=str(data.get("identificacao", "")),
-            autorizado=(
-                data.get("autorizado")
-                if data.get("autorizado") in [True, False]
-                else None
-            ),
+            autorizado=data.get("autorizado"),
             ute=bool(data.get("ute", False)),
             processo_sei_ute=data.get("processo_sei_ute"),
             ato_ute=data.get("ato_ute"),
             observacoes=data.get("observacoes", ""),
             alguem_ciente=data.get("alguem_ciente"),
-            interferente=bool(data.get("interferente", False)),
+            interferente=data.get("interferente"),
             situacao=data.get("situacao", "pendente"),
             fonte=str(data.get("fonte") or "PAINEL").strip().upper() or "PAINEL",
             data=data_registro or date.today(),
@@ -95,6 +87,10 @@ class PostgresEmissaoRepository(EmissaoRepository):
             fiscal_nome=data.get("cadastrado_por"),
             submetida_coordenador_em=data.get("submetida_coordenador_em"),
             faixa=str(data.get("faixa") or ""),
+            estacao_id=(
+                int(data["estacao_id"]) if data.get("estacao_id") is not None else None
+            ),
+            origem_captura=data.get("origem_captura"),
         )
 
     def get_by_id(self, emissao_id: int) -> Emissao | None:
@@ -109,7 +105,8 @@ class PostgresEmissaoRepository(EmissaoRepository):
                                o.processo_sei_ute, o.ato_ute, o.observacoes,
                                o.alguem_ciente, o.interferente, o.situacao, o.fonte,
                                o.data, o.hora,
-                               o.id_exibicao, e.nome as estacao_nome,
+                               o.id_exibicao, o.estacao_id, o.origem_captura,
+                               e.nome as estacao_nome,
                                COALESCE(NULLIF(trim(criador.nome), ''), NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por,
                                o.criado_por_fiscal_id, o.submetida_coordenador_em, o.faixa
                         FROM ocorrencias o
@@ -159,7 +156,8 @@ class PostgresEmissaoRepository(EmissaoRepository):
                            o.processo_sei_ute, o.ato_ute, o.observacoes,
                            o.alguem_ciente, o.interferente, o.situacao, o.fonte,
                            o.data, o.hora,
-                           o.id_exibicao, e.nome as estacao_nome,
+                           o.id_exibicao, o.estacao_id, o.origem_captura,
+                           e.nome as estacao_nome,
                            COALESCE(NULLIF(trim(criador.nome), ''), NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por,
                            o.criado_por_fiscal_id, o.submetida_coordenador_em, o.faixa
                     FROM ocorrencias o
@@ -186,7 +184,8 @@ class PostgresEmissaoRepository(EmissaoRepository):
                                o.processo_sei_ute, o.ato_ute, o.observacoes,
                                o.alguem_ciente, o.interferente, o.situacao, o.fonte,
                                o.data, o.hora,
-                               o.id_exibicao, e.nome as estacao_nome,
+                               o.id_exibicao, o.estacao_id, o.origem_captura,
+                               e.nome as estacao_nome,
                                COALESCE(NULLIF(trim(o.fiscal), ''), 'Não informado') AS cadastrado_por,
                                o.criado_por_fiscal_id, o.submetida_coordenador_em, o.faixa
                         FROM ocorrencias o

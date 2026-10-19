@@ -12,7 +12,7 @@
     <div id="offline-aviso-bsr" class="flash flash-error" style="display:none">
       ⚠️ Você está offline — o registro será salvo localmente e enviado ao reconectar.
     </div>
-    <form method="post" action="{{ '/bsr-erb/' ~ registro_edicao.id ~ '/editar' if registro_edicao else '/bsr-erb' }}" {% if edicao_popup %}data-edicao-popup="true"{% endif %} id="form-bsr-erb" class="rf-entry-form" enctype="multipart/form-data">
+    <form method="post" action="{{ '/bsr-erb/' ~ registro_edicao.id ~ '/editar' ~ ('?popup=1' if edicao_popup else '') if registro_edicao else '/bsr-erb' }}" {% if edicao_popup %}data-edicao-popup="true"{% endif %} id="form-bsr-erb" class="rf-entry-form" enctype="multipart/form-data">
         {% if ticket_id %}<input type="hidden" name="ticket_id" value="{{ ticket_id }}">{% endif %}
         <div class="form-group">
             <label for="tipo-ocorrencia">Tipo <span class="required">*</span></label>
@@ -311,10 +311,4 @@
 <script src="/static/sync.js"></script>
 <script src="/static/bsr_erb.js?v=6"></script>
 <script src="/static/upload-imagens.js?v=5"></script>
-{% if edicao_popup %}
-<script>
-    const formPopup = document.getElementById("form-bsr-erb");
-    if (formPopup) formPopup.action += "?popup=1";
-</script>
-{% endif %}
 {% endblock %}

@@ -154,7 +154,7 @@
         </div>
         <div class="btn-col consultar-acoes">
             <a {% if edicao_popup %}hidden{% endif %} href="/consultar" id="btn-consultar-historico" class="btn consultar-historico" aria-label="Consultar histórico de modificações">Consultar histórico de modificações</a>
-            {% if not eh_coordenador and not edicao_popup %}<button type="button" id="btn-submeter-ticket" class="btn btn-submeter-ticket">📋 Submeter ao Coordenador</button>{% endif %}
+            {% if not edicao_popup %}<button type="button" id="btn-submeter-ticket" class="btn btn-submeter-ticket">📋 Submeter ao Coordenador</button>{% endif %}
             <button type="submit" class="btn btn-submit" name="acao" value="salvar">Salvar alterações</button>
             <button type="submit" class="btn" name="acao" value="salvar_proxima" {% if edicao_popup %}hidden{% endif %}>Salvar e próxima</button>
         </div>
